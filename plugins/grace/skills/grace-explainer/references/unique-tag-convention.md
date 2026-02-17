@@ -1,8 +1,3 @@
----
-name: unique-tag-convention
-description: "GRACE unique tag convention for XML documentation. Use when writing or editing docs/*.xml files — every repeated entity must use its unique ID as the XML tag name to eliminate closing-tag polysemy."
----
-
 # Unique Tag Convention
 
 In `docs/*.xml` files, every **repeated entity** must use its **unique ID as the XML tag name** instead of a generic type tag with an `ID` attribute.

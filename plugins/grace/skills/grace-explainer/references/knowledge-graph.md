@@ -1,8 +1,3 @@
----
-name: knowledge-graph
-description: "GRACE knowledge graph maintenance. Use when creating, updating, or querying docs/knowledge-graph.xml — the single map of the entire project's module structure, dependencies, and annotations."
----
-
 # Knowledge Graph Maintenance
 
 The file `docs/knowledge-graph.xml` is the **single source of truth** for the project's module structure. It maps every module, its exports, its dependencies, and how modules connect to each other.
@@ -85,7 +80,7 @@ CrossLinks MUST be bidirectionally consistent — if A depends on B, the CrossLi
 ## Maintenance Rules
 
 1. **Always current** — when you add a module, add it to the graph. When you add a dependency, add a CrossLink. Never let the graph drift from reality.
-2. **Scan on doubt** — if unsure whether the graph is current, run `/grace refresh` to scan and sync.
+2. **Scan on doubt** — if unsure whether the graph is current, run `/grace:refresh` to scan and sync.
 3. **Version tracking** — increment the Project VERSION when the graph changes structurally (new modules, removed modules).
 4. **Annotations match exports** — if a module's exports change, update its `<annotations>` section.
 5. **No orphans** — if a module is deleted, remove its graph entry and all CrossLinks referencing it.

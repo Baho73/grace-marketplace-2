@@ -1,8 +1,3 @@
----
-name: semantic-markup
-description: "GRACE semantic markup conventions. Use when writing or reviewing code that needs START_BLOCK/END_BLOCK markers, MODULE_CONTRACT headers, MODULE_MAP, CHANGE_SUMMARY, or function-level contracts."
----
-
 # Semantic Markup Convention
 
 Semantic markup in GRACE serves dual purpose: **navigation anchors** for RAG agents and **attention anchors** for LLM context management. Markers are NOT comments — they are load-bearing structure.

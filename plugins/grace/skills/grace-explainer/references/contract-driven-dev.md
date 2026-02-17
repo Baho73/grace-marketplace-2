@@ -1,8 +1,3 @@
----
-name: contract-driven-dev
-description: "GRACE contract-driven development. Use when creating new modules, functions, or components — contracts must be defined BEFORE code. Covers MODULE_CONTRACT, function contracts, and governed autonomy (PCAM)."
----
-
 # Contract-Driven Development
 
 In GRACE, the contract is the source of truth. Code implements the contract, not the other way around.
@@ -24,7 +19,7 @@ Every file starts with:
 // END_MODULE_CONTRACT
 ```
 
-The contract is written BEFORE the code. It comes from the development plan (`docs/development-plan.xml`), which was approved by the user during the `/grace plan` phase.
+The contract is written BEFORE the code. It comes from the development plan (`docs/development-plan.xml`), which was approved by the user during the `/grace:plan` phase.
 
 ## Function Contracts
 
