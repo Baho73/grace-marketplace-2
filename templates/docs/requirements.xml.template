@@ -1,0 +1,20 @@
+<RequirementsAnalysis VERSION="0.1.0">
+  <UseCases>
+    <!-- Use cases use unique ID-based tags with AAG (Actor-Action-Goal) notation:
+
+         <UC-001>
+           <Actor>User</Actor>
+           <Action>Performs an action</Action>
+           <Goal>To achieve a specific outcome</Goal>
+           <AcceptanceCriteria>How we verify it works</AcceptanceCriteria>
+         </UC-001>
+
+         <UC-002>
+           <Actor>System</Actor>
+           <Action>Processes data automatically</Action>
+           <Goal>To maintain consistency</Goal>
+           <AcceptanceCriteria>Data is consistent after processing</AcceptanceCriteria>
+         </UC-002>
+    -->
+  </UseCases>
+</RequirementsAnalysis>
