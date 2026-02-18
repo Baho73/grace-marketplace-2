@@ -3,7 +3,7 @@ Run the GRACE architectural planning phase.
 ## Prerequisites
 - `docs/requirements.xml` must exist and have at least one UseCase
 - `docs/technology.xml` must exist with stack decisions
-- If either is missing, tell the user to run `/grace init` first
+- If either is missing, tell the user to run `/grace:init` first
 
 ## Process
 
@@ -35,7 +35,7 @@ After user approval:
 
 1. Update `docs/development-plan.xml` with the full module breakdown, contracts, and data flows. Use unique ID-based tags: `<M-xxx>` for modules, `<Phase-N>` for phases, `<DF-xxx>` for flows, `<step-N>` for steps, `<export-name>` for interface entries. See CLAUDE.md "Documentation Artifacts" for full convention.
 2. Update `docs/knowledge-graph.xml` with all modules (as `<M-xxx>` tags), their annotations (as `<fn-name>`, `<type-Name>`, etc.), and CrossLinks between them.
-3. Print: "Architecture approved. Run `/grace generate <module-name>` to start generating code, or `/grace execute` to generate all modules sequentially."
+3. Print: "Architecture approved. Run `/grace:generate <module-name>` to start generating code, or `/grace:execute` to generate all modules sequentially."
 
 ## Important
 - Do NOT generate any code during this phase

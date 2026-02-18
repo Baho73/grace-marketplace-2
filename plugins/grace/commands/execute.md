@@ -3,7 +3,7 @@ Execute the development plan step by step, generating code for each pending modu
 ## Prerequisites
 - `docs/development-plan.xml` must exist with an `<ImplementationOrder>` section
 - `docs/knowledge-graph.xml` must exist
-- If either is missing, tell the user to run `/grace plan` first
+- If either is missing, tell the user to run `/grace:plan` first
 
 ## Process
 
@@ -27,7 +27,7 @@ For each step in the approved queue, sequentially:
 #### 2a. Generate Code
 Launch a Task subagent (subagent_type: "general-purpose") with this prompt:
 ```
-Run the /grace generate command for module <MODULE_ID>.
+Run the /grace:generate command for module <MODULE_ID>.
 The module is described in docs/development-plan.xml as: <step description>.
 Follow the full GRACE generation protocol: load context from knowledge-graph.xml,
 generate code with MODULE_CONTRACT + MODULE_MAP + CHANGE_SUMMARY + semantic blocks,
@@ -85,7 +85,7 @@ Remaining: <count> steps
 ### Step 3: Phase Completion
 After all steps in a phase are done:
 1. Update `docs/development-plan.xml`: set the `<Phase-N>` element's `status` attribute to `"done"`
-2. Run `/grace refresh` to verify knowledge graph integrity
+2. Run `/grace:refresh` to verify knowledge graph integrity
 3. Commit the plan update:
    ```
    grace(plan): mark Phase <N> "<phase name>" as done

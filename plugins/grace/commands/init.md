@@ -36,4 +36,4 @@ Read each template file, replace the `$PLACEHOLDER` variables with actual values
    - If `CLAUDE.md` already exists — warn the user and ask whether to overwrite or keep the existing one
 
 4. **Print a summary** of all created files and suggest the next step:
-   > "Run `/grace plan` to start the architectural planning phase."
+   > "Run `/grace:plan` to start the architectural planning phase."

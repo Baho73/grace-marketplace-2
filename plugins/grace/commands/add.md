@@ -23,7 +23,7 @@ After approval:
 2. Add the module to `docs/knowledge-graph.xml` with unique ID-based tag: `<M-xxx NAME="..." TYPE="...">`. Use `<fn-name>`, `<type-Name>`, `<class-Name>` for annotation entries. Add CrossLinks to dependencies.
 
 ### Step 4: Generate Code
-Follow the same generation protocol as `/grace generate`:
+Follow the same generation protocol as `/grace:generate`:
 - Full MODULE_CONTRACT header
 - MODULE_MAP
 - CHANGE_SUMMARY

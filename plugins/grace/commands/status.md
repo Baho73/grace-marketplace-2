@@ -29,7 +29,7 @@ List the 5 most recent CHANGE_SUMMARY entries across all files.
 ### 5. Suggested Next Action
 Based on the status, suggest what to do next:
 - If no requirements → "Define requirements in docs/requirements.xml"
-- If requirements but no plan → "Run `/grace plan`"
-- If plan but missing modules → "Run `/grace generate <module>` or `/grace execute`"
-- If drift detected → "Run `/grace refresh`"
+- If requirements but no plan → "Run `/grace:plan`"
+- If plan but missing modules → "Run `/grace:generate <module>` or `/grace:execute`"
+- If drift detected → "Run `/grace:refresh`"
 - If everything synced → "Project is healthy"

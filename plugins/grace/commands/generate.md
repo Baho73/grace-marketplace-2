@@ -3,7 +3,7 @@ Generate code for the module specified by the user: $ARGUMENTS
 ## Prerequisites
 - `docs/development-plan.xml` must contain this module's contract
 - `docs/knowledge-graph.xml` must have this module registered
-- If either is missing, tell the user to run `/grace plan` first
+- If either is missing, tell the user to run `/grace:plan` first
 
 ## Process
 
