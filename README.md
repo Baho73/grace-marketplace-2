@@ -1,10 +1,10 @@
-# GRACE Framework — Claude Code Plugin
+# GRACE Framework — AI Agent Skills
 
 **GRACE** (Graph-RAG Anchored Code Engineering) is a methodology for AI-driven code generation with semantic markup, knowledge graphs, and contracts. Originally created by **Vladimir Ivanov** ([@turboplanner](https://t.me/turboplanner)).
 
 GRACE provides structured scaffolding that helps LLMs generate, navigate, and maintain code with high reliability. Every module gets a contract before code exists, every code block gets semantic markers for RAG navigation, and a knowledge graph keeps the entire project map current.
 
-This plugin packages Vladimir's methodology as a reusable Claude Code marketplace plugin so any project can adopt GRACE.
+This repository packages Vladimir's methodology as reusable skills for AI coding agents. The `codex-skills/` directory follows the [open Agent Skills specification](https://github.com/Kilo-Org/kilo-marketplace), making them compatible with **Claude Code**, **Codex CLI**, **Kilo Code**, and any other agent that supports the standard.
 
 ## Installation
 
@@ -53,6 +53,26 @@ $skill-installer install https://github.com/osovv/grace-marketplace/tree/main/co
 
 After installation, restart Codex to activate the skills.
 
+### Via Kilo Code
+
+Copy skills to your Kilo Code skills directory:
+
+```bash
+git clone https://github.com/osovv/grace-marketplace
+cp -r grace-marketplace/codex-skills/grace-* ~/.kilocode/skills/
+```
+
+Then reload the VS Code window (`Cmd+Shift+P` → "Developer: Reload Window") or restart Kilo CLI.
+
+### Any Agent Skills-compatible agent
+
+The `codex-skills/` directory follows the [open Agent Skills specification](https://github.com/Kilo-Org/kilo-marketplace). Each skill is a self-contained folder with a `SKILL.md` file. To use with any compatible agent, copy the skill folders to your agent's skills directory:
+
+```bash
+git clone https://github.com/osovv/grace-marketplace
+cp -r grace-marketplace/codex-skills/grace-* /path/to/your/agent/skills/
+```
+
 ## Quick Start
 
 **Claude Code:**
@@ -87,17 +107,17 @@ $grace-execute
 
 ## Commands
 
-| Command (Claude Code) | Command (Codex) | Description |
+| Command (Claude Code) | Skill (Codex / Kilo / Agent Skills) | Description |
 |---|---|---|
-| `/grace:init` | `$grace-init` | Bootstrap GRACE structure |
-| `/grace:plan` | `$grace-plan` | Architectural planning |
-| `/grace:add <desc>` | `$grace-add <desc>` | Add a new module with contract |
-| `/grace:generate <module>` | `$grace-generate <module>` | Generate code with GRACE markup |
-| `/grace:execute` | `$grace-execute` | Execute full plan with validation |
-| `/grace:fix <error>` | `$grace-fix <error>` | Debug via semantic navigation |
-| `/grace:refresh` | `$grace-refresh` | Sync knowledge graph |
-| `/grace:status` | `$grace-status` | Project health report |
-| `/grace:ask <question>` | `$grace-ask <question>` | Answer questions with context |
+| `/grace:init` | `grace-init` | Bootstrap GRACE structure |
+| `/grace:plan` | `grace-plan` | Architectural planning |
+| `/grace:add <desc>` | `grace-add` | Add a new module with contract |
+| `/grace:generate <module>` | `grace-generate` | Generate code with GRACE markup |
+| `/grace:execute` | `grace-execute` | Execute full plan with validation |
+| `/grace:fix <error>` | `grace-fix` | Debug via semantic navigation |
+| `/grace:refresh` | `grace-refresh` | Sync knowledge graph |
+| `/grace:status` | `grace-status` | Project health report |
+| `/grace:ask <question>` | `grace-ask` | Answer questions with context |
 
 ## Skills
 
@@ -106,10 +126,21 @@ $grace-execute
 - **contract-driven-dev** — MODULE_CONTRACT, function contracts, governed autonomy (PCAM)
 - **unique-tag-convention** — Unique ID-based XML tags that eliminate closing-tag polysemy
 
-## Agents
+## Agents (Claude Code)
 
 - **grace-architect** (Opus) — Top-down architectural planning, module decomposition, knowledge graph design
 - **grace-reviewer** (Sonnet) — Validates semantic markup integrity, contract completeness, graph consistency
+
+## Compatibility
+
+| Agent | Installation | Skills format |
+|---|---|---|
+| **Claude Code** | `/plugin install` or `npx skills add` | Native plugin (`plugins/grace/`) |
+| **Codex CLI** | `$skill-installer` | Agent Skills (`codex-skills/`) |
+| **Kilo Code** | Copy to `~/.kilocode/skills/` | Agent Skills (`codex-skills/`) |
+| **Other agents** | Copy to agent's skills directory | Agent Skills (`codex-skills/`) |
+
+The `codex-skills/` directory follows the [open Agent Skills specification](https://github.com/Kilo-Org/kilo-marketplace) — any agent that supports this standard can use GRACE skills without modification.
 
 ## Origin
 
