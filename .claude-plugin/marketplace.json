@@ -29,23 +29,22 @@
       ],
       "category": "methodology",
       "strict": false,
-      "commands": [
-        "./commands/init.md",
-        "./commands/plan.md",
-        "./commands/add.md",
-        "./commands/generate.md",
-        "./commands/execute.md",
-        "./commands/fix.md",
-        "./commands/refresh.md",
-        "./commands/status.md",
-        "./commands/ask.md"
-      ],
       "agents": [
         "./agents/grace-architect.md",
         "./agents/grace-reviewer.md"
       ],
       "skills": [
-        "./skills/grace-explainer"
+        "./skills/grace-init",
+        "./skills/grace-plan",
+        "./skills/grace-add",
+        "./skills/grace-generate",
+        "./skills/grace-execute",
+        "./skills/grace-fix",
+        "./skills/grace-refresh",
+        "./skills/grace-status",
+        "./skills/grace-ask",
+        "./skills/grace-explainer",
+        "./skills/grace-reviewer"
       ]
     }
   ]

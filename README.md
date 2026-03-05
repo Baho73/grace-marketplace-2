@@ -4,11 +4,11 @@
 
 GRACE provides structured scaffolding that helps LLMs generate, navigate, and maintain code with high reliability. Every module gets a contract before code exists, every code block gets semantic markers for RAG navigation, and a knowledge graph keeps the entire project map current.
 
-This repository packages Vladimir's methodology as reusable skills for AI coding agents. It ships in two formats:
+This repository packages Vladimir's methodology as reusable skills for AI coding agents. All skills live in `skills/` and follow the [Agent Skills](https://agentskills.io) open standard. The repository ships in three compatible formats:
 
-- **OpenPackage** (`openpackage.yml` + `commands/`, `agents/`, `skills/`) — universal format for 40+ coding agents
-- **Claude Code Plugin** (`.claude-plugin/marketplace.json`) — native Claude Code marketplace format
-- **Agent Skills** (`codex-skills/`) — [open Agent Skills specification](https://github.com/Kilo-Org/kilo-marketplace) for Codex CLI, Kilo Code, and others
+- **OpenPackage** (`openpackage.yml`) — universal format for 40+ coding agents via [opkg](https://github.com/enulus/OpenPackage)
+- **Claude Code Plugin** (`.claude-plugin/marketplace.json`) — native Claude Code marketplace
+- **Agent Skills** (`skills/`) — [open Agent Skills specification](https://github.com/Kilo-Org/kilo-marketplace) for Codex CLI, Kilo Code, and others
 
 ## Installation
 
@@ -24,9 +24,8 @@ opkg install gh@osovv/grace-marketplace
 opkg install gh@osovv/grace-marketplace -g
 
 # Install only specific resource types
-opkg install gh@osovv/grace-marketplace -c    # commands only
-opkg install gh@osovv/grace-marketplace -a    # agents only
 opkg install gh@osovv/grace-marketplace -s    # skills only
+opkg install gh@osovv/grace-marketplace -a    # agents only
 
 # Install to a specific platform
 opkg install gh@osovv/grace-marketplace --platforms claude-code
@@ -46,7 +45,7 @@ opkg install gh@osovv/grace-marketplace --platforms cursor
 ### Via npx skills (Vercel Skills CLI)
 
 ```bash
-# Install GRACE skill to Claude Code
+# Install GRACE skills to Claude Code
 npx skills add osovv/grace-marketplace
 
 # Or install globally (available across all projects)
@@ -60,20 +59,20 @@ npx skills add osovv/grace-marketplace -a claude-code
 
 ### Via Codex CLI
 
-Inside Codex, use the built-in skill installer to add GRACE skills:
+Inside Codex, use the built-in skill installer:
 
 ```
-$skill-installer install https://github.com/osovv/grace-marketplace/tree/main/codex-skills/grace-init
-$skill-installer install https://github.com/osovv/grace-marketplace/tree/main/codex-skills/grace-plan
-$skill-installer install https://github.com/osovv/grace-marketplace/tree/main/codex-skills/grace-generate
-$skill-installer install https://github.com/osovv/grace-marketplace/tree/main/codex-skills/grace-execute
-$skill-installer install https://github.com/osovv/grace-marketplace/tree/main/codex-skills/grace-add
-$skill-installer install https://github.com/osovv/grace-marketplace/tree/main/codex-skills/grace-fix
-$skill-installer install https://github.com/osovv/grace-marketplace/tree/main/codex-skills/grace-refresh
-$skill-installer install https://github.com/osovv/grace-marketplace/tree/main/codex-skills/grace-status
-$skill-installer install https://github.com/osovv/grace-marketplace/tree/main/codex-skills/grace-ask
-$skill-installer install https://github.com/osovv/grace-marketplace/tree/main/codex-skills/grace-explainer
-$skill-installer install https://github.com/osovv/grace-marketplace/tree/main/codex-skills/grace-reviewer
+$skill-installer install https://github.com/osovv/grace-marketplace/tree/main/skills/grace-init
+$skill-installer install https://github.com/osovv/grace-marketplace/tree/main/skills/grace-plan
+$skill-installer install https://github.com/osovv/grace-marketplace/tree/main/skills/grace-generate
+$skill-installer install https://github.com/osovv/grace-marketplace/tree/main/skills/grace-execute
+$skill-installer install https://github.com/osovv/grace-marketplace/tree/main/skills/grace-add
+$skill-installer install https://github.com/osovv/grace-marketplace/tree/main/skills/grace-fix
+$skill-installer install https://github.com/osovv/grace-marketplace/tree/main/skills/grace-refresh
+$skill-installer install https://github.com/osovv/grace-marketplace/tree/main/skills/grace-status
+$skill-installer install https://github.com/osovv/grace-marketplace/tree/main/skills/grace-ask
+$skill-installer install https://github.com/osovv/grace-marketplace/tree/main/skills/grace-explainer
+$skill-installer install https://github.com/osovv/grace-marketplace/tree/main/skills/grace-reviewer
 ```
 
 After installation, restart Codex to activate the skills.
@@ -84,98 +83,73 @@ Copy skills to your Kilo Code skills directory:
 
 ```bash
 git clone https://github.com/osovv/grace-marketplace
-cp -r grace-marketplace/codex-skills/grace-* ~/.kilocode/skills/
+cp -r grace-marketplace/skills/grace-* ~/.kilocode/skills/
 ```
 
-Then reload the VS Code window (`Cmd+Shift+P` → "Developer: Reload Window") or restart Kilo CLI.
+Then reload the VS Code window (`Cmd+Shift+P` > "Developer: Reload Window") or restart Kilo CLI.
 
 ### Any Agent Skills-compatible agent
 
-The `codex-skills/` directory follows the [open Agent Skills specification](https://github.com/Kilo-Org/kilo-marketplace). Each skill is a self-contained folder with a `SKILL.md` file. To use with any compatible agent, copy the skill folders to your agent's skills directory:
+The `skills/` directory follows the [Agent Skills](https://agentskills.io) open standard. Each skill is a self-contained folder with a `SKILL.md` file. To use with any compatible agent:
 
 ```bash
 git clone https://github.com/osovv/grace-marketplace
-cp -r grace-marketplace/codex-skills/grace-* /path/to/your/agent/skills/
+cp -r grace-marketplace/skills/grace-* /path/to/your/agent/skills/
 ```
 
 ## Quick Start
 
-**Claude Code:**
 ```bash
 # Initialize GRACE structure in your project
-/grace:init
+/grace-init
 
 # Define requirements, then plan the architecture
-/grace:plan
+/grace-plan
 
 # Generate code for a specific module
-/grace:generate <module-name>
+/grace-generate <module-name>
 
 # Or execute the entire development plan
-/grace:execute
+/grace-execute
 ```
 
-**Codex CLI:**
-```bash
-# Initialize GRACE structure in your project
-$grace-init
+## Skills
 
-# Define requirements, then plan the architecture
-$grace-plan
-
-# Generate code for a specific module
-$grace-generate <module-name>
-
-# Or execute the entire development plan
-$grace-execute
-```
-
-## Commands
-
-| Command (Claude Code) | Skill (Codex / Kilo / Agent Skills) | Description |
-|---|---|---|
-| `/grace:init` | `grace-init` | Bootstrap GRACE structure |
-| `/grace:plan` | `grace-plan` | Architectural planning |
-| `/grace:add <desc>` | `grace-add` | Add a new module with contract |
-| `/grace:generate <module>` | `grace-generate` | Generate code with GRACE markup |
-| `/grace:execute` | `grace-execute` | Execute full plan with validation |
-| `/grace:fix <error>` | `grace-fix` | Debug via semantic navigation |
-| `/grace:refresh` | `grace-refresh` | Sync knowledge graph |
-| `/grace:status` | `grace-status` | Project health report |
-| `/grace:ask <question>` | `grace-ask` | Answer questions with context |
-
-## Reference Skills
-
-- **grace-explainer** — Complete GRACE methodology reference with detailed docs on:
-  - Semantic markup — START/END block conventions, ~500 token granularity, unique block names
-  - Knowledge graph — How to maintain `docs/knowledge-graph.xml`
-  - Contract-driven dev — MODULE_CONTRACT, function contracts, governed autonomy (PCAM)
-  - Unique tag convention — Unique ID-based XML tags that eliminate closing-tag polysemy
-- **grace-reviewer** — Validates semantic markup integrity, contract completeness, graph consistency
+| Skill | Description |
+|---|---|
+| `grace-init` | Bootstrap GRACE structure (docs/, templates, knowledge graph) |
+| `grace-plan` | Architectural planning — module breakdown, contracts, knowledge graph |
+| `grace-add` | Add a new module with contract and knowledge graph entry |
+| `grace-generate` | Generate code for a module with full GRACE markup |
+| `grace-execute` | Execute full plan with validation and commits |
+| `grace-fix` | Debug via semantic navigation |
+| `grace-refresh` | Sync knowledge graph with codebase |
+| `grace-status` | Project health report |
+| `grace-ask` | Answer questions with full project context |
+| `grace-explainer` | Complete GRACE methodology reference |
+| `grace-reviewer` | Validate semantic markup, contracts, and graph consistency |
 
 ## Agents (Claude Code only)
 
 - **grace-architect** (Opus) — Top-down architectural planning, module decomposition, knowledge graph design
-- **grace-reviewer** (Sonnet) — Integrity validation (also available as an Agent Skill for other agents)
+- **grace-reviewer** (Sonnet) — Integrity validation (also available as a skill for other agents)
 
 ## Compatibility
 
-| Agent | Installation | Skills format |
+| Agent | Installation | Format |
 |---|---|---|
 | **Any (via OpenPackage)** | `opkg install` | OpenPackage (`openpackage.yml`) |
 | **Claude Code** | `/plugin install` or `npx skills add` | Native plugin (`.claude-plugin/`) |
-| **Codex CLI** | `$skill-installer` | Agent Skills (`codex-skills/`) |
-| **Kilo Code** | Copy to `~/.kilocode/skills/` | Agent Skills (`codex-skills/`) |
+| **Codex CLI** | `$skill-installer` | Agent Skills (`skills/`) |
+| **Kilo Code** | Copy to `~/.kilocode/skills/` | Agent Skills (`skills/`) |
 | **Cursor, Windsurf, etc.** | `opkg install --platforms <name>` | OpenPackage (`openpackage.yml`) |
-| **Other agents** | Copy to agent's skills directory | Agent Skills (`codex-skills/`) |
+| **Other agents** | Copy to agent's skills directory | Agent Skills (`skills/`) |
 
-The `codex-skills/` directory follows the [open Agent Skills specification](https://github.com/Kilo-Org/kilo-marketplace) — any agent that supports this standard can use GRACE skills without modification.
-
-The root-level `openpackage.yml` + `commands/` + `agents/` + `skills/` follow the [OpenPackage specification](https://github.com/enulus/OpenPackage) — compatible with 40+ coding agent platforms.
+All skills follow the [Agent Skills](https://agentskills.io) open standard and the [OpenPackage](https://github.com/enulus/OpenPackage) specification.
 
 ## Origin
 
-GRACE was designed and battle-tested by Vladimir Ivanov ([@turboplanner](https://t.me/turboplanner)). See the [TurboProject](https://t.me/turboproject) Telegram channel for more on the methodology. This plugin extracts GRACE into a standalone, project-agnostic format.
+GRACE was designed and battle-tested by Vladimir Ivanov ([@turboplanner](https://t.me/turboplanner)). See the [TurboProject](https://t.me/turboproject) Telegram channel for more on the methodology. This repository extracts GRACE into a standalone, project-agnostic format.
 
 ## License
 

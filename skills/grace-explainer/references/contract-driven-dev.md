@@ -19,7 +19,7 @@ Every file starts with:
 // END_MODULE_CONTRACT
 ```
 
-The contract is written BEFORE the code. It comes from the development plan (`docs/development-plan.xml`), which was approved by the user during the `/grace:plan` phase.
+The contract is written BEFORE the code. It comes from the development plan (`docs/development-plan.xml`), which was approved by the user during the `$grace-plan` phase.
 
 ## Function Contracts
 
