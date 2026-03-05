@@ -4,9 +4,34 @@
 
 GRACE provides structured scaffolding that helps LLMs generate, navigate, and maintain code with high reliability. Every module gets a contract before code exists, every code block gets semantic markers for RAG navigation, and a knowledge graph keeps the entire project map current.
 
-This repository packages Vladimir's methodology as reusable skills for AI coding agents. The `codex-skills/` directory follows the [open Agent Skills specification](https://github.com/Kilo-Org/kilo-marketplace), making them compatible with **Claude Code**, **Codex CLI**, **Kilo Code**, and any other agent that supports the standard.
+This repository packages Vladimir's methodology as reusable skills for AI coding agents. It ships in two formats:
+
+- **OpenPackage** (`openpackage.yml` + `commands/`, `agents/`, `skills/`) — universal format for 40+ coding agents
+- **Claude Code Plugin** (`.claude-plugin/marketplace.json`) — native Claude Code marketplace format
+- **Agent Skills** (`codex-skills/`) — [open Agent Skills specification](https://github.com/Kilo-Org/kilo-marketplace) for Codex CLI, Kilo Code, and others
 
 ## Installation
+
+### Via OpenPackage (recommended)
+
+Install the [OpenPackage CLI](https://github.com/enulus/OpenPackage) first (`npm install -g opkg`), then:
+
+```bash
+# Install GRACE to your workspace
+opkg install gh@osovv/grace-marketplace
+
+# Or install globally (available across all projects)
+opkg install gh@osovv/grace-marketplace -g
+
+# Install only specific resource types
+opkg install gh@osovv/grace-marketplace -c    # commands only
+opkg install gh@osovv/grace-marketplace -a    # agents only
+opkg install gh@osovv/grace-marketplace -s    # skills only
+
+# Install to a specific platform
+opkg install gh@osovv/grace-marketplace --platforms claude-code
+opkg install gh@osovv/grace-marketplace --platforms cursor
+```
 
 ### Via Claude Code Plugin Marketplace
 
@@ -137,12 +162,16 @@ $grace-execute
 
 | Agent | Installation | Skills format |
 |---|---|---|
-| **Claude Code** | `/plugin install` or `npx skills add` | Native plugin (`plugins/grace/`) |
+| **Any (via OpenPackage)** | `opkg install` | OpenPackage (`openpackage.yml`) |
+| **Claude Code** | `/plugin install` or `npx skills add` | Native plugin (`.claude-plugin/`) |
 | **Codex CLI** | `$skill-installer` | Agent Skills (`codex-skills/`) |
 | **Kilo Code** | Copy to `~/.kilocode/skills/` | Agent Skills (`codex-skills/`) |
+| **Cursor, Windsurf, etc.** | `opkg install --platforms <name>` | OpenPackage (`openpackage.yml`) |
 | **Other agents** | Copy to agent's skills directory | Agent Skills (`codex-skills/`) |
 
 The `codex-skills/` directory follows the [open Agent Skills specification](https://github.com/Kilo-Org/kilo-marketplace) — any agent that supports this standard can use GRACE skills without modification.
+
+The root-level `openpackage.yml` + `commands/` + `agents/` + `skills/` follow the [OpenPackage specification](https://github.com/enulus/OpenPackage) — compatible with 40+ coding agent platforms.
 
 ## Origin
 
