@@ -87,7 +87,16 @@ Disallowed pattern:
 - using raw hidden reasoning as evidence
 - relying on unconstrained free-form log dumps without a rubric
 
-### Step 6: Failure Triage
+### Step 6: Apply Verification Levels
+Match the verification depth to the execution stage.
+
+- **Module level**: worker-local typecheck, lint, unit tests, deterministic assertions, and local trace checks
+- **Wave level**: integration checks only for the merged surfaces touched in the wave
+- **Phase level**: full suite, broad traceability checks, and final confidence checks before marking the phase done
+
+Do not require full-repository verification after every clean module if the wave and phase gates already cover that risk.
+
+### Step 7: Failure Triage
 When verification fails, produce a concise failure packet:
 
 - contract or scenario that failed
@@ -106,6 +115,7 @@ Use this packet to drive `$grace-fix` or to hand off the issue to another agent 
 - Do not assert on unstable wording if stable fields are available
 - Prefer high-signal traces over verbose noise
 - If verification is weak, improve observability before adding more agents
+- Prefer module-level checks during worker execution and reserve broader suites for wave or phase gates
 
 ## Deliverables
 When using this skill, produce:
@@ -113,7 +123,8 @@ When using this skill, produce:
 1. a verification matrix
 2. the telemetry/logging requirements
 3. the tests or harness changes needed
-4. a brief assessment of whether the module is safe for autonomous or multi-agent execution
+4. the recommended verification level split across module, wave, and phase
+5. a brief assessment of whether the module is safe for autonomous or multi-agent execution
 
 ## When to Use It
 - Before enabling autonomous execution for a module

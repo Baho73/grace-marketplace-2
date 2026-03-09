@@ -1,46 +1,78 @@
 ---
 name: grace-refresh
-description: "Synchronize the GRACE knowledge graph with the actual codebase. Use after manual code changes, refactoring, or when you suspect drift between the knowledge graph and the code — scans all source files, detects missing/orphaned modules and stale CrossLinks, and proposes fixes."
+description: "Synchronize the GRACE knowledge graph with the actual codebase. Use targeted refresh after controlled waves, or full refresh after refactors and when you suspect wider drift between the graph and the code."
 ---
 
 Synchronize the knowledge graph with the actual codebase.
 
+## Refresh Modes
+
+Default to the narrowest scope that can still answer the drift question.
+
+### `targeted` (default during active execution)
+- scan only changed modules, touched imports, and directly affected dependency surfaces
+- use when a controller already has wave results or graph delta proposals
+- ideal after a clean multi-agent wave
+
+### `full`
+- scan the whole source tree
+- use after refactors, manual edits across many modules, phase completion, or when targeted refresh finds suspicious drift
+
 ## Process
 
-### Step 1: Scan Codebase
-Find all source files in the project. For each file, extract:
+### Step 1: Choose Scope
+Decide whether the refresh should be `targeted` or `full`.
+
+1. If the caller provides changed files, module IDs, or graph delta proposals, start with `targeted`
+2. If no reliable scope is available, or the graph may have drifted broadly, use `full`
+3. Escalate from `targeted` to `full` when the localized scan reveals wider inconsistency
+
+### Step 2: Scan the Selected Scope
+For each file in scope, extract:
 - MODULE_CONTRACT (if present)
 - MODULE_MAP (if present)
-- All imports (to determine dependencies)
+- imports and exports
 - CHANGE_SUMMARY (if present)
 
-### Step 2: Compare with Knowledge Graph
+In `targeted` mode, also inspect the immediate dependency surfaces needed to validate CrossLinks accurately.
+
+### Step 3: Compare with Knowledge Graph
 Read `docs/knowledge-graph.xml`. Identify:
 - **Missing modules**: files with MODULE_CONTRACT that are not in the graph
-- **Orphaned modules**: graph entries whose files no longer exist
-- **Stale CrossLinks**: dependencies in the graph that don't match actual imports
-- **Missing contracts**: files that have no MODULE_CONTRACT at all
+- **Orphaned modules**: graph entries whose files no longer exist in the scanned scope
+- **Stale CrossLinks**: dependencies in the graph that do not match actual imports
+- **Missing contracts**: files that should be governed by GRACE but have no MODULE_CONTRACT
+- **Escalation signals**: evidence that the problem extends beyond the scanned scope
 
-### Step 3: Report Drift
+### Step 4: Report Drift
 Present a structured report:
-```
+
+```text
 GRACE Integrity Report
-=======================
+======================
+Mode: targeted / full
+Scope: [modules or files]
 Synced modules: N
 Missing from graph: [list files]
 Orphaned in graph: [list entries]
 Stale CrossLinks: [list]
 Files without contracts: [list files]
+Escalation: no / yes - reason
 ```
 
-### Step 4: Fix (with user approval)
+### Step 5: Fix (with user approval)
 For each issue, propose a fix:
-- Missing from graph — add entry using unique ID-based tag (M-xxx NAME="..." TYPE="...") with fn-name, type-Name annotation tags. See AGENTS.md "Documentation Artifacts" for full convention.
-- Orphaned — remove from graph
-- Stale links — update CrossLinks from actual imports
-- No contracts — generate MODULE_CONTRACT from code analysis
+- Missing from graph - add an entry using the unique ID-based tag convention
+- Orphaned - remove or repair the stale graph entry
+- Stale links - update CrossLinks from actual imports
+- No contracts - generate or restore the missing MODULE_CONTRACT from code analysis and plan context
 
-**Ask user for confirmation before applying fixes.**
+Ask the user for confirmation before applying fixes.
 
-### Step 5: Update Graph
-Apply approved fixes to `docs/knowledge-graph.xml`. Update version.
+### Step 6: Update Graph
+Apply approved fixes to `docs/knowledge-graph.xml`. Update version only after the selected refresh scope is reconciled.
+
+## Rules
+- Do not scan the whole repository after every clean wave if a targeted refresh can answer the question
+- Prefer controller-supplied graph delta proposals as hints, but validate them against real files
+- Escalate to `full` whenever targeted evidence suggests broader drift

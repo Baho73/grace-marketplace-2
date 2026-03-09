@@ -115,9 +115,12 @@ cp -r grace-marketplace/skills/grace-* /path/to/your/agent/skills/
 /grace-execute
 
 # Or execute independent modules in parallel waves
+# Default profile: balanced
 /grace-setup-subagents
 /grace-multiagent-execute
 ```
+
+`/grace-multiagent-execute` now supports `safe`, `balanced`, and `fast` controller profiles. Use `balanced` by default, `safe` for risky or weakly verified modules, and `fast` only when module-local and wave-level verification are already strong.
 
 ## Skills
 
@@ -127,7 +130,7 @@ cp -r grace-marketplace/skills/grace-* /path/to/your/agent/skills/
 | `grace-plan` | Architectural planning — module breakdown, contracts, knowledge graph |
 | `grace-generate` | Generate code for a module with full GRACE markup |
 | `grace-execute` | Execute full plan with validation and commits |
-| `grace-multiagent-execute` | Execute plan in parallel waves with controller-managed integrity |
+| `grace-multiagent-execute` | Execute plan in parallel waves with safe/balanced/fast controller-managed integrity profiles |
 | `grace-setup-subagents` | Scaffold shell-specific GRACE subagent presets |
 | `grace-fix` | Debug via semantic navigation |
 | `grace-verification` | Design AI-friendly verification, logs, and trace checks |

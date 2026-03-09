@@ -11,6 +11,8 @@ Create GRACE subagent files for the current shell by reusing the shell's own age
 
 This skill scaffolds those presets into the correct local agent directory for the current shell.
 
+The controller remains in the main session. Workers should expect compact execution packets, fresh one-module ownership, scoped reviews, and controller-managed graph updates.
+
 ## Default Roles
 
 By default, create these subagents:
@@ -75,6 +77,11 @@ The role prompt bodies live in `references/roles/`:
 
 These are the shared role bodies. Reuse them. Only the shell-specific wrapper should change.
 
+These shared prompts assume the newer multi-agent workflow:
+- workers receive execution packets instead of rereading full XML artifacts whenever possible
+- reviewers default to scoped gate review and escalate only when evidence suggests wider drift
+- verification is split across module, wave, and phase levels
+
 ### Step 5: Render Shell-Specific Agent Files
 For each role:
 
@@ -102,4 +109,5 @@ After scaffolding, report:
 - Keep prompts aligned with `grace-multiagent-execute`, `grace-reviewer`, `grace-fix`, and `grace-verification`
 - Do not overwrite existing files without user intent
 - Do not create architecture-planning agents here; this skill is for execution support
+- Do not introduce worker-pool or worker-reuse assumptions into the generated presets
 - If the shell supports agents differently, create the nearest working equivalent and explain the difference
