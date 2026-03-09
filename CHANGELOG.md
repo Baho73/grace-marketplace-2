@@ -6,6 +6,14 @@ The format is inspired by Keep a Changelog, and this project follows Semantic Ve
 
 This changelog currently starts at `1.3.0`. Earlier history is available in the git log.
 
+## [2.1.0] - 2026-03-09
+
+### Changed
+
+- Workers now commit their implementation immediately after verification passes, rather than waiting for controller.
+- Controller commits only shared artifacts (graph, plan), not implementation files.
+- Updated `grace-execute` and `grace-multiagent-execute` with explicit commit timing guidance.
+
 ## [2.0.0] - 2026-03-09
 
 ### Changed

@@ -55,6 +55,14 @@ Follow the `$grace-generate` protocol for this module:
 - keep changes inside the approved write scope
 - run step-level verification only
 - produce graph sync output or a graph delta proposal for the controller to apply
+- **commit the implementation immediately after verification passes** with format:
+  ```
+  grace(MODULE_ID): short description of what was generated
+  
+  Phase N, Step order
+  Module: module name (module path)
+  Contract: one-line purpose from development-plan.xml
+  ```
 
 #### 2b. Run Scoped Review
 After generating, review the step using the smallest safe scope:
@@ -79,18 +87,14 @@ After the step passes scoped review:
 
 If plan or graph mismatches are found, fix them before committing.
 
-#### 2d. Commit the Validated Step
-After validation passes:
-1. stage only the files related to this step, including any approved shared-artifact updates
-2. create a commit with message format:
-   ```text
-   grace(MODULE_ID): short description of what was generated
-
-   Phase N, Step order
-   Module: module name (module path)
-   Contract: one-line purpose from development-plan.xml
+#### 2d. Apply Shared-Artifact Updates Centrally
+After the implementation commit from Step 2a:
+1. update `docs/knowledge-graph.xml` from the accepted graph sync output or graph delta proposal
+2. update step status in `docs/development-plan.xml` if the step format supports explicit completion state
+3. commit shared artifacts if they changed:
    ```
-3. report the commit hash to the user
+   grace(graph): sync after MODULE_ID
+   ```
 
 #### 2e. Progress Report
 After each step, print:
@@ -100,7 +104,8 @@ Module: MODULE_ID (path)
 Status: DONE
 Review: scoped pass / scoped pass with N minor notes / escalated audit pass
 Verification: step-level passed / follow-up required at phase level
-Commit: hash
+Implementation commit: hash
+Graph commit: hash (if any)
 Remaining: count steps
 ```
 
@@ -139,3 +144,4 @@ Verification: phase checks passed / follow-up required
 - Parse shared XML artifacts once, then update the controller view as each step completes
 - The development plan is the source of truth; never deviate from the contract
 - Prefer step-level checks during generation and broader integrity checks at phase boundaries
+- **Commit implementation immediately after verification passes - do not batch commits until phase end**

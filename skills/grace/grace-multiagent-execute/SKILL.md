@@ -99,7 +99,13 @@ For each approved wave:
    - preserve MODULE_CONTRACT, MODULE_MAP, CHANGE_SUMMARY, function contracts, and semantic blocks
    - add or update module-local tests only
    - run module-local verification only
-   - return a result packet with changed files, verification evidence, graph delta proposal, and any integration assumptions
+   - **commit their work after module-local verification passes** with format:
+     ```
+     grace(MODULE_ID): short description
+     
+     Wave N, Phase M
+     ```
+   - return a result packet with changed files, verification evidence, graph delta proposal, commit hash, and any integration assumptions
 
 ### Step 4: Review with the Smallest Safe Scope
 After each worker finishes:
@@ -135,12 +141,18 @@ Run verification at the smallest level that still protects correctness.
 
 Do not run full-repository tests and full-repository graph scans after every successful module unless the risk profile requires it.
 
-### Step 7: Commit and Report
-Match commit granularity to the execution profile.
+### Step 7: Controller Shared-Artifact Commits and Report
+After each wave, the controller commits only shared artifacts that changed:
 
-- `safe`: prefer per-module implementation commits plus a controller commit for shared artifacts
-- `balanced`: prefer one implementation commit per wave, then a controller commit only if shared artifact updates need separate history
-- `fast`: prefer a single controller-managed wave commit unless traceability requirements demand finer granularity
+- Update `docs/knowledge-graph.xml` and `docs/development-plan.xml` with wave results
+- Commit with format:
+  ```
+  grace(graph): sync after wave N
+  
+  Modules: M-xxx, M-yyy
+  ```
+
+Worker implementation commits are already done per module in Step 3. Controller commits are only for shared planning artifacts.
 
 After each wave, report:
 
@@ -163,6 +175,8 @@ Remaining waves: count
 - Do not let workers edit the same XML planning artifacts in parallel
 - Do not reuse worker sessions across modules; keep workers fresh and packets compact
 - Give every worker exact file ownership and exact success criteria
+- **Workers must commit their implementation after verification passes - do not wait for controller**
+- Controller commits only shared artifacts (graph, plan), not implementation files
 - Prefer targeted refresh and scoped review during active waves
 - Reserve full reviewer audits and full refresh scans for phase boundaries, drift suspicion, or critical failures
 - If verification is weak, slow down and move to `safe` rather than pretending `fast` is safe
