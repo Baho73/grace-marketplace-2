@@ -1,6 +1,6 @@
 ---
 name: grace-setup-subagents
-description: "Create GRACE subagent presets for the current agent shell. Use when you want GRACE worker and reviewer agent files scaffolded for Claude Code, OpenCode, Codex, or another shell before using `$grace-multiagent-execute`."
+description: "Create GRACE subagent presets for the current agent shell. Use when you want GRACE worker and reviewer agent files scaffolded for Claude Code, OpenCode, Codex, or another shell."
 ---
 
 Create GRACE subagent files for the current shell by reusing the shell's own agent-file conventions.
@@ -81,6 +81,7 @@ These shared prompts assume the newer multi-agent workflow:
 - workers receive execution packets instead of rereading full XML artifacts whenever possible
 - reviewers default to scoped gate review and escalate only when evidence suggests wider drift
 - verification is split across module, wave, and phase levels
+- the controller owns `docs/verification-plan.xml` in addition to plan and graph artifacts
 
 ### Step 5: Render Shell-Specific Agent Files
 For each role:
