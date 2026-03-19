@@ -1,6 +1,7 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "grace-marketplace",
+  "strict": false,
   "owner": {
     "name": "osovv",
     "url": "https://github.com/osovv"
