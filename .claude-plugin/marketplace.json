@@ -32,7 +32,7 @@
         "llm-friendly"
       ],
       "category": "methodology",
-      "strict": false,
+      "strict": true,
       "agents": [],
       "skills": [
         "./skills/grace/grace-init",

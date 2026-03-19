@@ -195,9 +195,19 @@ function validate(): ValidationResult {
 
     const pluginManifest = readJson(manifestPath);
     const compatibilityManifest = readJson(compatibilityManifestPath);
+    const hasExplicitComponents =
+      (Array.isArray(entry.skills) && entry.skills.length > 0) ||
+      (Array.isArray(entry.agents) && entry.agents.length > 0);
+    const entryStrict = entry.strict === true;
 
     validateRequiredFields(pluginName, "plugin.json", pluginManifest, ["name", "version", "description"], errors);
     validateRequiredFields(pluginName, ".claude-plugin/plugin.json", compatibilityManifest, ["name", "version", "description"], errors);
+
+    if (hasExplicitComponents && !entryStrict) {
+      errors.push(
+        `${pluginName}: marketplace entry defines components via skills/agents and must set strict: true to avoid manifest conflicts`,
+      );
+    }
 
     compareSharedFields(
       pluginName,
