@@ -6,6 +6,14 @@ The format is inspired by Keep a Changelog, and this project follows Semantic Ve
 
 This changelog currently starts at `1.3.0`. Earlier history is available in the git log.
 
+## [3.0.1] - 2026-03-19
+
+### Fixed
+
+- Restored Claude Code marketplace packaging to use the repository root as the plugin source so bundled skill paths resolve inside the installed plugin.
+- Added a root `.claude-plugin/plugin.json` manifest and removed the broken nested `plugins/grace` packaging layout.
+- Updated validation to catch missing component paths inside the declared plugin source before release.
+
 ## [3.0.0] - 2026-03-16
 
 ### Added
