@@ -1,0 +1,4 @@
+interface:
+  display_name: "GRACE Fix"
+  short_description: "Debug via semantic navigation"
+  brand_color: "#4A90D9"

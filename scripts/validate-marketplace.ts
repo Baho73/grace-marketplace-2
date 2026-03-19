@@ -186,6 +186,49 @@ function validateComponentPaths(
   }
 }
 
+function validatePackagedMirror(
+  pluginName: string,
+  sourceDir: string,
+  entry: JsonObject,
+  errors: string[],
+) {
+  if (sourceDir === repoRoot) {
+    return;
+  }
+
+  for (const field of componentFields) {
+    const value = entry[field];
+    if (!Array.isArray(value)) {
+      continue;
+    }
+
+    for (const componentPath of value) {
+      if (typeof componentPath !== "string" || componentPath.trim() === "") {
+        continue;
+      }
+
+      const packagedPath = path.resolve(sourceDir, componentPath);
+      const canonicalPath = path.resolve(repoRoot, componentPath);
+
+      if (!pathExists(canonicalPath)) {
+        errors.push(`${pluginName}: canonical ${field} path missing in repository root (${componentPath})`);
+        continue;
+      }
+
+      const diff = spawnSync("git", ["diff", "--no-index", "--quiet", "--", canonicalPath, packagedPath], {
+        cwd: repoRoot,
+        encoding: "utf8",
+      });
+
+      if (diff.status === 1) {
+        errors.push(`${pluginName}: packaged ${field} content is out of sync with repository root (${componentPath})`);
+      } else if (diff.status && diff.status > 1) {
+        errors.push(`${pluginName}: failed to compare packaged and canonical ${field} paths (${componentPath})`);
+      }
+    }
+  }
+}
+
 function validate(): ValidationResult {
   const errors: string[] = [];
   const warnings: string[] = [];
@@ -281,6 +324,7 @@ function validate(): ValidationResult {
     }
 
     validateComponentPaths(pluginName, sourceDir, entry, errors);
+    validatePackagedMirror(pluginName, sourceDir, entry, errors);
 
     if (readmeVersion && String(entry.version ?? "") !== readmeVersion) {
       errors.push(`${pluginName}: version mismatch between marketplace.json (${entry.version}) and README.md (${readmeVersion})`);

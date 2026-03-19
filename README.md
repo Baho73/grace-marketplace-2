@@ -10,7 +10,7 @@ This repository packages GRACE as reusable skills for coding agents. The current
 - knowledge-graph synchronization
 - controller-managed sequential or multi-agent implementation
 
-Current packaged version: `3.0.2`
+Current packaged version: `3.0.3`
 
 ## What Changed In This Version
 
@@ -45,6 +45,7 @@ opkg install gh@osovv/grace-marketplace -a
 # Install to a specific platform
 opkg install gh@osovv/grace-marketplace --platforms claude-code
 opkg install gh@osovv/grace-marketplace --platforms cursor
+opkg install gh@osovv/grace-marketplace --platforms opencode
 ```
 
 ### Via Claude Code Plugin Marketplace

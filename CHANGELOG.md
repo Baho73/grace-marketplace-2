@@ -6,6 +6,13 @@ The format is inspired by Keep a Changelog, and this project follows Semantic Ve
 
 This changelog currently starts at `1.3.0`. Earlier history is available in the git log.
 
+## [3.0.3] - 2026-03-19
+
+### Fixed
+
+- Replaced the `plugins/grace/skills` symlink with real packaged skill files so OpenPackage can install the plugin for `opencode`.
+- Added validator coverage for drift between canonical `skills/grace/*` content and the packaged copy inside `plugins/grace`.
+
 ## [3.0.2] - 2026-03-19
 
 ### Fixed
