@@ -162,6 +162,16 @@ cp -r grace-marketplace/skills/grace/grace-* /path/to/your/agent/skills/
 
 All skills follow the [Agent Skills](https://agentskills.io) open standard and the [OpenPackage](https://github.com/enulus/OpenPackage) specification.
 
+## Development
+
+Run the marketplace validator from the repository root:
+
+```bash
+bun run ./scripts/validate-marketplace.ts
+```
+
+The validator checks marketplace/plugin metadata sync, version consistency, required fields, `.claude-plugin` structure, and hardcoded absolute paths. In branch or PR context it scopes validation to changed plugins via `git diff origin/main...HEAD`; otherwise it validates all plugins.
+
 ## Origin
 
 GRACE was designed and battle-tested by Vladimir Ivanov ([@turboplanner](https://t.me/turboplanner)). See the [TurboProject](https://t.me/turboproject) Telegram channel for more on the methodology. This repository extracts GRACE into a standalone, project-agnostic format.
