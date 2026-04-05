@@ -45,7 +45,18 @@ GRACE was designed by Vladimir Ivanov ([@turboplanner](https://t.me/turboplanner
 
 ## Install
 
-### OpenPackage
+Install **skills** first.
+
+- Skills are the core GRACE product surface.
+- The CLI is optional, but highly recommended once the skills are installed.
+- Installing only skills is a valid setup.
+- Installing only the CLI is usually not useful without the GRACE skills and workflow.
+
+### Install Skills
+
+Skills and CLI are complementary, but they are distributed differently.
+
+#### OpenPackage
 
 ```bash
 opkg install gh@osovv/grace-marketplace
@@ -53,14 +64,23 @@ opkg install gh@osovv/grace-marketplace -g
 opkg install gh@osovv/grace-marketplace --platforms claude-code
 ```
 
-### Claude Code Marketplace
+#### Claude Code Marketplace
 
 ```bash
 /plugin marketplace add osovv/grace-marketplace
 /plugin install grace@grace-marketplace
 ```
 
-### Bun CLI
+#### Agent Skills-Compatible Install
+
+```bash
+git clone https://github.com/osovv/grace-marketplace
+cp -r grace-marketplace/skills/grace/grace-* /path/to/your/agent/skills/
+```
+
+### Install CLI
+
+The CLI is a companion to the GRACE skills, not a replacement for them.
 
 Requires `bun` on `PATH`.
 
@@ -69,19 +89,12 @@ bun add -g @osovv/grace-cli
 grace lint --path /path/to/grace-project
 ```
 
-### Agent Skills-Compatible Install
-
-```bash
-git clone https://github.com/osovv/grace-marketplace
-cp -r grace-marketplace/skills/grace/grace-* /path/to/your/agent/skills/
-```
-
 ## Quick Start
 
 For a new GRACE project:
 
 1. Run `$grace-init`
-2. Fill `docs/requirements.xml` and `docs/technology.xml`
+2. Design `docs/requirements.xml` and `docs/technology.xml` together with your agent
 3. Run `$grace-plan`
 4. Run `$grace-verification`
 5. Run `$grace-execute` or `$grace-multiagent-execute`
@@ -185,7 +198,7 @@ Rule of thumb:
 
 ```text
 $grace-init
-fill requirements.xml and technology.xml
+design requirements.xml and technology.xml together with your agent
 $grace-plan
 $grace-verification
 $grace-execute or $grace-multiagent-execute
