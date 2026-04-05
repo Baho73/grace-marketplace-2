@@ -6,7 +6,7 @@ The format is inspired by Keep a Changelog, and this project follows Semantic Ve
 
 This changelog currently starts at `1.3.0`. Earlier history is available in the git log.
 
-## [Unreleased]
+## [3.2.0] - 2026-04-05
 
 ### Changed
 
