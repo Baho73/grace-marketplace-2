@@ -6,6 +6,17 @@ The format is inspired by Keep a Changelog, and this project follows Semantic Ve
 
 This changelog currently starts at `1.3.0`. Earlier history is available in the git log.
 
+## [3.7.0] - 2026-04-05
+
+### Added
+
+- Added `grace-cli`, a dedicated skill for using the optional `grace` binary as a GRACE-aware lint and artifact-query layer.
+
+### Changed
+
+- Updated skill trigger wording to use agent-neutral `Use when you ...` phrasing instead of Claude-specific wording.
+- Reworked the README install guidance so GRACE skills are the primary surface, the CLI is a strongly recommended companion, and requirements/technology artifacts are designed together with the agent.
+
 ## [3.6.0] - 2026-04-05
 
 ### Added

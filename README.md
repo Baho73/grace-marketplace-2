@@ -4,7 +4,7 @@
 
 This repository ships the GRACE skills plus the optional `grace` CLI. It is a packaging and distribution repository, not an end-user application.
 
-Current packaged version: `3.6.0`
+Current packaged version: `3.7.0`
 
 ## What This Repository Ships
 
@@ -133,6 +133,7 @@ grace file show src/auth/index.ts --path /path/to/project --contracts --blocks
 | `grace-reviewer` | Review semantic integrity, graph consistency, and verification quality |
 | `grace-status` | Report overall project health and suggest the next safe action |
 | `grace-ask` | Answer architecture and implementation questions from project artifacts |
+| `grace-cli` | Use the optional `grace` binary as a fast lint and artifact-query layer for GRACE projects |
 | `grace-explainer` | Explain the GRACE methodology itself |
 | `grace-setup-subagents` | Scaffold shell-specific GRACE worker and reviewer presets |
 

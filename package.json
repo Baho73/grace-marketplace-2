@@ -1,6 +1,6 @@
 {
   "name": "@osovv/grace-cli",
-  "version": "3.6.0",
+  "version": "3.7.0",
   "description": "GRACE CLI for linting semantic markup, contracts, and querying GRACE artifacts with a Bun-powered grace binary.",
   "license": "MIT",
   "homepage": "https://github.com/osovv/grace-marketplace#readme",

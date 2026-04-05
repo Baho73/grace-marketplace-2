@@ -9,7 +9,7 @@ import { moduleCommand } from "./grace-module";
 const main = defineCommand({
   meta: {
     name: "grace",
-    version: "3.6.0",
+    version: "3.7.0",
     description: "GRACE CLI for linting semantic markup and querying GRACE project artifacts.",
   },
   subCommands: {
