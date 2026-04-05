@@ -41,6 +41,7 @@ const CODE_EXTENSIONS = new Set([
   ".mts",
   ".cts",
   ".py",
+  ".pyi",
   ".go",
   ".java",
   ".kt",
@@ -432,6 +433,10 @@ function inferRole(contract: ModuleContractInfo | null, analysis: LanguageAnalys
     return "CONFIG";
   }
 
+  if (analysis?.hasMainEntrypoint) {
+    return "SCRIPT";
+  }
+
   if (analysis && mentionsScript && analysis.exports.size === 0) {
     return "SCRIPT";
   }
@@ -564,6 +569,17 @@ function lintExportMapParity(
     return;
   }
 
+  const exportSeverity = analysis.exportConfidence === "exact" ? "error" : "warning";
+
+  if (analysis.exportConfidence === "heuristic") {
+    addIssue(result, {
+      severity: "warning",
+      code: "analysis.heuristic-export-surface",
+      file: relativePath,
+      message: `The ${analysis.adapterId} adapter inferred exports heuristically for this file. Exact MODULE_MAP parity may require explicit file ROLE/MAP_MODE or stronger language-specific export declarations.`,
+    });
+  }
+
   if (analysis.hasWildcardReExport) {
     addIssue(result, {
       severity: "warning",
@@ -577,7 +593,7 @@ function lintExportMapParity(
   const mappedSymbols = new Set(items.flatMap((item) => (item.symbolName ? [item.symbolName] : [])));
   if (mappedSymbols.size === 0 && analysis.exports.size > 0) {
     addIssue(result, {
-      severity: "error",
+      severity: exportSeverity,
       code: "markup.module-map-missing-symbol-entries",
       file: relativePath,
       message: "MODULE_MAP should list concrete symbol names when MAP_MODE resolves to EXPORTS.",
@@ -588,7 +604,7 @@ function lintExportMapParity(
   for (const exportName of analysis.exports) {
     if (!mappedSymbols.has(exportName)) {
       addIssue(result, {
-        severity: "error",
+        severity: exportSeverity,
         code: "markup.module-map-missing-export",
         file: relativePath,
         message: `MODULE_MAP is missing the exported symbol \`${exportName}\`.`,
@@ -657,7 +673,19 @@ function lintGovernedFile(result: LintResult, root: string, filePath: string, te
   const contract = moduleContractSection ? parseModuleContract(moduleContractSection) : null;
   const mapItems = moduleMapSection ? parseModuleMapItems(moduleMapSection) : [];
   const adapter = getLanguageAdapter(filePath);
-  const analysis = adapter ? adapter.analyze(filePath, text) : null;
+  let analysis: LanguageAnalysis | null = null;
+  if (adapter) {
+    try {
+      analysis = adapter.analyze(filePath, text);
+    } catch (error) {
+      addIssue(result, {
+        severity: "warning",
+        code: "analysis.adapter-failed",
+        file: relativePath,
+        message: `${adapter.id} adapter failed: ${error instanceof Error ? error.message : String(error)}`,
+      });
+    }
+  }
   const role = inferRole(contract, analysis);
   const mapMode = inferMapMode(contract, role, mapItems, analysis);
 

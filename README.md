@@ -10,13 +10,13 @@ This repository packages GRACE as reusable skills for coding agents. The current
 - knowledge-graph synchronization
 - controller-managed sequential or multi-agent implementation
 
-Current packaged version: `3.3.0`
+Current packaged version: `3.4.0`
 
 ## What Changed In This Version
 
-- Removed profile selection from `grace lint`; the CLI now validates only against the current GRACE artifact set.
-- Limited `.grace-lint.json` to the current config schema, such as `ignoredDirs`.
-- Kept the role-aware/adaptive lint model while making older GRACE repos fail loudly until they are updated.
+- Added a rich Python adapter without `pyright` for `grace lint`.
+- Kept TypeScript/JavaScript on the TypeScript compiler API for exact export analysis.
+- Made adapter failures non-fatal so linting can continue with structural checks and warnings.
 
 ## Repository Layout
 
@@ -194,6 +194,17 @@ The lint command is role-aware and adapter-aware:
 - structural checks stay language-agnostic
 - export-map parity uses language adapters where available
 - file behavior is driven by semantic roles instead of filename masks
+
+Current rich adapters:
+
+- TypeScript/JavaScript via the TypeScript compiler API
+- Python via the Python standard-library AST, without `pyright`
+
+Current adapter behavior:
+
+- TypeScript/JavaScript export analysis is treated as exact
+- Python export analysis is exact when `__all__` is explicit, otherwise heuristic
+- other languages still benefit from structural GRACE checks even when rich export analysis is not available yet
 
 Optional `MODULE_CONTRACT` fields for linting:
 

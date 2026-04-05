@@ -412,6 +412,125 @@ export const exportedValue = helperState;
     expect(result.issues.filter((issue) => issue.file === "src/manual-role.ts")).toHaveLength(0);
   });
 
+  it("uses the Python adapter to verify exact exports from __all__", () => {
+    const root = createProject();
+    writeCurrentDocs(root);
+
+    writeProjectFile(
+      root,
+      "src/example.py",
+      `# START_MODULE_CONTRACT
+#   PURPOSE: Python runtime example.
+#   SCOPE: Expose explicit public helpers through __all__.
+#   DEPENDS: none
+#   LINKS: M-EXAMPLE
+# END_MODULE_CONTRACT
+#
+# START_MODULE_MAP
+#   run_example - Execute the example workflow.
+#   ExampleService - Main example service.
+# END_MODULE_MAP
+#
+# START_CHANGE_SUMMARY
+#   LAST_CHANGE: [v0.1.0 - Added Python runtime example]
+# END_CHANGE_SUMMARY
+
+__all__ = ["run_example", "ExampleService"]
+
+class ExampleService:
+    pass
+
+
+def run_example():
+    return "ok"
+`,
+    );
+
+    const result = lintGraceProject(root);
+    expect(result.issues.filter((issue) => issue.file === "src/example.py")).toHaveLength(0);
+  });
+
+  it("treats pytest-style Python files as tests with local-symbol maps", () => {
+    const root = createProject();
+    writeCurrentDocs(root);
+
+    writeProjectFile(
+      root,
+      "src/test_example.py",
+      `# START_MODULE_CONTRACT
+#   PURPOSE: Verify example behavior with pytest fixtures.
+#   SCOPE: Test helpers and assertions for the Python runtime.
+#   DEPENDS: pytest, M-EXAMPLE
+#   LINKS: M-EXAMPLE
+# END_MODULE_CONTRACT
+#
+# START_MODULE_MAP
+#   fixture_state - Shared fixture data for tests.
+#   build_context - Construct deterministic runtime inputs.
+# END_MODULE_MAP
+#
+# START_CHANGE_SUMMARY
+#   LAST_CHANGE: [v0.1.0 - Added Python test example]
+# END_CHANGE_SUMMARY
+
+import pytest
+
+fixture_state = {"count": 1}
+
+
+def build_context():
+    return fixture_state
+
+
+def test_example_flow():
+    assert build_context()["count"] == 1
+`,
+    );
+
+    const result = lintGraceProject(root);
+    expect(result.issues.filter((issue) => issue.file === "src/test_example.py")).toHaveLength(0);
+  });
+
+  it("infers Python __main__ modules as scripts", () => {
+    const root = createProject();
+    writeCurrentDocs(root);
+
+    writeProjectFile(
+      root,
+      "scripts/run_example.py",
+      `# START_MODULE_CONTRACT
+#   PURPOSE: Execute the Python smoke script.
+#   SCOPE: Build inputs and run the example check.
+#   DEPENDS: none
+#   LINKS: M-EXAMPLE
+# END_MODULE_CONTRACT
+#
+# START_MODULE_MAP
+#   main - Run the smoke workflow.
+#   build_input - Build deterministic script input.
+# END_MODULE_MAP
+#
+# START_CHANGE_SUMMARY
+#   LAST_CHANGE: [v0.1.0 - Added Python smoke script]
+# END_CHANGE_SUMMARY
+
+def build_input():
+    return "ok"
+
+
+def main():
+    return build_input()
+
+
+if __name__ == "__main__":
+    main()
+`,
+    );
+
+    const result = lintGraceProject(root);
+    expect(result.issues.filter((issue) => issue.file === "scripts/run_example.py")).toHaveLength(0);
+  });
+
   it("recognizes Clojure-style semicolon markup comments", () => {
     const root = createProject();
     writeCurrentDocs(root);
