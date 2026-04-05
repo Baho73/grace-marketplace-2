@@ -15,6 +15,11 @@ From the error/description, identify which module is likely involved:
 4. Follow CrossLinks to find the relevant module(s)
 5. Read the MODULE_CONTRACT of the target module
 
+If the optional `grace` CLI is available, you may use:
+- `grace module find <query> --path <project-root>` to resolve likely module IDs from stack traces, paths, verification refs, or dependency names
+- `grace module show M-XXX --path <project-root> --with verification` to pull the shared/public module and verification snapshot
+- `grace file show <path> --path <project-root> --contracts --blocks` when you already know the governed file and need its local/private navigation surface
+
 ### Step 2: Navigate to Block
 If the error contains a log reference like `[Module][function][BLOCK_NAME]`:
 - Search for `START_BLOCK_BLOCK_NAME` in the codebase — this is the exact location

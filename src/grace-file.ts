@@ -1,0 +1,78 @@
+import { defineCommand } from "citty";
+
+import { loadGraceArtifactIndex, resolveGovernedFile } from "./query/core";
+import { formatFileText } from "./query/render";
+
+function resolveFormat(format: unknown, json: unknown) {
+  const resolved = Boolean(json) ? "json" : String(format ?? "text");
+  if (resolved !== "text" && resolved !== "json") {
+    throw new Error(`Unsupported format \`${resolved}\`. Use \`text\` or \`json\`.`);
+  }
+
+  return resolved;
+}
+
+export const fileCommand = defineCommand({
+  meta: {
+    name: "file",
+    description: "Query file-local GRACE markup and private implementation context.",
+  },
+  subCommands: {
+    show: defineCommand({
+      meta: {
+        name: "show",
+        description: "Show file-local MODULE_CONTRACT, MODULE_MAP, CHANGE_SUMMARY, contracts, and blocks.",
+      },
+      args: {
+        target: {
+          type: "positional",
+          description: "Governed file path",
+        },
+        path: {
+          type: "string",
+          alias: "p",
+          description: "Project root to inspect",
+          default: ".",
+        },
+        contracts: {
+          type: "boolean",
+          description: "Include function/type/file-local contract details",
+          default: false,
+        },
+        blocks: {
+          type: "boolean",
+          description: "Include semantic block list",
+          default: false,
+        },
+        format: {
+          type: "string",
+          alias: "f",
+          description: "Output format: text or json",
+          default: "text",
+        },
+        json: {
+          type: "boolean",
+          description: "Shortcut for --format json",
+          default: false,
+        },
+      },
+      async run(context) {
+        const format = resolveFormat(context.args.format, context.args.json);
+        const index = loadGraceArtifactIndex(String(context.args.path ?? "."));
+        const fileRecord = resolveGovernedFile(index, String(context.args.target));
+
+        if (format === "json") {
+          process.stdout.write(`${JSON.stringify(fileRecord, null, 2)}\n`);
+          return;
+        }
+
+        process.stdout.write(
+          `${formatFileText(fileRecord, {
+            includeContracts: Boolean(context.args.contracts),
+            includeBlocks: Boolean(context.args.blocks),
+          })}\n`,
+        );
+      },
+    }),
+  },
+});

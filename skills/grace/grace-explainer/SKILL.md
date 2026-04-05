@@ -86,14 +86,25 @@ Important boundary rule:
 
 GRACE also has an optional CLI package, `@osovv/grace-cli`, which installs the `grace` binary.
 
-The current public command is:
+Current public commands:
 - `grace lint --path /path/to/project`
+- `grace module find auth --path /path/to/project`
+- `grace module show M-AUTH --path /path/to/project --with verification`
+- `grace file show src/auth/index.ts --path /path/to/project --contracts --blocks`
 
-Use it as a fast integrity preflight for:
+Use the CLI for:
 - GRACE semantic markup pairing and completeness
 - unique-tag convention anti-patterns in XML
 - graph/plan/verification reference mismatches
 - MODULE_MAP vs export drift in supported source files
+- resolving module IDs from names, paths, dependencies, and verification refs
+- reading shared/public module context from the XML artifacts
+- reading file-local/private implementation context from governed source files
+
+Public/private split:
+- `grace module show` is the shared/public view of a module from plan, graph, steps, and verification
+- `grace file show` is the file-local/private view from `MODULE_CONTRACT`, `MODULE_MAP`, `CHANGE_SUMMARY`, scoped contracts, and semantic blocks
+- `grace module find` searches both planes, including `LINKS` from file-local markup
 
 The CLI does not replace `$grace-reviewer`, `$grace-refresh`, or `$grace-verification`. It is a cheap automated guardrail before or alongside those higher-context workflows.
 

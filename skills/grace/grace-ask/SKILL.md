@@ -24,6 +24,11 @@ Based on the question, find the most relevant modules:
 3. Read MODULE_CONTRACTs of relevant modules for detailed context
 4. Read matching verification entries when the question is about behavior, failure modes, or testing
 
+If the optional `grace` CLI is available, you may use:
+- `grace module find <query> --path <project-root>` to resolve module IDs from names, paths, dependencies, or verification refs
+- `grace module show M-XXX --path <project-root> --with verification` to pull the shared/public module snapshot
+- `grace file show <path> --path <project-root> --contracts --blocks` to pull file-local/private context for the implementation details
+
 ### Step 3: Dive Into Code If Needed
 If the question is about specific behavior or implementation:
 1. Use MODULE_MAP to locate relevant functions/blocks

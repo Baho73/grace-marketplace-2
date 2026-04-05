@@ -38,6 +38,11 @@ Quick check:
 
 If the optional `grace` CLI is available, you may also run `grace lint --path <project-root>` as a fast integrity snapshot and include any relevant findings in the report.
 
+When the report needs focused navigation instead of raw artifact dumps, you may also use:
+- `grace module find <query> --path <project-root>` to resolve the relevant module from names, IDs, dependencies, or changed paths
+- `grace module show M-XXX --path <project-root> --with verification` for the shared/public module snapshot
+- `grace file show <path> --path <project-root> --contracts --blocks` for the file-local/private markup snapshot
+
 ### 4. Recent Changes
 List the 5 most recent CHANGE_SUMMARY entries across source and substantive test files.
 
@@ -49,5 +54,6 @@ Based on the status, suggest what to do next:
 - If plan and verification are ready but modules are missing — "Run `$grace-execute` or `$grace-multiagent-execute`"
 - If drift detected — "Run `$grace-refresh`"
 - If fast integrity signals are needed before deeper review — "Run `grace lint --path <project-root>`"
+- If the next step is targeted investigation of one module or file — "Run `grace module show M-XXX --path <project-root> --with verification` or `grace file show <path> --path <project-root> --contracts --blocks`"
 - If tests or logs are too weak for autonomous work — "Run `$grace-verification`"
 - If everything synced — "Project is healthy"

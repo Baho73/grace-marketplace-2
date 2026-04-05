@@ -28,6 +28,8 @@ Keep execution **sequential**, but keep context handling and verification discip
 ### Step 1: Load and Parse the Plan Once
 Read `docs/development-plan.xml`, `docs/knowledge-graph.xml`, and `docs/verification-plan.xml`, then build the execution queue.
 
+When the optional `grace` CLI is available, `grace module show M-XXX --path <project-root> --with verification` is a fast way to seed the shared/public portion of a step packet, and `grace file show <path> --path <project-root> --contracts --blocks` is a fast way to inspect local/private details for the current write scope.
+
 1. Collect all `Phase-N` elements where `status="pending"`
 2. Within each phase, collect `step-N` elements in order
 3. Build a controller-owned execution packet for each step containing:

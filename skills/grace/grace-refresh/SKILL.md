@@ -29,6 +29,11 @@ Decide whether the refresh should be `targeted` or `full`.
 
 When the optional `grace` CLI is available, you may use `grace lint --path <project-root>` as a quick preflight before starting a broader refresh. Treat it as a hint source, not as the refresh itself.
 
+You may also use:
+- `grace module find <changed-path-or-query> --path <project-root>` to resolve the likely module scope from changed files or names
+- `grace module show M-XXX --path <project-root> --with verification` to grab the shared/public contract, dependency, and verification context
+- `grace file show <path> --path <project-root> --contracts --blocks` to inspect file-local/private details without rereading whole source files first
+
 ### Step 2: Scan the Selected Scope
 For each file in scope, extract:
 - MODULE_CONTRACT (if present)

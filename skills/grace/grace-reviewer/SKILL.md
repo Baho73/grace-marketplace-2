@@ -53,6 +53,11 @@ Goal: certify that the project is globally coherent again.
 
 When the optional `grace` CLI is available, you may use `grace lint --path <project-root>` as a fast preflight to surface markup, XML-tag, and graph/verification drift before doing the deeper review.
 
+For scoped review navigation, you may also use:
+- `grace module find <query> --path <project-root>` to resolve module IDs from names, changed paths, dependencies, or verification refs
+- `grace module show M-XXX --path <project-root> --with verification` to pull the shared/public module contract plus verification excerpt
+- `grace file show <path> --path <project-root> --contracts --blocks` to inspect file-local/private markup before reading full files
+
 ## Checklist
 
 ### Semantic Markup Validation
@@ -130,4 +135,4 @@ Summary: PASS / FAIL
 - Escalate from `scoped-gate` to `wave-audit` or `full-integrity` when local evidence suggests broader drift
 - Always provide actionable fix suggestions
 - Never auto-fix - report and let the developer decide
-- Treat `grace lint` as a helper, not a substitute for reading the actual scoped evidence
+- Treat `grace lint`, `grace module show`, and `grace file show` as helpers, not substitutes for reading the actual scoped evidence

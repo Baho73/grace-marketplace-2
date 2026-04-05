@@ -38,6 +38,8 @@ Read the smallest complete set of artifacts needed for the scope:
 
 When operating on one module, prefer that module's plan entry, verification entry, and local tests over rereading the whole repository.
 
+If the optional `grace` CLI is available, `grace module show M-XXX --path <project-root> --with verification` is a fast way to read the shared/public module and verification context, and `grace file show <path> --path <project-root> --contracts --blocks` is a fast way to inspect the local/private contracts and semantic blocks that need evidence.
+
 ### Step 2: Derive Verification Targets from Contracts and Flows
 Read the module contracts, function contracts, and linked flows. Extract:
 

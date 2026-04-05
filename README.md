@@ -10,13 +10,13 @@ This repository packages GRACE as reusable skills for coding agents. The current
 - knowledge-graph synchronization
 - controller-managed sequential or multi-agent implementation
 
-Current packaged version: `3.5.0`
+Current packaged version: `3.6.0`
 
 ## What Changed In This Version
 
-- Clarified across the marketplace skills that shared GRACE docs should describe only public module contracts and public module interfaces.
-- Kept private helpers, internal types, and local orchestration details in file-local markup instead of mirroring them into shared XML artifacts.
-- Updated plan, refresh, reviewer, execute, multiagent, refactor, explainer, and init guidance to follow that boundary consistently.
+- Added `grace module find`, `grace module show`, and `grace file show` so the CLI can act as a GRACE-aware read/query layer over shared XML artifacts and file-local markup.
+- Clarified across the shipped skills when to use `grace lint`, `grace module show`, and `grace file show` to move between public shared-doc context and private file-local context.
+- Kept `grace lint` as the fast integrity gate while expanding the CLI into context navigation for agents and humans.
 
 ## Repository Layout
 
@@ -189,6 +189,22 @@ bun install
 bun run grace lint --path /path/to/grace-project
 ```
 
+Query GRACE artifacts from the CLI:
+
+```bash
+# Search modules across shared docs and linked file-local markup
+bun run grace module find auth --path /path/to/grace-project
+bun run grace module find src/provider/config-repo.ts --path /path/to/grace-project --json
+
+# Show the shared/public module record
+bun run grace module show M-AUTH --path /path/to/grace-project
+bun run grace module show M-AUTH --path /path/to/grace-project --with verification
+
+# Show file-local/private markup
+bun run grace file show src/provider/config-repo.ts --path /path/to/grace-project
+bun run grace file show src/provider/config-repo.ts --path /path/to/grace-project --contracts --blocks
+```
+
 The lint command is role-aware and adapter-aware:
 
 - structural checks stay language-agnostic
@@ -205,6 +221,12 @@ Current adapter behavior:
 - TypeScript/JavaScript export analysis is treated as exact
 - Python export analysis is exact when `__all__` is explicit, otherwise heuristic
 - other languages still benefit from structural GRACE checks even when rich export analysis is not available yet
+
+The query commands follow the GRACE public/private split:
+
+- `grace module show` reads shared/public module contracts, interfaces, dependencies, steps, and verification excerpts from the XML artifacts.
+- `grace file show` reads file-local/private `MODULE_CONTRACT`, `MODULE_MAP`, `CHANGE_SUMMARY`, scoped contracts, and semantic blocks.
+- `grace module find` searches both planes, including shared docs and linked file-local paths via `LINKS`.
 
 Optional `MODULE_CONTRACT` fields for linting:
 

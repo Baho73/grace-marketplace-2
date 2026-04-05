@@ -6,6 +6,18 @@ The format is inspired by Keep a Changelog, and this project follows Semantic Ve
 
 This changelog currently starts at `1.3.0`. Earlier history is available in the git log.
 
+## [3.6.0] - 2026-04-05
+
+### Added
+
+- Added a schema-aware GRACE query layer with `grace module find`, `grace module show`, and `grace file show`.
+- Added artifact indexing that merges shared XML module records, module verification entries, implementation steps, and linked file-local markup.
+
+### Changed
+
+- Expanded the CLI surface from integrity-only linting into read/query navigation for public shared-doc context and private file-local context.
+- Updated the shipped GRACE skills and README so agents know when to use `grace lint`, `grace module find`, `grace module show`, and `grace file show`.
+
 ## [3.5.0] - 2026-04-05
 
 ### Changed
