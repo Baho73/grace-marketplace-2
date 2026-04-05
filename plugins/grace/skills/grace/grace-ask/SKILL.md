@@ -15,6 +15,7 @@ Read the following files (skip any that don't exist):
 4. `docs/technology.xml` — stack, runtime, libraries
 5. `docs/development-plan.xml` — phases, modules, contracts
 6. `docs/verification-plan.xml` — tests, traces, log markers, and execution gates
+7. `docs/operational-packets.xml` — canonical packet, delta, and failure handoff shapes
 
 ### Step 2: Identify Relevant Modules
 Based on the question, find the most relevant modules:

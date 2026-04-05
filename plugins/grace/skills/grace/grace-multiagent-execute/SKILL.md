@@ -9,6 +9,7 @@ Execute a GRACE development plan with multiple agents while keeping planning art
 - `docs/development-plan.xml` must exist with module contracts and implementation order
 - `docs/knowledge-graph.xml` must exist
 - `docs/verification-plan.xml` should exist with module-local verification commands and gate expectations
+- if `docs/operational-packets.xml` exists, use it as the canonical packet and delta reference
 - If the plan or graph is missing, stop immediately and tell the user to run `$grace-plan` themselves before dispatching a large wave
 - If the verification plan is missing or still skeletal, stop immediately and tell the user to run `$grace-verification` themselves before dispatching a large wave
 - Prefer this skill only when module-local verification commands already exist or can be defined clearly
@@ -69,9 +70,11 @@ Read `docs/development-plan.xml`, `docs/knowledge-graph.xml`, and `docs/verifica
     - module graph entry excerpt from `docs/knowledge-graph.xml`
     - dependency contract summaries for every module in `DEPENDS`
     - verification excerpt from `docs/verification-plan.xml`, including module-local commands, required scenarios, required log markers, and target test files
-    - wave-level integration checks that will run after merge
-    - expected graph delta fields: imports, exports, annotations, and CrossLinks
-    - expected verification delta fields: test files, commands, markers, and phase follow-up notes
+     - wave-level integration checks that will run after merge
+     - expected graph delta fields: imports, exports, annotations, and CrossLinks
+     - expected verification delta fields: test files, commands, markers, and phase follow-up notes
+
+   When `docs/operational-packets.xml` exists, shape packets and delta proposals to the canonical `ExecutionPacket`, `GraphDelta`, and `VerificationDelta` templates.
 
 Present the proposed waves, selected profile, and packet scopes to the user. In `safe`, wait for approval before each dispatch. In `balanced` and `fast`, one up-front approval is enough unless the plan changes.
 

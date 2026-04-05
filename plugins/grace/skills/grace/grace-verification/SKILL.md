@@ -8,6 +8,7 @@ Design verification that autonomous agents can trust: deterministic where possib
 ## Prerequisites
 - `docs/development-plan.xml` must exist with planned modules or module contracts
 - `docs/verification-plan.xml` should exist; if it does not, create it from the GRACE init template before proceeding
+- if `docs/operational-packets.xml` exists, use its `FailurePacket` shape for failure handoff output
 - Read the relevant `MODULE_CONTRACT`, function contracts, semantic blocks, and existing tests first
 - If no contract exists yet, route through `$grace-plan` before building verification
 
@@ -141,6 +142,8 @@ When verification fails, produce a concise failure packet:
 - suggested next action
 
 Use this packet to drive `$grace-fix` or to hand off the issue to another agent without losing context.
+
+If `docs/operational-packets.xml` exists, align the handoff to its canonical `FailurePacket` fields.
 
 ## Verification Rules
 - Deterministic assertions first, semantic trace evaluation second

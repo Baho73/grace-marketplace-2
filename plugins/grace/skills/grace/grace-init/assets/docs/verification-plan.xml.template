@@ -70,8 +70,10 @@
   <FailurePackets>
     <!-- Optional guidance for future fix loops.
 
+         The canonical packet shapes live in `docs/operational-packets.xml`.
+
          <packet-template>
-           <expected-fields>scenario, expected-evidence, observed-evidence, first-divergent-block, next-action</expected-fields>
+            <expected-fields>scenario, expected-evidence, observed-evidence, first-divergent-block, next-action</expected-fields>
          </packet-template>
     -->
   </FailurePackets>

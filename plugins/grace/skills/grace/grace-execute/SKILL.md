@@ -9,6 +9,7 @@ Execute the development plan step by step, generating code for each pending modu
 - `docs/development-plan.xml` must exist with an ImplementationOrder section
 - `docs/knowledge-graph.xml` must exist
 - `docs/verification-plan.xml` should exist and define module-level checks for the modules you plan to execute
+- if `docs/operational-packets.xml` exists, use it as the canonical packet and delta reference
 - If the plan or graph is missing, stop immediately and tell the user to run `$grace-plan` themselves before large execution runs
 - If the verification plan is missing or still skeletal, stop immediately and tell the user to run `$grace-verification` themselves before large execution runs
 - Prefer this skill when dependency risk is higher than the gain from parallel waves, or when only a few modules remain
@@ -36,8 +37,9 @@ Read `docs/development-plan.xml`, `docs/knowledge-graph.xml`, and `docs/verifica
    - module graph entry excerpt from `docs/knowledge-graph.xml`
    - dependency contract summaries for every module in `DEPENDS`
    - verification excerpt from `docs/verification-plan.xml`, including module-local commands, critical scenarios, required log markers, and test-file targets
-   - expected graph delta fields: imports, exports, annotations, and CrossLinks
-   - expected verification delta fields: test files, commands, required markers, and gate follow-up notes
+    - expected graph delta fields: imports, exports, annotations, and CrossLinks
+    - expected verification delta fields: test files, commands, required markers, and gate follow-up notes
+   Use the canonical `ExecutionPacket`, `GraphDelta`, and `VerificationDelta` shapes from `docs/operational-packets.xml` when that file exists.
 4. Present the execution queue to the user as a numbered list:
    ```text
    Execution Queue:

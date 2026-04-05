@@ -10,14 +10,13 @@ This repository packages GRACE as reusable skills for coding agents. The current
 - knowledge-graph synchronization
 - controller-managed sequential or multi-agent implementation
 
-Current packaged version: `3.0.4`
+Current packaged version: `3.1.0`
 
 ## What Changed In This Version
 
-- `docs/verification-plan.xml` is now a first-class GRACE artifact.
-- `grace-verification` now owns testing, traces, and log-driven evidence instead of being a light add-on.
-- `grace-execute` and `grace-multiagent-execute` now consume verification-plan excerpts in their execution packets.
-- `grace-generate` was removed from the public workflow. The supported implementation paths are now `grace-execute` and `grace-multiagent-execute`.
+- Added `grace-refactor` for safe rename/move/split/merge/extract workflows with graph and verification synchronization.
+- Added `docs/operational-packets.xml` as the canonical reference for execution packets, graph deltas, verification deltas, and failure packets.
+- Added a Bun-based `grace-lint` CLI built on `citty` for GRACE semantic markup and XML integrity checks.
 
 ## Repository Layout
 
@@ -65,6 +64,13 @@ npx skills add osovv/grace-marketplace -a claude-code
 
 > Browse more skills at [skills.sh](https://skills.sh)
 
+### Via npm (CLI)
+
+```bash
+npm install -g grace-cli
+grace lint --path /path/to/grace-project
+```
+
 ### Via Codex CLI
 
 Inside Codex, use the built-in skill installer:
@@ -74,6 +80,7 @@ $skill-installer install https://github.com/osovv/grace-marketplace/tree/main/sk
 $skill-installer install https://github.com/osovv/grace-marketplace/tree/main/skills/grace/grace-plan
 $skill-installer install https://github.com/osovv/grace-marketplace/tree/main/skills/grace/grace-execute
 $skill-installer install https://github.com/osovv/grace-marketplace/tree/main/skills/grace/grace-multiagent-execute
+$skill-installer install https://github.com/osovv/grace-marketplace/tree/main/skills/grace/grace-refactor
 $skill-installer install https://github.com/osovv/grace-marketplace/tree/main/skills/grace/grace-setup-subagents
 $skill-installer install https://github.com/osovv/grace-marketplace/tree/main/skills/grace/grace-fix
 $skill-installer install https://github.com/osovv/grace-marketplace/tree/main/skills/grace/grace-refresh
@@ -132,6 +139,7 @@ cp -r grace-marketplace/skills/grace/grace-* /path/to/your/agent/skills/
 - `docs/development-plan.xml` - modules, contracts, flows, phases, execution ownership
 - `docs/verification-plan.xml` - tests, traces, required log markers, and gates
 - `docs/knowledge-graph.xml` - project navigation graph
+- `docs/operational-packets.xml` - canonical execution packet, delta, and failure handoff templates
 
 ## Skills
 
@@ -142,6 +150,7 @@ cp -r grace-marketplace/skills/grace/grace-* /path/to/your/agent/skills/
 | `grace-verification` | Design and maintain tests, traces, and log-driven evidence |
 | `grace-execute` | Execute the full plan sequentially with scoped review and commits |
 | `grace-multiagent-execute` | Execute independent modules in controller-managed parallel waves |
+| `grace-refactor` | Refactor modules safely while keeping contracts, graph, and verification synchronized |
 | `grace-setup-subagents` | Scaffold shell-specific GRACE worker and reviewer presets |
 | `grace-fix` | Debug via semantic navigation, tests, and log markers |
 | `grace-refresh` | Sync shared artifacts with the real codebase |
@@ -169,6 +178,13 @@ Run the marketplace validator from the repository root:
 
 ```bash
 bun run ./scripts/validate-marketplace.ts
+```
+
+Run the GRACE lint CLI against a GRACE project:
+
+```bash
+bun install
+bun run grace lint --path /path/to/grace-project
 ```
 
 The validator checks marketplace/plugin metadata sync, version consistency, required fields, `.claude-plugin` structure, and hardcoded absolute paths. In branch or PR context it scopes validation to changed plugins via `git diff origin/main...HEAD`; otherwise it validates all plugins.

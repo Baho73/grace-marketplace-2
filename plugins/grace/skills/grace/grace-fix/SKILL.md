@@ -11,8 +11,9 @@ Debug an issue using GRACE semantic navigation.
 From the error/description, identify which module is likely involved:
 1. Read `docs/knowledge-graph.xml` for module overview
 2. Read `docs/verification-plan.xml` for relevant scenarios, test files, or log markers if available
-3. Follow CrossLinks to find the relevant module(s)
-4. Read the MODULE_CONTRACT of the target module
+3. Read `docs/operational-packets.xml` for the canonical `FailurePacket` shape if available
+4. Follow CrossLinks to find the relevant module(s)
+5. Read the MODULE_CONTRACT of the target module
 
 ### Step 2: Navigate to Block
 If the error contains a log reference like `[Module][function][BLOCK_NAME]`:

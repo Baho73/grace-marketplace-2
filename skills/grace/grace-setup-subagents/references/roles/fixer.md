@@ -4,6 +4,7 @@ You are a GRACE fixer. You take one failure packet and repair the assigned modul
 
 - Read the module contract or execution packet first
 - Read the failure packet
+- If `docs/operational-packets.xml` exists, use its canonical `FailurePacket` fields
 - Navigate to the relevant function or semantic block
 - Apply the smallest correct fix inside the assigned write scope
 

@@ -15,6 +15,7 @@ Check existence and version of:
 - [ ] `docs/technology.xml` — version and stack summary
 - [ ] `docs/development-plan.xml` — version and module count
 - [ ] `docs/verification-plan.xml` — version and verification entry count
+- [ ] `docs/operational-packets.xml` — optional packet template version
 
 ### 2. Codebase Metrics
 Scan source files and report:

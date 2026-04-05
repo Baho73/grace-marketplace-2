@@ -26,6 +26,8 @@ Semantic Markup (START_BLOCK / END_BLOCK in code)
     makes code navigable at ~500 token granularity
 Verification Plan (docs/verification-plan.xml)
     defines HOW correctness, traces, and logs are proven
+Operational Packets (docs/operational-packets.xml)
+    standardizes execution packets, deltas, and failure handoff
 ```
 
 ## Six Core Principles
@@ -67,6 +69,7 @@ docs/technology.xml            — WHAT tools we use (runtime, language, version
 docs/development-plan.xml      — HOW we structure it (modules, phases, contracts)
         |
 docs/verification-plan.xml     — HOW we prove it works (tests, traces, log markers)
+docs/operational-packets.xml   — HOW agents hand work across execution, review, and fixes
         |
 docs/knowledge-graph.xml       — MAP of everything (modules, dependencies, exports, verification refs)
         |
@@ -84,10 +87,11 @@ Each layer feeds the next. The knowledge graph and verification plan are both ou
 5. `$grace-verification` — design and maintain tests, traces, and log-driven evidence
 6. `$grace-execute` — generate all modules sequentially with review and commits
 7. `$grace-multiagent-execute` — generate parallel-safe modules in controller-managed waves
-8. `$grace-refresh` — sync graph and verification refs after manual changes
-9. `$grace-fix error-description` — debug via semantic navigation
-10. `$grace-status` — health report
-11. `$grace-ask` — grounded Q&A over the project artifacts
+8. `$grace-refactor` — rename, move, split, merge, or extract modules without drift
+9. `$grace-refresh` — sync graph and verification refs after manual changes
+10. `$grace-fix error-description` — debug via semantic navigation
+11. `$grace-status` — health report
+12. `$grace-ask` — grounded Q&A over the project artifacts
 
 ## Detailed References
 

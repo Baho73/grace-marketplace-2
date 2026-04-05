@@ -1,0 +1,42 @@
+{
+  "name": "grace-cli",
+  "version": "3.1.0",
+  "description": "GRACE CLI for linting semantic markup, contracts, and GRACE XML artifacts.",
+  "license": "MIT",
+  "homepage": "https://github.com/osovv/grace-marketplace#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/osovv/grace-marketplace.git"
+  },
+  "bugs": {
+    "url": "https://github.com/osovv/grace-marketplace/issues"
+  },
+  "keywords": [
+    "grace",
+    "cli",
+    "lint",
+    "semantic-markup",
+    "knowledge-graph"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "type": "module",
+  "scripts": {
+    "grace": "bun run ./src/grace.ts",
+    "grace:lint": "bun run ./src/grace.ts lint",
+    "test": "bun test",
+    "validate:marketplace": "bun run ./scripts/validate-marketplace.ts"
+  },
+  "bin": {
+    "grace": "./src/grace.ts"
+  },
+  "dependencies": {
+    "citty": "^0.2.2"
+  }
+}
