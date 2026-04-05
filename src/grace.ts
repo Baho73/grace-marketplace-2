@@ -7,7 +7,7 @@ import { lintCommand } from "./grace-lint";
 const main = defineCommand({
   meta: {
     name: "grace",
-    version: "3.1.0",
+    version: "3.1.1",
     description: "GRACE CLI for linting semantic markup and GRACE project artifacts.",
   },
   subCommands: {

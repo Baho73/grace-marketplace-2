@@ -6,6 +6,14 @@ The format is inspired by Keep a Changelog, and this project follows Semantic Ve
 
 This changelog currently starts at `1.3.0`. Earlier history is available in the git log.
 
+## [3.1.1] - 2026-04-05
+
+### Changed
+
+- Documented the optional `grace` CLI inside `grace-explainer`, `grace-reviewer`, `grace-refresh`, and `grace-status` as a fast integrity preflight.
+- Updated `CLAUDE.md` so future sessions treat the published `@osovv/grace-cli` package and `grace lint` workflow as part of the repo context.
+- Switched the published CLI install example in `README.md` to `bun add -g @osovv/grace-cli`.
+
 ## [3.1.0] - 2026-04-05
 
 ### Added

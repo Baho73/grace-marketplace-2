@@ -10,13 +10,13 @@ This repository packages GRACE as reusable skills for coding agents. The current
 - knowledge-graph synchronization
 - controller-managed sequential or multi-agent implementation
 
-Current packaged version: `3.1.0`
+Current packaged version: `3.1.1`
 
 ## What Changed In This Version
 
-- Added `grace-refactor` for safe rename/move/split/merge/extract workflows with graph and verification synchronization.
-- Added `docs/operational-packets.xml` as the canonical reference for execution packets, graph deltas, verification deltas, and failure packets.
-- Added a Bun-based `grace-lint` CLI built on `citty` for GRACE semantic markup and XML integrity checks.
+- Documented the published Bun-powered `grace` CLI more explicitly across skills and repo context.
+- Added `grace lint` guidance as a fast integrity preflight alongside reviewer, refresh, and status workflows.
+- Updated the public install example to use `bun add -g @osovv/grace-cli`.
 
 ## Repository Layout
 

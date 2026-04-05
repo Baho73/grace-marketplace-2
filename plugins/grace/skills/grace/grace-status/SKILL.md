@@ -36,6 +36,8 @@ Quick check:
 - Modules in verification plan vs modules in development plan
 - Missing or stale verification refs
 
+If the optional `grace` CLI is available, you may also run `grace lint --path <project-root>` as a fast integrity snapshot and include any relevant findings in the report.
+
 ### 4. Recent Changes
 List the 5 most recent CHANGE_SUMMARY entries across source and substantive test files.
 
@@ -46,5 +48,6 @@ Based on the status, suggest what to do next:
 - If plan exists but verification is still thin — "Run `$grace-verification`"
 - If plan and verification are ready but modules are missing — "Run `$grace-execute` or `$grace-multiagent-execute`"
 - If drift detected — "Run `$grace-refresh`"
+- If fast integrity signals are needed before deeper review — "Run `grace lint --path <project-root>`"
 - If tests or logs are too weak for autonomous work — "Run `$grace-verification`"
 - If everything synced — "Project is healthy"

@@ -51,6 +51,8 @@ Review the whole GRACE surface:
 
 Goal: certify that the project is globally coherent again.
 
+When the optional `grace` CLI is available, you may use `grace lint --path <project-root>` as a fast preflight to surface markup, XML-tag, and graph/verification drift before doing the deeper review.
+
 ## Checklist
 
 ### Semantic Markup Validation
@@ -127,3 +129,4 @@ Summary: PASS / FAIL
 - Escalate from `scoped-gate` to `wave-audit` or `full-integrity` when local evidence suggests broader drift
 - Always provide actionable fix suggestions
 - Never auto-fix - report and let the developer decide
+- Treat `grace lint` as a helper, not a substitute for reading the actual scoped evidence

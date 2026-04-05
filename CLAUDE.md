@@ -12,6 +12,7 @@ GRACE means Graph-RAG Anchored Code Engineering: a contract-first AI engineering
 - `plugins/grace/.claude-plugin/plugin.json` defines the packaged plugin manifest.
 - `openpackage.yml` defines OpenPackage metadata.
 - `README.md` is the user-facing overview and install guide.
+- `package.json`, `src/grace.ts`, and `src/grace-lint.ts` define the published Bun-powered CLI package `@osovv/grace-cli` and the `grace lint` command.
 - `scripts/validate-marketplace.ts` validates packaging, path safety, version sync, and packaged-vs-canonical drift.
 
 ## Core Purpose
@@ -32,6 +33,7 @@ This repo is mainly about methodology content, skill instructions, and marketpla
 - Keep `plugins/grace/skills/grace/*` synchronized with the canonical `skills/grace/*` copies when published skills change.
 - Keep versions synchronized across `README.md`, `openpackage.yml`, `.claude-plugin/marketplace.json`, and `plugins/grace/.claude-plugin/plugin.json`.
 - Validate repo integrity with `bun run ./scripts/validate-marketplace.ts` after packaging or metadata changes.
+- For CLI changes or when checking the public lint workflow, also use `bun run grace lint --path . --allow-missing-docs`.
 - Do not assume every directory under `skills/grace/` is published; the actual shipped set is declared in `.claude-plugin/marketplace.json`.
 
 ## How To Think About Changes
@@ -48,5 +50,6 @@ If a request is ambiguous, assume the user is working on one of these areas:
 - refining GRACE methodology instructions
 - adding or updating a skill
 - fixing packaging/marketplace installation
+- maintaining the published `grace` CLI and its lint workflow
 - keeping canonical and packaged skill trees in sync
 - tightening verification around releases

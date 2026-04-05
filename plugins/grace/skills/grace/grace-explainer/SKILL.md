@@ -78,6 +78,21 @@ src/**/* + tests/**/*          — CODE and TESTS with GRACE markup and evidence
 
 Each layer feeds the next. The knowledge graph and verification plan are both outputs of planning and inputs for execution.
 
+## Optional CLI Support
+
+GRACE also has an optional CLI package, `@osovv/grace-cli`, which installs the `grace` binary.
+
+The current public command is:
+- `grace lint --path /path/to/project`
+
+Use it as a fast integrity preflight for:
+- GRACE semantic markup pairing and completeness
+- unique-tag convention anti-patterns in XML
+- graph/plan/verification reference mismatches
+- MODULE_MAP vs export drift in supported source files
+
+The CLI does not replace `$grace-reviewer`, `$grace-refresh`, or `$grace-verification`. It is a cheap automated guardrail before or alongside those higher-context workflows.
+
 ## Development Workflow
 
 1. `$grace-init` — create docs/ structure and AGENTS.md

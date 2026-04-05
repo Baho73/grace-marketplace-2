@@ -27,6 +27,8 @@ Decide whether the refresh should be `targeted` or `full`.
 2. If no reliable scope is available, or the graph may have drifted broadly, use `full`
 3. Escalate from `targeted` to `full` when the localized scan reveals wider inconsistency
 
+When the optional `grace` CLI is available, you may use `grace lint --path <project-root>` as a quick preflight before starting a broader refresh. Treat it as a hint source, not as the refresh itself.
+
 ### Step 2: Scan the Selected Scope
 For each file in scope, extract:
 - MODULE_CONTRACT (if present)
