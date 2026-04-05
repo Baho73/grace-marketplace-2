@@ -103,12 +103,15 @@ For each approved wave:
    - add or update module-local tests only
    - preserve or add required stable log markers for critical branches
    - run module-local verification only
-   - **commit their work after module-local verification passes** with format:
-      ```
-      grace(MODULE_ID): short description
-      
-      Wave N, Phase M
-      ```
+    - **commit their work after module-local verification passes** with format:
+       ```
+       grace(MODULE_ID): <imperative verb phrase describing what was done>
+       
+       <File|Function|Export> <name>: <what changed and why>
+       <File|Function|Export> <name>: <what changed and why>
+       ```
+       Every commit body must enumerate the concrete files, functions, or exports that changed and explain what was done to each. Generic phrases like "harden X", "add Y evidence", or "enforce Z" are forbidden. Prefer specific descriptions such as "catch ENOENT in loadPivvConfig and throw CONFIG_NOT_FOUND", "add dedup key collision regression for memory-store.reuseRecord", or "guard write-phase transcript against partial flush".
+       Keep each checkpoint commit focused on a single coherent change so the history reads like a narrative.
    - return a result packet with changed files, verification evidence, graph delta proposal, verification delta proposal, commit hash, and any integration assumptions
 
 ### Step 4: Review with the Smallest Safe Scope
@@ -153,10 +156,12 @@ After each wave, the controller commits only shared artifacts that changed:
 - Update `docs/knowledge-graph.xml`, `docs/verification-plan.xml`, and `docs/development-plan.xml` with wave results
 - Commit with format:
   ```
-  grace(meta): sync after wave N
+  grace(meta): sync <artifacts updated> after wave N
 
-  Modules: M-xxx, M-yyy
+  <module-id>: <what changed in the graph/plan/verification for this module>
+  <module-id>: <what changed in the graph/plan/verification for this module>
   ```
+  List only the modules whose shared-artifact entries actually changed and describe what was updated (e.g. "M-CONFIG: marked step-1 complete, added exports to graph"). Omit modules with no delta.
 
 Worker implementation commits are already done per module in Step 3. Controller commits are only for shared planning artifacts.
 

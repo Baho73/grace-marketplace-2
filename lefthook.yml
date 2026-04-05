@@ -1,0 +1,5 @@
+pre-commit:
+  commands:
+    validate-marketplace:
+      tags: marketplace
+      run: npx tsx scripts/validate-marketplace.ts

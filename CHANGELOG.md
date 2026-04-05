@@ -6,6 +6,13 @@ The format is inspired by Keep a Changelog, and this project follows Semantic Ve
 
 This changelog currently starts at `1.3.0`. Earlier history is available in the git log.
 
+## [3.0.4] - 2026-04-05
+
+### Changed
+
+- Improved worker commit message format in `grace-multiagent-execute`: requires concrete file/function/export listing and descriptive body instead of generic "harden X" phrases.
+- Improved controller meta-sync commit format: lists which artifacts were updated and per-module delta description instead of bare module list.
+
 ## [3.0.3] - 2026-03-19
 
 ### Fixed

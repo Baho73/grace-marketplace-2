@@ -10,7 +10,7 @@ This repository packages GRACE as reusable skills for coding agents. The current
 - knowledge-graph synchronization
 - controller-managed sequential or multi-agent implementation
 
-Current packaged version: `3.0.3`
+Current packaged version: `3.0.4`
 
 ## What Changed In This Version
 
