@@ -58,7 +58,7 @@ When the optional `grace` CLI is available, you may use `grace lint --path <proj
 ### Semantic Markup Validation
 For each file in scope, verify:
 - [ ] MODULE_CONTRACT exists with PURPOSE, SCOPE, DEPENDS, LINKS
-- [ ] MODULE_MAP lists all exports with descriptions
+- [ ] MODULE_MAP matches the file's intended role and lint mode with useful descriptions
 - [ ] CHANGE_SUMMARY has at least one entry
 - [ ] Every important function/component has a CONTRACT (PURPOSE, INPUTS, OUTPUTS)
 - [ ] START_BLOCK / END_BLOCK markers are paired
@@ -70,7 +70,7 @@ For each file in scope, verify:
 ### Contract Compliance
 For each module in scope, cross-reference:
 - [ ] MODULE_CONTRACT.DEPENDS matches actual imports
-- [ ] MODULE_MAP matches actual exports
+- [ ] MODULE_MAP matches the file's intended public or local symbol surface
 - [ ] Function CONTRACT.INPUTS match actual parameter types
 - [ ] Function CONTRACT.OUTPUTS match actual return types
 - [ ] Function CONTRACT.SIDE_EFFECTS are documented when relevant
@@ -87,7 +87,7 @@ For each scoped module, verify:
 
 ### Graph and Plan Consistency
 Match code changes against the claimed shared-artifact updates:
-- [ ] graph delta proposals match actual imports and exports
+- [ ] graph delta proposals match actual imports and public module interface changes
 - [ ] `docs/knowledge-graph.xml` matches the accepted deltas for the current scope
 - [ ] verification delta proposals match actual tests, commands, and required markers
 - [ ] `docs/verification-plan.xml` matches the accepted deltas for the current scope
@@ -124,6 +124,7 @@ Summary: PASS / FAIL
 
 ## Rules
 - Default to the smallest safe review scope
+- Shared docs should describe only public module contracts and public module interfaces; private helpers staying local to the file is correct
 - Be strict on critical issues: missing contracts, broken markup, unsafe drift, incorrect graph deltas, stale verification-plan entries, missing required log markers, or verification that is too weak for the chosen execution profile
 - Be lenient on minor issues: naming style and slightly uneven block granularity
 - Escalate from `scoped-gate` to `wave-audit` or `full-integrity` when local evidence suggests broader drift

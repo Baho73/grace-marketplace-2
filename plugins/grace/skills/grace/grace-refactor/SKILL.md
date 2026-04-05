@@ -86,6 +86,10 @@ For `split` and `merge` refactors:
 - update write scopes and test scopes accordingly
 - do not leave half-migrated logic spread across modules silently
 
+Shared-doc rule:
+- keep shared docs focused on public module contracts and public interfaces
+- let private helper reshaping stay local unless it changes the public boundary
+
 ### Step 4: Synchronize Shared Artifacts
 After the code refactor, update the shared artifacts in one coherent pass.
 
@@ -97,7 +101,7 @@ Update `docs/development-plan.xml` for:
 
 Update `docs/knowledge-graph.xml` for:
 - module tags
-- annotations and exports
+- public annotations and public exports only
 - CrossLinks
 - verification refs
 

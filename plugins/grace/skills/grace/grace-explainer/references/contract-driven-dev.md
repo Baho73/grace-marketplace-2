@@ -21,6 +21,10 @@ Every file starts with:
 
 The contract is written before the code. It comes from the development plan (`docs/development-plan.xml`), which was approved by the user during the `$grace-plan` phase.
 
+Important distinction:
+- shared XML artifacts carry the module's public contract and public interface
+- private helpers, internal normalization steps, and implementation-only types stay in the source file header and local contracts
+
 ## Function Contracts
 
 Every exported function or component must have:
@@ -62,8 +66,8 @@ You have freedom in HOW to implement, but not in WHAT. The contract and the know
 ## Contract Modification Rules
 
 1. **Read before edit** — always read the MODULE_CONTRACT before editing any file
-2. **Update MODULE_MAP** — if you change function signatures, update MODULE_MAP
-3. **Update knowledge graph** — if you add/remove modules, update `docs/knowledge-graph.xml`
+2. **Update MODULE_MAP** — if you change the relevant public or local symbols for that file's lint mode, update MODULE_MAP
+3. **Update knowledge graph** — if you add/remove modules, dependencies, or public module interface surface, update `docs/knowledge-graph.xml`
 4. **Update verification plan** — if you change tests, required markers, or verification commands, update `docs/verification-plan.xml`
 5. **Track changes** — after fixing bugs, add a CHANGE_SUMMARY entry
 6. **Never remove markup** — semantic markup anchors are load-bearing structure
@@ -98,3 +102,5 @@ Modules in the development plan carry their contract in XML:
 ```
 
 This XML contract is the blueprint for the MODULE_CONTRACT in the source file. The matching verification entry in `docs/verification-plan.xml` is the blueprint for how the module proves that it still satisfies the contract.
+
+The shared XML contract should stay at module-boundary level. It should not list every private helper that exists only to support the implementation. Those details belong in the file header and local contracts.

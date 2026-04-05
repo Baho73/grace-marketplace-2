@@ -37,7 +37,7 @@ Read `docs/development-plan.xml`, `docs/knowledge-graph.xml`, and `docs/verifica
    - module graph entry excerpt from `docs/knowledge-graph.xml`
    - dependency contract summaries for every module in `DEPENDS`
    - verification excerpt from `docs/verification-plan.xml`, including module-local commands, critical scenarios, required log markers, and test-file targets
-    - expected graph delta fields: imports, exports, annotations, and CrossLinks
+    - expected graph delta fields: imports, public exports, public annotations, and CrossLinks
     - expected verification delta fields: test files, commands, required markers, and gate follow-up notes
    Use the canonical `ExecutionPacket`, `GraphDelta`, and `VerificationDelta` shapes from `docs/operational-packets.xml` when that file exists.
 4. Present the execution queue to the user as a numbered list:
@@ -61,7 +61,7 @@ Follow this protocol for the assigned module:
 - preserve or add stable log markers for the required critical branches
 - keep changes inside the approved write scope
 - run module-local verification commands from the packet only
-- produce graph sync output or a graph delta proposal for the controller to apply
+- produce graph sync output or a graph delta proposal for the controller to apply, limited to public module interface changes
 - produce a verification delta proposal for test files, commands, markers, and phase follow-up notes
 - **commit the implementation immediately after verification passes** with format:
    ```
@@ -77,7 +77,7 @@ After generating, review the step using the smallest safe scope:
 - does the generated code match the module contract from the step packet?
 - are all GRACE markup conventions followed?
 - do imports match `DEPENDS`?
-- does the graph delta proposal match actual imports and exports?
+- does the graph delta proposal match actual imports and public module interface changes?
 - do the changed tests and verification evidence satisfy the packet's required scenarios and markers?
 - does the verification delta proposal match the real test files and commands?
 - are there any obvious security issues or correctness defects?

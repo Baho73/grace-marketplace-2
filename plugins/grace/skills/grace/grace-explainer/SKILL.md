@@ -19,7 +19,7 @@ GRACE provides four interlocking systems that fix this:
 
 ```
 Knowledge Graph (docs/knowledge-graph.xml)
-    maps modules, dependencies, exports
+    maps modules, dependencies, and public module interfaces
 Module Contracts (MODULE_CONTRACT in each file)
     defines WHAT each module does
 Semantic Markup (START_BLOCK / END_BLOCK in code)
@@ -39,7 +39,7 @@ Before generating any module, create its MODULE_CONTRACT with PURPOSE, SCOPE, IN
 Markers like `// START_BLOCK_NAME` and `// END_BLOCK_NAME` are **navigation anchors**, not documentation. They serve as attention anchors for LLM context management and retrieval points for RAG systems.
 
 ### 3. Knowledge Graph Is Always Current
-`docs/knowledge-graph.xml` is the single map of the entire project. When you add a module — add it to the graph. When you add a dependency — add a CrossLink. The graph never drifts from reality.
+`docs/knowledge-graph.xml` is the single map of the entire project. When you add a module — add it to the graph. When you add a dependency — add a CrossLink. The graph never drifts from reality. Shared docs should describe the module's public contract, not every private helper or implementation detail.
 
 ### 4. Top-Down Synthesis
 Code generation follows a strict pipeline:
@@ -66,17 +66,21 @@ docs/requirements.xml          — WHAT the user needs (use cases, AAG notation)
         |
 docs/technology.xml            — WHAT tools we use (runtime, language, versions)
         |
-docs/development-plan.xml      — HOW we structure it (modules, phases, contracts)
+docs/development-plan.xml      — HOW we structure it (modules, phases, public contracts)
         |
 docs/verification-plan.xml     — HOW we prove it works (tests, traces, log markers)
 docs/operational-packets.xml   — HOW agents hand work across execution, review, and fixes
         |
-docs/knowledge-graph.xml       — MAP of everything (modules, dependencies, exports, verification refs)
+docs/knowledge-graph.xml       — MAP of module boundaries, dependencies, public interfaces, and verification refs
         |
 src/**/* + tests/**/*          — CODE and TESTS with GRACE markup and evidence hooks
 ```
 
 Each layer feeds the next. The knowledge graph and verification plan are both outputs of planning and inputs for execution.
+
+Important boundary rule:
+- shared GRACE docs describe only public module contracts and public module interfaces
+- private helpers, local-only types, and internal orchestration details stay in the module file header, function contracts, and semantic blocks
 
 ## Optional CLI Support
 

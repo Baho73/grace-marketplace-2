@@ -41,6 +41,11 @@ Recommended defaults:
 - `TYPES` + `EXPORTS` for pure type/interface modules
 - `SCRIPT` + `LOCALS` for CLI/bootstrap/smoke scripts
 
+Shared-docs boundary rule:
+
+- `docs/development-plan.xml` and `docs/knowledge-graph.xml` should describe only the module's public contract and public interface
+- internal helpers, private types, and implementation-only orchestration belong in the file header markup and local function contracts instead of shared XML artifacts
+
 ## Function or Component Level
 
 Every exported function or component must have a contract:
@@ -117,3 +122,4 @@ expect(hasLogMarker("info", "[ChatDomain][createChat][BLOCK_INSERT_CHAT]")).toBe
    - `LOCALS` => reflect important local helpers, fixtures, or entry points
    - `SUMMARY` => summarize grouped surfaces without enumerating every symbol
    - `NONE` => omit `MODULE_MAP` when the file role truly does not need one
+6. Shared XML artifacts should never mirror the whole file header mechanically. Only public module-facing contract and interface details belong there.

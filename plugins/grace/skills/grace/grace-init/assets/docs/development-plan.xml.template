@@ -12,6 +12,7 @@
     <!-- Modules use unique ID-based tags:
          <M-xxx NAME="..." TYPE="..." LAYER="N" ORDER="N" STATUS="planned">
             <contract>
+              <!-- Public module contract only. Private helpers stay in the source file header and local contracts. -->
               <purpose>What this module does</purpose>
               <inputs>
                 <param name="..." type="..." />
@@ -24,6 +25,7 @@
              </errors>
            </contract>
             <interface>
+              <!-- Public module-facing interface only. -->
               <export-functionName PURPOSE="..." />
             </interface>
             <depends>M-xxx, M-yyy</depends>

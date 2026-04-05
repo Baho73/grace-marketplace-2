@@ -1,6 +1,6 @@
 # Knowledge Graph Maintenance
 
-The file `docs/knowledge-graph.xml` is the single source of truth for the project's module structure. It maps every module, its exports, its dependencies, and how modules connect to each other.
+The file `docs/knowledge-graph.xml` is the single source of truth for the project's module structure. It maps every module, its public interface, its dependencies, and how modules connect to each other.
 
 ## Structure
 
@@ -61,11 +61,13 @@ This eliminates closing-tag polysemy — `</M-CONFIG>` is unambiguous while mult
 
 | Tag | Purpose |
 |-----|---------|
-| `<fn-name>` | Exported function |
-| `<type-Name>` | Exported type/interface |
-| `<class-Name>` | Exported class |
-| `<export-name>` | Named export (constants, config objects) |
-| `<const-NAME>` | Exported constant |
+| `<fn-name>` | Public function in the module's external contract |
+| `<type-Name>` | Public type/interface exposed by the module |
+| `<class-Name>` | Public class in the module interface |
+| `<export-name>` | Public named export (constants, config objects) |
+| `<const-NAME>` | Public constant |
+
+Do not mirror every private helper from the source file into `<annotations>`. Private orchestration helpers, local-only utility functions, and implementation-only types stay in the module file header and local contracts.
 
 ## CrossLinks
 
@@ -91,6 +93,6 @@ This keeps navigation and proof linked:
 1. **Always current** — when you add a module, add it to the graph. When you add a dependency, add a CrossLink. Never let the graph drift from reality.
 2. **Scan on doubt** — if unsure whether the graph is current, run `$grace-refresh` to scan and sync.
 3. **Version tracking** — increment the Project VERSION when the graph changes structurally (new modules, removed modules).
-4. **Annotations match exports** — if a module's exports change, update its `<annotations>` section.
+4. **Annotations match the public interface** — if a module's public exports change, update its `<annotations>` section.
 5. **Verification refs stay valid** — if a module's verification entry changes ID, update `<verification-ref>`.
 6. **No orphans** — if a module is deleted, remove its graph entry and all CrossLinks referencing it.

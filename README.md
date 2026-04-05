@@ -10,13 +10,13 @@ This repository packages GRACE as reusable skills for coding agents. The current
 - knowledge-graph synchronization
 - controller-managed sequential or multi-agent implementation
 
-Current packaged version: `3.4.0`
+Current packaged version: `3.5.0`
 
 ## What Changed In This Version
 
-- Added a rich Python adapter without `pyright` for `grace lint`.
-- Kept TypeScript/JavaScript on the TypeScript compiler API for exact export analysis.
-- Made adapter failures non-fatal so linting can continue with structural checks and warnings.
+- Clarified across the marketplace skills that shared GRACE docs should describe only public module contracts and public module interfaces.
+- Kept private helpers, internal types, and local orchestration details in file-local markup instead of mirroring them into shared XML artifacts.
+- Updated plan, refresh, reviewer, execute, multiagent, refactor, explainer, and init guidance to follow that boundary consistently.
 
 ## Repository Layout
 

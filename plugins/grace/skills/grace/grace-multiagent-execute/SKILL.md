@@ -71,7 +71,7 @@ Read `docs/development-plan.xml`, `docs/knowledge-graph.xml`, and `docs/verifica
     - dependency contract summaries for every module in `DEPENDS`
     - verification excerpt from `docs/verification-plan.xml`, including module-local commands, required scenarios, required log markers, and target test files
      - wave-level integration checks that will run after merge
-     - expected graph delta fields: imports, exports, annotations, and CrossLinks
+     - expected graph delta fields: imports, public exports, public annotations, and CrossLinks
      - expected verification delta fields: test files, commands, markers, and phase follow-up notes
 
    When `docs/operational-packets.xml` exists, shape packets and delta proposals to the canonical `ExecutionPacket`, `GraphDelta`, and `VerificationDelta` templates.
@@ -115,7 +115,11 @@ For each approved wave:
        ```
        Every commit body must enumerate the concrete files, functions, or exports that changed and explain what was done to each. Generic phrases like "harden X", "add Y evidence", or "enforce Z" are forbidden. Prefer specific descriptions such as "catch ENOENT in loadPivvConfig and throw CONFIG_NOT_FOUND", "add dedup key collision regression for memory-store.reuseRecord", or "guard write-phase transcript against partial flush".
        Keep each checkpoint commit focused on a single coherent change so the history reads like a narrative.
-   - return a result packet with changed files, verification evidence, graph delta proposal, verification delta proposal, commit hash, and any integration assumptions
+    - return a result packet with changed files, verification evidence, graph delta proposal, verification delta proposal, commit hash, and any integration assumptions
+
+Shared-artifact rule for workers:
+- execution packets may include local file-header detail for implementation
+- graph and plan deltas must cover only public module contract/interface changes, not private helper churn
 
 ### Step 4: Review with the Smallest Safe Scope
 After each worker finishes:
@@ -164,7 +168,7 @@ After each wave, the controller commits only shared artifacts that changed:
   <module-id>: <what changed in the graph/plan/verification for this module>
   <module-id>: <what changed in the graph/plan/verification for this module>
   ```
-  List only the modules whose shared-artifact entries actually changed and describe what was updated (e.g. "M-CONFIG: marked step-1 complete, added exports to graph"). Omit modules with no delta.
+  List only the modules whose shared-artifact entries actually changed and describe what was updated (e.g. "M-CONFIG: marked step-1 complete, added public exports to graph"). Omit modules with no delta.
 
 Worker implementation commits are already done per module in Step 3. Controller commits are only for shared planning artifacts.
 

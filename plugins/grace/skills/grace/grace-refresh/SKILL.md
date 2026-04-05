@@ -37,6 +37,10 @@ For each file in scope, extract:
 - CHANGE_SUMMARY (if present)
 - nearby module-local test files, required log markers, and verification commands when available
 
+Treat shared XML artifacts as public-surface documents:
+- shared docs should track module boundaries, dependencies, verification refs, and public module interfaces
+- private helpers and implementation-only types may exist in file headers without needing graph or plan entries
+
 In `targeted` mode, also inspect the immediate dependency surfaces needed to validate CrossLinks accurately.
 
 ### Step 3: Compare with Shared Artifacts
@@ -48,6 +52,8 @@ Read `docs/knowledge-graph.xml` and, when present, `docs/verification-plan.xml`.
 - **Missing verification entries**: governed modules or tests with no corresponding `V-M-xxx` entry
 - **Stale verification refs**: verification entries whose test files, commands, or required markers no longer match the scoped code
 - **Escalation signals**: evidence that the problem extends beyond the scanned scope
+
+Do not report drift just because a private helper exists in source but not in shared docs. Shared docs should only drift on public contract or dependency changes.
 
 ### Step 4: Report Drift
 Present a structured report:
@@ -75,6 +81,8 @@ For each issue, propose a fix:
 - No contracts - generate or restore the missing MODULE_CONTRACT from code analysis and plan context
 - Missing verification entries - add or repair the matching `V-M-xxx` block in `docs/verification-plan.xml`
 - Stale verification refs - update test files, commands, or required log markers from the real scoped code
+
+When updating graph or plan artifacts, add only public module-facing annotations and interfaces. Keep private helper details local to the source file.
 
 Ask the user for confirmation before applying fixes.
 

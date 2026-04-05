@@ -37,7 +37,8 @@ Structure `docs/knowledge-graph.xml` for maximum navigability:
 - Each module gets a unique ID tag: `M-xxx NAME="..." TYPE="..."`
 - Functions annotated as `fn-name`, types as `type-Name`
 - CrossLinks connect dependent modules bidirectionally
-- Annotations describe what each module exports
+- Annotations describe only the module's public interface
+- Do not push private helpers or implementation-only types into shared XML artifacts
 
 ### Verification-Aware Planning
 Planning is incomplete if modules cannot be verified.
@@ -62,7 +63,7 @@ Propose a module breakdown. For each module, define:
 - Purpose (one sentence)
 - Type: ENTRY_POINT / CORE_LOGIC / DATA_LAYER / UI_COMPONENT / UTILITY / INTEGRATION
 - Dependencies on other modules
-- Key interfaces (what it exposes)
+- Key public interfaces (what the module exposes to other modules or callers)
 - Tentative source path, test path, and `verification-ref`
 
 Present this to the user as a structured list and **wait for approval** before proceeding.
@@ -90,9 +91,9 @@ Present the walkthrough to the user. If issues are found — revise the architec
 ### Phase 5: Generate Artifacts
 After user approval:
 
-1. Update `docs/development-plan.xml` with the full module breakdown, contracts, target paths, observability notes, data flows, and implementation order. Use unique ID-based tags: `M-xxx` for modules, `Phase-N` for phases, `DF-xxx` for flows, `step-N` for steps, and `V-M-xxx` references for verification.
+1. Update `docs/development-plan.xml` with the full module breakdown, public module contracts, target paths, observability notes, data flows, and implementation order. Use unique ID-based tags: `M-xxx` for modules, `Phase-N` for phases, `DF-xxx` for flows, `step-N` for steps, and `V-M-xxx` references for verification.
 2. Update `docs/verification-plan.xml` with global verification policy, critical flows, module verification stubs, and phase gates.
-3. Update `docs/knowledge-graph.xml` with all modules (as `M-xxx` tags), their annotations (as `fn-name`, `type-Name`, etc.), `verification-ref` links, and CrossLinks between them.
+3. Update `docs/knowledge-graph.xml` with all modules (as `M-xxx` tags), their public-interface annotations (as `fn-name`, `type-Name`, etc.), `verification-ref` links, and CrossLinks between them.
 4. Print: "Architecture approved. Run `$grace-verification` to deepen tests and trace expectations, `$grace-execute` for sequential execution, or `$grace-multiagent-execute` for parallel-safe waves."
 
 ## Important

@@ -12,10 +12,11 @@
             <path>src/config/index.ts</path>
             <depends>none</depends>
             <verification-ref>V-M-CONFIG</verification-ref>
-            <annotations>
-              <fn-loadConfig PURPOSE="Load and validate config from environment" />
-              <type-AppConfig PURPOSE="Configuration type definition" />
-              <export-config PURPOSE="Singleton config instance" />
+             <annotations>
+               <!-- Public interface only. Keep private helpers and internal-only types in the source file header instead of shared docs. -->
+               <fn-loadConfig PURPOSE="Load and validate config from environment" />
+               <type-AppConfig PURPOSE="Configuration type definition" />
+               <export-config PURPOSE="Singleton config instance" />
             </annotations>
           </M-CONFIG>
 
@@ -23,6 +24,8 @@
 
           CrossLinks connect dependent modules:
           <CrossLink from="M-SOURCE" to="M-TARGET" relation="description" />
+
+          Keep this file focused on module boundaries and public interfaces. Do not mirror every private helper from implementation files.
 
           STATUS should usually be one of: planned, partial, implemented
      -->

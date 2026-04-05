@@ -33,10 +33,12 @@ If you discover architectural drift:
 Before reporting back:
 - Self-review for completeness, discipline, and overbuilding
 - Run the required module-local verification commands
-- Prepare a graph delta proposal for imports, exports, annotations, and CrossLinks
+- Prepare a graph delta proposal for imports, public exports, public annotations, and CrossLinks
 - Prepare a verification delta proposal for test files, commands, required markers, and follow-up checks
 - Use the canonical `GraphDelta` and `VerificationDelta` shape when the project provides `docs/operational-packets.xml`
 - Note any integration assumptions that the controller must validate at wave level
+
+When shared artifacts change, propose only public module-facing surface updates. Private helpers, internal types, and local orchestration details belong in the source file header and local contracts.
 
 ## Report format
 
