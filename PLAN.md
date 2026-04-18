@@ -313,11 +313,149 @@ SKILL.md предписывает: начинать с Level 1, повышать
 
 **Отдельный brainstorm-сессии требуют:** eval harness design, budget-controls implementation, archive schema, safety boundaries.
 
-### PR-3+: backlog
+### PR-3: `grace-afk` — harness для автономной работы «пока пользователь ушёл»
+
+**Мотивация:** пользователь ушёл на обед / лёг спать / улетел — Claude должен не простаивать, а двигать план вперёд, принимая решения от имени пользователя в очерченных границах. При реально неразрешимом вопросе — эскалировать в Telegram коротким сообщением, не простынёй. Hardening-pass-1 был ручной прототип этого workflow (пользователь ушёл AFK на ~2h, вернулся к готовому PR).
+
+**Это harness-команда / meta-skill**, не GRACE-скил. Композирует `grace-evolve`, `grace-execute`, `grace-multiagent-execute`, `grace-ask-human` (Telegram-обёртка) поверх встроенного `/loop`.
+
+**Синтаксис:**
+
+```
+/afk [hours] [budget%] [--checkpoint <min>]
+```
+
+Defaults:
+- `hours` = 2
+- `budget%` = `min(25% weekly, 100% текущего 5h-окна)` — консервативно если не задано
+- `--checkpoint` = 30 min на старте; **адаптивный**: N зелёных тиков подряд → растягиваю до 60-120 min, первый yellow/red → возврат к 30 min
+
+Примеры:
+- `/afk` → 2h, дефолт-бюджет, 30-мин чекпоинты
+- `/afk 16` → overnight, дефолт-бюджет
+- `/afk 16 50` → 16h, до 50% недельных
+- `/afk 16 50 --checkpoint 45` → всё выше + 45-мин чекпоинты
+
+**Оба cap'а работают одновременно** — какой hit первым, тот и стоп. Это прямо отражает сценарий пользователя «осталось 11% недельных до среды, могу 20% сжечь».
+
+**Компоненты:**
+
+1. **Start gate** — тег `afk-baseline-<ts>` + ветка `afk-<ts>`. Main NEVER touched. Один `git reset --hard afk-baseline-<ts>` откатывает всё.
+2. **Budget reasoner** — вычисляет token cap из обоих параметров; emergency kill при превышении.
+3. **Autonomy matrix** — см. ниже.
+4. **Loop engine** — встроенный `/loop` с динамическим pacing'ом: каждый тик берёт следующий pending step из `docs/development-plan.xml`, прогоняет через autonomy matrix, выполняет или делегирует.
+5. **Evolve bridge** — при uncertainty запускает `grace-evolve` с micro-budget (≤10% оставшегося бюджета сессии) на 3-5 кандидатов; winner коммитится.
+6. **Telegram escalation** — см. ниже.
+7. **Decision journal** — `docs/afk-sessions/<ts>/decisions.md` + `deferred.md`.
+8. **Return dashboard** — итоговый summary при истечении hours или возврате пользователя.
+
+**Autonomy matrix (главная часть дизайна):**
+
+| Класс решения | Действие |
+|---|---|
+| Обратимые: код / тесты / XML / доки / коммиты в feature branch | **Act** — принимаю сам |
+| Архитектурный выбор с ≥2 правдоподобными подходами | **Delegate to `grace-evolve`** |
+| Необратимые one-way-door: push на main, force push, drop DB, rm -rf, deploy, billing, external API с side-effects | **Escalate Telegram** → fallback: defer |
+| Смена scope (начал с bug fix, хочется refactor всего модуля) | **Defer** (always) |
+| Wave threshold YELLOW | Rollback + следующая задача |
+| Wave threshold RED | Stop + emergency Telegram |
+
+Правило anti-Goodhart: если решение one-way door — никогда не принимаю сам, даже если subjectively «уверен». «≥2 правдоподобных подхода с разными tradeoff'ами» — жёсткий, а не «на вибах», критерий для delegation в evolve.
+
+**Telegram escalation (`grace-ask-human` скил):**
+
+- Транспорт: **MCP telegram** (если подключён). Fallback при отсутствии: defer в `deferred.md` без прерывания работы.
+- **Не строим свой бот** в этом репо — меньше инфры, меньше точек отказа.
+- Triggers **только** для one-way-door / RED-threshold / emergency. Обратимые решения — никогда.
+
+Жёсткий формат сообщения:
+
+```
+/afk требует решения (session <ts>)
+
+Ситуация: <1 предложение>
+Варианты:
+  A — <1 строка>
+  B — <1 строка>
+  C — <1 строка>
+Моя версия: B (уверенность 60%)
+Ответь: A / B / C / proceed / stop / evolve
+```
+
+Polling schedule: send → check через 10 / 30 / 60 / 120 min (backoff). Без ответа 2h → fallback: `grace-evolve` если uncertain, иначе defer + следующая задача. Защита от «бот дёргает каждые 10 минут» — hard cap: не более 3 Telegram-эскалаций за сессию.
+
+**Safety layer (обязательная часть дизайна):**
+
+- Работа только на ветке `afk-<ts>`; main / feature/* неприкосновенны.
+- Hard-deny: `git push --force`, `git push` на main, `rm -rf`, network кроме whitelisted docs, любые external side-effects (Slack, email, deploy, billing, payment API).
+- Emergency checkpoint каждые 90 мин независимо от adaptive cadence — сохранение состояния на случай abrupt interrupt.
+- Wave-thresholds из `grace-multiagent-execute` применяются на каждый тик.
+- **Kill switch:** пользователь может прислать `STOP` в Telegram → агент завершает текущий коммит и выходит с финальным dashboard.
+
+**Checkpoint cadence (адаптивный):**
+
+| Состояние | Интервал | Переход |
+|---|---|---|
+| Стартовое | 30 min | после 3 green тиков → 60 min |
+| После 3 green @ 30min | 60 min | после 3 green @ 60min → 120 min |
+| После 3 green @ 60min | 120 min | yellow/red → возврат к 30 min |
+| После yellow/red | 30 min | повтор цикла |
+
+На каждом чекпоинте: `grace status --brief`, `bun test`, `grace lint`, запись в decision journal, проверка budget consumption.
+
+**Decision journal format (`docs/afk-sessions/<ts>/decisions.md`):**
+
+Каждое решение = ExecutionPacket-like запись:
+```
+## <ts> decision <N>
+Class: reversible | uncertain-evolve | one-way-deferred | threshold-rollback
+Context: <development-plan step ref>
+Options considered: [A, B, C]
+Chosen: B
+Rationale: <1-2 sentence>
+Evidence: <test output / metric / grace lint exit>
+Outcome: <commit hash | evolve session ref | deferred.md#N>
+```
+
+Плюс `deferred.md` со списком вопросов для возврата пользователя — одна строка на вопрос + ссылка на контекст.
+
+**Return dashboard (при возврате / истечении):**
+
+```
+/afk session 2026-04-18T22:00 complete
+Duration:    6h 12m of 16h budget
+Tokens:      18% of weekly (cap was 50%)
+Commits:     14 on branch afk-20260418T2200
+Evolve runs: 2 (1 winner merged, 1 archived as inferior)
+Deferred:    3 decisions (see docs/afk-sessions/.../deferred.md)
+Escalations: 1 Telegram (answered: proceed)
+Changed:    47 files, +2103 -189 lines
+All gates:   green (bun test, validate-marketplace, grace lint)
+Recommended next:
+  1. Review deferred.md
+  2. Merge afk-20260418T2200 into feature/<name>
+  3. Delete afk branch after merge
+```
+
+**Зависимости:**
+- PR-2 `grace-evolve` (нужен как bridge для uncertainty)
+- hardening-pass-1 (wave thresholds в `grace-multiagent-execute`, progressive disclosure в `grace-ask`)
+- MCP telegram (или аналогичный транспорт) — опционально, fallback работает без него
+
+**Ветка:** `feature/grace-afk` (после `feature/grace-evolve`).
+
+**Отдельный brainstorm-сессии требуют:**
+- Точная калибровка «uncertainty threshold» → evolve (ложно-уверенные решения = главный риск)
+- Полный hard-deny list команд для safety layer
+- Протокол `STOP` kill switch (что именно сохраняется, как очищается состояние)
+- Формат `grace-ask-human` (может быть отдельный sub-skill)
+
+### PR-4+: backlog
 
 - CLI: адаптер для Java/Go/Rust (role-aware lint)
 - PCAM semver: версионирование контрактов с breaking-change signaling
 - Knowledge-graph partitioning для монолитов (>1000 модулей)
+- `grace-ask-human` как standalone скил (если Telegram-обёртка вырастет за пределы PR-3)
 
 ---
 
@@ -328,3 +466,5 @@ SKILL.md предписывает: начинать с Level 1, повышать
 3. **Фаза 5**: делать reference-проект в том же PR или отдельным follow-up?
 4. **Upstream-трекинг**: добавить `upstream` remote на оригинал Baho73 для будущих update'ов?
 5. **`grace-evolve` budget**: устраивают defaults 20% weekly / 100% 5h / adaptive по remaining, или нужны другие пороги?
+6. **`grace-afk` uncertainty threshold**: чем точно отличается «я уверен, действую» от «неуверен, в evolve»? Требует калибровки — обсудить в отдельной сессии перед имплементацией PR-3.
+7. **`grace-afk` kill-switch protocol**: достаточно `STOP` в Telegram или нужен web-dashboard для интерактивного управления?
