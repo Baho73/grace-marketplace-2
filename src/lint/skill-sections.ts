@@ -1,3 +1,18 @@
+// FILE: src/lint/skill-sections.ts
+// VERSION: 1.0.0
+// START_MODULE_CONTRACT
+//   PURPOSE: Lint rule warning when a SKILL.md lacks the three required discipline sections.
+//   SCOPE: Scan skills/ and plugins/ under project root; check for "## Common Rationalizations", "## When NOT to Use", "## Verification".
+//   DEPENDS: node:fs, node:path, ./types
+//   LINKS: docs/knowledge-graph.xml#M-LINT-SKILL-SECTIONS, docs/verification-plan.xml#V-M-LINT-SKILL-SECTIONS
+//   ROLE: RUNTIME
+//   MAP_MODE: EXPORTS
+// END_MODULE_CONTRACT
+//
+// START_MODULE_MAP
+//   lintSkillSections - Scan skills/ + plugins/ and return warning-severity LintIssues for missing sections
+// END_MODULE_MAP
+
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
 
@@ -78,3 +93,7 @@ function containsHeading(text: string, heading: string) {
   const normalized = heading.trim();
   return text.split(/\r?\n/).some((line) => line.trim() === normalized);
 }
+
+// START_CHANGE_SUMMARY
+//   LAST_CHANGE: [3.7.0] Initial module for SKILL.md discipline-section lint warnings.
+// END_CHANGE_SUMMARY

@@ -1,3 +1,18 @@
+// FILE: src/grace-status.ts
+// VERSION: 1.0.0
+// START_MODULE_CONTRACT
+//   PURPOSE: citty subcommand `grace status` (with --brief for SessionStart hooks).
+//   SCOPE: CLI wiring + text/json output. Computation delegated to grace-status-runtime.
+//   DEPENDS: citty, ./grace-status-runtime
+//   LINKS: docs/knowledge-graph.xml#M-CLI-STATUS, docs/verification-plan.xml#V-M-CLI-STATUS
+//   ROLE: RUNTIME
+//   MAP_MODE: EXPORTS
+// END_MODULE_CONTRACT
+//
+// START_MODULE_MAP
+//   statusCommand - citty subcommand exposing --path, --brief, --format, --json
+// END_MODULE_MAP
+
 import { defineCommand } from "citty";
 
 import { collectBrief, renderBrief, renderFull } from "./grace-status-runtime";
@@ -53,3 +68,7 @@ export const statusCommand = defineCommand({
     process.stdout.write(`${renderFull(root, status)}\n`);
   },
 });
+
+// START_CHANGE_SUMMARY
+//   LAST_CHANGE: [3.7.0] Initial module for `grace status` + `--brief` SessionStart-hook output.
+// END_CHANGE_SUMMARY

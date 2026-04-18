@@ -1,3 +1,25 @@
+// FILE: src/grace-status-runtime.ts
+// VERSION: 1.0.0
+// START_MODULE_CONTRACT
+//   PURPOSE: Pure computation of BriefStatus + text renderers for `grace status` (brief + full).
+//   SCOPE: Read-only inspection of docs/*.xml and activation files. No writes. Next-action heuristic.
+//   DEPENDS: node:fs, node:path, ./query/core
+//   LINKS: docs/knowledge-graph.xml#M-STATUS-RUNTIME, docs/verification-plan.xml#V-M-STATUS-RUNTIME
+//   ROLE: RUNTIME
+//   MAP_MODE: EXPORTS
+// END_MODULE_CONTRACT
+//
+// START_MODULE_MAP
+//   BriefStatus       - Structured health snapshot
+//   collectBrief      - Compute BriefStatus from project root (no throws)
+//   renderBrief       - Render <=30-line text summary (suitable for SessionStart hook)
+//   renderFull        - Render brief + module table
+//   runStatusForTest  - Test-only entry point (avoids CLI I/O)
+//   REQUIRED_DOCS     - Artifact paths required for an initialized project
+//   OPTIONAL_DOCS     - Artifact paths that are nice to have
+//   ACTIVATION_FILES  - AGENTS.md / CLAUDE.md / .claude/settings.json
+// END_MODULE_MAP
+
 import { existsSync, statSync } from "node:fs";
 import path from "node:path";
 
@@ -194,3 +216,7 @@ export function renderFull(root: string, status: BriefStatus) {
 
   return lines.join("\n");
 }
+
+// START_CHANGE_SUMMARY
+//   LAST_CHANGE: [3.7.0] Initial module for status computation + renderers.
+// END_CHANGE_SUMMARY
