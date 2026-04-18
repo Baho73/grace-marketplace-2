@@ -3,6 +3,7 @@ import path from "node:path";
 
 import { loadGraceLintConfig } from "./config";
 import { getLanguageAdapter } from "./adapters/base";
+import { lintSkillSections } from "./skill-sections";
 import type {
   GraceLintConfig,
   LanguageAnalysis,
@@ -891,6 +892,10 @@ export function lintGraceProject(projectRoot: string, options: LintOptions = {})
     }
 
     lintGovernedFile(result, root, filePath, text);
+  }
+
+  for (const issue of lintSkillSections(root)) {
+    addIssue(result, issue);
   }
 
   return result;
