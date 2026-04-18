@@ -1,0 +1,64 @@
+# $PROJECT_NAME — Claude Code Project Context
+
+<CRITICAL>
+THIS PROJECT IS MANAGED BY GRACE (Graph-RAG Anchored Code Engineering).
+
+Before editing ANY code, you MUST:
+
+1. Read `AGENTS.md` — project conventions, contracts, and semantic-markup rules.
+2. Read `docs/knowledge-graph.xml` — source of truth for the module graph.
+3. Invoke the appropriate `grace-*` skill for the task:
+   - Bug / error / unexpected behaviour  → `grace-fix`
+   - New feature / architectural change  → `grace-plan` then `grace-execute` (or `grace-multiagent-execute`)
+   - Rename / move / split / merge       → `grace-refactor`
+   - Question about the project          → `grace-ask`
+   - "Something feels out of sync"       → `grace-refresh`
+   - Review / audit                      → `grace-reviewer`
+   - Current health / next step          → `grace-status`
+
+Do NOT bypass semantic markup (`START_BLOCK_*` / `END_BLOCK_*`, `MODULE_CONTRACT`,
+`CHANGE_SUMMARY`). When you edit a block, update its markup in the SAME commit.
+
+If unsure, start with `using-grace` — it will route you to the correct skill.
+</CRITICAL>
+
+## Project Summary
+
+$ANNOTATION
+
+## Keywords
+
+$KEYWORDS
+
+## Primary Artifacts
+
+| File | Purpose |
+|---|---|
+| `AGENTS.md` | Engineering protocol, semantic-markup reference, logging rules |
+| `docs/requirements.xml` | Use cases and functional requirements |
+| `docs/technology.xml` | Stack, tooling, observability, testing decisions |
+| `docs/development-plan.xml` | Modules, phases, contracts, implementation order |
+| `docs/knowledge-graph.xml` | Module map, dependencies, public interfaces, CrossLinks |
+| `docs/verification-plan.xml` | Tests, trace anchors, log markers, module/wave/phase gates |
+| `docs/operational-packets.xml` | Canonical ExecutionPacket, GraphDelta, VerificationDelta, FailurePacket shapes |
+
+## Working Rules (reminder)
+
+- Every module has a MODULE_CONTRACT (PCAM: Purpose, Constraints, Autonomy, Metrics).
+- Every code change either updates the knowledge graph or is a private-helper edit inside an already-governed file.
+- Every bug fix adds a regression entry to `docs/verification-plan.xml`.
+- Every new external dependency is justified in `development-plan.xml` (size, maintenance, license).
+- Log markers use the `[Module][function][BLOCK_NAME]` convention.
+- XML artifacts use **unique ID-based tags** (`<M-CONFIG>`, not `<Module ID="M-CONFIG">`).
+
+## Escape Hatch
+
+If a specific task genuinely does not need GRACE (e.g. a pure typo fix in a comment), say so
+explicitly in your first message ("using GRACE-bypass for trivial typo") so the log is honest.
+Do NOT silently skip activation.
+
+## Next Step for New Contributors
+
+Run `grace status --path . --brief` (requires `@osovv/grace-cli`) to see current project health
+and the next recommended action. Without the CLI, read `docs/development-plan.xml` and look for
+the first `step-N` entry marked `pending`.

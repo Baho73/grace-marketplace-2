@@ -1,6 +1,6 @@
 ---
 name: grace-init
-description: "Bootstrap GRACE framework structure for a new project. Use when starting a new project with GRACE methodology - creates docs/ directory, AGENTS.md, and XML templates for requirements, technology, development plan, verification plan, knowledge graph, and operational packet contracts."
+description: "Bootstrap GRACE framework structure for a new project. Use when starting a new project with GRACE methodology - creates docs/ directory, AGENTS.md, CLAUDE.md (Claude Code activation), .claude/settings.json (SessionStart hook), and XML templates for requirements, technology, development plan, verification plan, knowledge graph, and operational packet contracts."
 ---
 
 Initialize GRACE framework structure for this project.
@@ -10,15 +10,17 @@ Initialize GRACE framework structure for this project.
 All documents MUST be created from template files located in this skill's `assets/` directory.
 Read each template file, replace the `$PLACEHOLDER` variables with actual values gathered from the user, and write the result to the target project path.
 
-| Template source                          | Target in project           |
-|------------------------------------------|-----------------------------|
-| `assets/AGENTS.md.template`              | `AGENTS.md` (project root)  |
-| `assets/docs/knowledge-graph.xml.template` | `docs/knowledge-graph.xml`  |
-| `assets/docs/requirements.xml.template`    | `docs/requirements.xml`     |
-| `assets/docs/technology.xml.template`      | `docs/technology.xml`       |
-| `assets/docs/development-plan.xml.template`| `docs/development-plan.xml` |
-| `assets/docs/verification-plan.xml.template`| `docs/verification-plan.xml` |
-| `assets/docs/operational-packets.xml.template`| `docs/operational-packets.xml` |
+| Template source                          | Target in project           | Purpose |
+|------------------------------------------|-----------------------------|---------|
+| `assets/AGENTS.md.template`              | `AGENTS.md` (project root)  | GRACE protocol for any agent |
+| `assets/CLAUDE.md.template`              | `CLAUDE.md` (project root)  | Claude Code activation preamble |
+| `assets/settings.json.template`          | `.claude/settings.json`     | SessionStart hook: runs `grace status --brief` on session start |
+| `assets/docs/knowledge-graph.xml.template` | `docs/knowledge-graph.xml`  | |
+| `assets/docs/requirements.xml.template`    | `docs/requirements.xml`     | |
+| `assets/docs/technology.xml.template`      | `docs/technology.xml`       | |
+| `assets/docs/development-plan.xml.template`| `docs/development-plan.xml` | |
+| `assets/docs/verification-plan.xml.template`| `docs/verification-plan.xml` | |
+| `assets/docs/operational-packets.xml.template`| `docs/operational-packets.xml` | |
 
 > **Important:** Never hardcode template content inline. Always read from the `.template` files — they are the single source of truth for document structure.
 
@@ -38,12 +40,45 @@ Read each template file, replace the `$PLACEHOLDER` variables with actual values
 
     For each `assets/docs/*.xml.template` file:
     - Read the template file
-   - Replace `$PLACEHOLDER` variables with user-provided values
-   - Write the result to the corresponding `docs/` path
+    - Replace `$PLACEHOLDER` variables with user-provided values
+    - Write the result to the corresponding `docs/` path
 
 3. **Create or verify `AGENTS.md` at project root:**
     - If `AGENTS.md` does not exist — read `assets/AGENTS.md.template`, fill in `$KEYWORDS` and `$ANNOTATION`, and write to project root
     - If `AGENTS.md` already exists — warn the user and ask whether to overwrite or keep the existing one
 
-4. **Print a summary** of all created files and suggest the next step:
-    > "Run `$grace-plan` to design modules, data flows, and verification references. Then use `$grace-verification` to deepen tests, traces, and log-driven evidence before large execution waves. Use `docs/operational-packets.xml` as the canonical packet and delta reference during execution and refactors."
+4. **Create or verify `CLAUDE.md` at project root (activation preamble for Claude Code):**
+    - If `CLAUDE.md` does not exist — read `assets/CLAUDE.md.template`, fill in `$PROJECT_NAME`, `$ANNOTATION`, and `$KEYWORDS`, and write to project root
+    - If `CLAUDE.md` already exists — show the user the template's `<CRITICAL>` activation preamble and ask whether to prepend it to the existing file, overwrite, or skip
+
+5. **Create `.claude/settings.json` (SessionStart hook):**
+    - If `.claude/settings.json` does not exist — create `.claude/` directory, read `assets/settings.json.template`, write to `.claude/settings.json`
+    - If `.claude/settings.json` already exists — inform the user, show the template content, and ask whether to merge the `hooks.SessionStart` entry into the existing file or skip. Never silently overwrite existing settings.
+
+6. **Print a summary** of all created files and suggest the next step:
+    > "GRACE structure initialized. On your next Claude Code session, the SessionStart hook will surface `grace status --brief`. Run `$grace-plan` to design modules, data flows, and verification references. Then use `$grace-verification` to deepen tests, traces, and log-driven evidence before large execution waves. Use `docs/operational-packets.xml` as the canonical packet and delta reference during execution and refactors."
+
+## Common Rationalizations
+
+| Rationalization | Reality |
+|---|---|
+| "User already has CLAUDE.md, skip that step" | Without the GRACE `<CRITICAL>` preamble, Claude will not activate the protocol. Offer to prepend it rather than skip. |
+| "Settings.json hook is optional, user can add later" | Users forget. Hook is the primary defense against "Claude forgot GRACE exists". Offer merge, do not skip. |
+| "XML templates are boilerplate, I can generate inline" | Templates evolve between GRACE versions. Always read from `assets/` — never hardcode. |
+| "One-person project, AGENTS.md is overkill" | The future agent IS a different person. AGENTS.md is the handoff. |
+
+## When NOT to Use
+
+- Project is already GRACE-initialized (artifacts present in `docs/`). Use `$grace-refresh` or `$grace-status` instead.
+- The user is not committed to GRACE methodology — installing the scaffolding without buy-in creates abandoned artifacts.
+- The project is a throwaway prototype or spike. Init only when the code is expected to live past one sitting.
+
+## Verification
+
+After running this skill:
+
+- [ ] `docs/` contains all 6 XML files from templates (verification: `ls docs/*.xml | wc -l` returns 6)
+- [ ] `AGENTS.md` exists and contains GRACE keywords (verification: `grep -c "MODULE_CONTRACT" AGENTS.md` ≥ 1)
+- [ ] `CLAUDE.md` exists and contains the `<CRITICAL>` activation preamble (verification: `grep "<CRITICAL>" CLAUDE.md`)
+- [ ] `.claude/settings.json` exists with the SessionStart hook (verification: `grep "grace status" .claude/settings.json`)
+- [ ] Next recommended skill announced to user (verification: output contains `$grace-plan`)
