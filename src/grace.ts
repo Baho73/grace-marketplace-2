@@ -5,6 +5,7 @@ import { defineCommand, type CommandDef, runMain } from "citty";
 import { fileCommand } from "./grace-file";
 import { lintCommand } from "./grace-lint";
 import { moduleCommand } from "./grace-module";
+import { statusCommand } from "./grace-status";
 
 const main = defineCommand({
   meta: {
@@ -16,6 +17,7 @@ const main = defineCommand({
     file: fileCommand,
     lint: lintCommand,
     module: moduleCommand,
+    status: statusCommand,
   },
 });
 
