@@ -1,0 +1,202 @@
+<KnowledgeGraph>
+  <Project NAME="grace-marketplace" VERSION="3.7.0">
+    <keywords>grace, methodology, skills-marketplace, cli, lint, knowledge-graph, contracts, verification</keywords>
+    <annotation>
+      Distribution package for the GRACE methodology: canonical skills, packaged mirror, Claude Code marketplace manifest, OpenPackage manifest, and the @osovv/grace-cli Bun-based CLI (grace lint, grace module, grace file, grace status).
+    </annotation>
+
+    <M-CLI-ENTRY NAME="CliEntry" TYPE="ENTRY_POINT" STATUS="implemented">
+      <purpose>Top-level CLI entry point; wires subcommands and handles Bun shebang execution.</purpose>
+      <path>src/grace.ts</path>
+      <depends>M-CLI-LINT, M-CLI-MODULE, M-CLI-FILE, M-CLI-STATUS</depends>
+      <verification-ref>V-M-CLI-ENTRY</verification-ref>
+      <annotations>
+        <export-main PURPOSE="citty command root aggregating subcommands" />
+      </annotations>
+    </M-CLI-ENTRY>
+
+    <M-CLI-LINT NAME="CliLint" TYPE="CORE_LOGIC" STATUS="implemented">
+      <purpose>Implements `grace lint` — validates GRACE artifacts, semantic markup, unique tags, and skill-section discipline.</purpose>
+      <path>src/grace-lint.ts</path>
+      <depends>M-LINT-CORE</depends>
+      <verification-ref>V-M-CLI-LINT</verification-ref>
+      <annotations>
+        <export-lintCommand PURPOSE="citty subcommand for `grace lint`" />
+      </annotations>
+    </M-CLI-LINT>
+
+    <M-LINT-CORE NAME="LintCore" TYPE="CORE_LOGIC" STATUS="implemented">
+      <purpose>Core linting engine: artifact presence, unique-tag XML, semantic markup, governed file checks, skill-section discipline.</purpose>
+      <path>src/lint/core.ts</path>
+      <depends>M-LINT-ADAPTERS, M-LINT-CONFIG, M-LINT-SKILL-SECTIONS</depends>
+      <verification-ref>V-M-LINT-CORE</verification-ref>
+      <annotations>
+        <fn-lintGraceProject PURPOSE="Entry point returning LintResult for a project root" />
+        <fn-formatTextReport PURPOSE="Render LintResult as human-readable text" />
+      </annotations>
+    </M-LINT-CORE>
+
+    <M-LINT-SKILL-SECTIONS NAME="LintSkillSections" TYPE="CORE_LOGIC" STATUS="implemented">
+      <purpose>Warns when SKILL.md files miss the three required hardening sections (Common Rationalizations, When NOT to Use, Verification).</purpose>
+      <path>src/lint/skill-sections.ts</path>
+      <depends>none</depends>
+      <verification-ref>V-M-LINT-SKILL-SECTIONS</verification-ref>
+      <annotations>
+        <fn-lintSkillSections PURPOSE="Return warning-level LintIssue[] for missing skill sections" />
+      </annotations>
+    </M-LINT-SKILL-SECTIONS>
+
+    <M-LINT-ADAPTERS NAME="LintAdapters" TYPE="CORE_LOGIC" STATUS="implemented">
+      <purpose>Language adapters for role-aware lint (TypeScript AST, Python regex).</purpose>
+      <path>src/lint/adapters</path>
+      <depends>none</depends>
+      <verification-ref>V-M-LINT-ADAPTERS</verification-ref>
+      <annotations>
+        <export-getLanguageAdapter PURPOSE="Resolve language adapter for a source path" />
+      </annotations>
+    </M-LINT-ADAPTERS>
+
+    <M-LINT-CONFIG NAME="LintConfig" TYPE="UTILITY" STATUS="implemented">
+      <purpose>Load and validate `.grace-lint.json` project-level config.</purpose>
+      <path>src/lint/config.ts</path>
+      <depends>none</depends>
+      <verification-ref>V-M-LINT-CONFIG</verification-ref>
+      <annotations>
+        <fn-loadGraceLintConfig PURPOSE="Load project config, emit schema-level issues if malformed" />
+      </annotations>
+    </M-LINT-CONFIG>
+
+    <M-CLI-MODULE NAME="CliModule" TYPE="CORE_LOGIC" STATUS="implemented">
+      <purpose>Implements `grace module find` and `grace module show`.</purpose>
+      <path>src/grace-module.ts</path>
+      <depends>M-QUERY-CORE</depends>
+      <verification-ref>V-M-CLI-MODULE</verification-ref>
+      <annotations>
+        <export-moduleCommand PURPOSE="citty subcommand for module navigation" />
+      </annotations>
+    </M-CLI-MODULE>
+
+    <M-CLI-FILE NAME="CliFile" TYPE="CORE_LOGIC" STATUS="implemented">
+      <purpose>Implements `grace file show` — file-local MODULE_CONTRACT, MODULE_MAP, and semantic blocks.</purpose>
+      <path>src/grace-file.ts</path>
+      <depends>M-QUERY-CORE</depends>
+      <verification-ref>V-M-CLI-FILE</verification-ref>
+      <annotations>
+        <export-fileCommand PURPOSE="citty subcommand for file-local markup inspection" />
+      </annotations>
+    </M-CLI-FILE>
+
+    <M-CLI-STATUS NAME="CliStatus" TYPE="CORE_LOGIC" STATUS="implemented">
+      <purpose>Implements `grace status` / `grace status --brief` — artifact health, module/verification counts, next action. Primary consumer: SessionStart hook injected by grace-init.</purpose>
+      <path>src/grace-status.ts</path>
+      <depends>M-STATUS-RUNTIME</depends>
+      <verification-ref>V-M-CLI-STATUS</verification-ref>
+      <annotations>
+        <export-statusCommand PURPOSE="citty subcommand for brief or full status" />
+      </annotations>
+    </M-CLI-STATUS>
+
+    <M-STATUS-RUNTIME NAME="StatusRuntime" TYPE="CORE_LOGIC" STATUS="implemented">
+      <purpose>Pure logic for status computation: artifact presence, counts, next-action heuristic, brief/full rendering.</purpose>
+      <path>src/grace-status-runtime.ts</path>
+      <depends>M-QUERY-CORE</depends>
+      <verification-ref>V-M-STATUS-RUNTIME</verification-ref>
+      <annotations>
+        <fn-collectBrief PURPOSE="Compute BriefStatus for a project root" />
+        <fn-renderBrief PURPOSE="Render BriefStatus as a <=30-line text snapshot" />
+        <fn-renderFull PURPOSE="Render BriefStatus plus module table for full status" />
+      </annotations>
+    </M-STATUS-RUNTIME>
+
+    <M-QUERY-CORE NAME="QueryCore" TYPE="DATA_LAYER" STATUS="implemented">
+      <purpose>Loads and indexes GRACE artifacts (development plan, knowledge graph, verification plan, governed files) and exposes find/resolve helpers.</purpose>
+      <path>src/query/core.ts</path>
+      <depends>M-LINT-CONFIG</depends>
+      <verification-ref>V-M-QUERY-CORE</verification-ref>
+      <annotations>
+        <fn-loadGraceArtifactIndex PURPOSE="Parse all GRACE XML docs and return a unified index" />
+        <fn-findModules PURPOSE="Search modules by id/name/path/purpose/deps" />
+        <fn-resolveModule PURPOSE="Resolve a module from id or path" />
+        <fn-resolveGovernedFile PURPOSE="Resolve a governed file from a path" />
+      </annotations>
+    </M-QUERY-CORE>
+
+    <M-QUERY-RENDER NAME="QueryRender" TYPE="UTILITY" STATUS="implemented">
+      <purpose>Text formatters for module/file query results.</purpose>
+      <path>src/query/render.ts</path>
+      <depends>M-QUERY-CORE</depends>
+      <verification-ref>V-M-QUERY-RENDER</verification-ref>
+      <annotations>
+        <fn-formatModuleFindTable PURPOSE="Render find results as a table" />
+        <fn-formatModuleText PURPOSE="Render a module record as text with optional verification excerpt" />
+        <fn-formatFileText PURPOSE="Render file-local markup" />
+      </annotations>
+    </M-QUERY-RENDER>
+
+    <M-SKILLS-CANONICAL NAME="SkillsCanonical" TYPE="UTILITY" STATUS="implemented">
+      <purpose>Canonical source of truth for the 15 shipped skills (including `using-grace`).</purpose>
+      <path>skills/grace</path>
+      <depends>none</depends>
+      <verification-ref>V-M-SKILLS-CANONICAL</verification-ref>
+      <annotations>
+        <export-grace-init PURPOSE="Bootstrap GRACE project structure; emits docs, AGENTS.md, CLAUDE.md, .claude/settings.json" />
+        <export-using-grace PURPOSE="Meta-skill; enforces GRACE activation protocol at session start" />
+        <export-grace-fix PURPOSE="Debug with the Prove-It Pattern (failing test before fix)" />
+        <export-grace-reviewer PURPOSE="5-axis integrity review with severity labels" />
+        <export-grace-multiagent-execute PURPOSE="Wave-based parallel execution with success thresholds" />
+        <export-grace-plan PURPOSE="Architectural planning with phases, checkpoints, dependency discipline" />
+        <export-grace-ask PURPOSE="Q&amp;A with progressive disclosure (4-level context hierarchy)" />
+      </annotations>
+    </M-SKILLS-CANONICAL>
+
+    <M-SKILLS-PACKAGED NAME="SkillsPackaged" TYPE="UTILITY" STATUS="implemented">
+      <purpose>Packaged mirror of canonical skills under plugins/grace/ for Claude Code marketplace distribution.</purpose>
+      <path>plugins/grace/skills/grace</path>
+      <depends>M-SKILLS-CANONICAL</depends>
+      <verification-ref>V-M-SKILLS-PACKAGED</verification-ref>
+      <annotations>
+        <export-mirror PURPOSE="Exact copy of skills/grace/* kept in sync by scripts/validate-marketplace.ts" />
+      </annotations>
+    </M-SKILLS-PACKAGED>
+
+    <M-MARKETPLACE-MANIFEST NAME="MarketplaceManifest" TYPE="INTEGRATION" STATUS="implemented">
+      <purpose>Claude Code marketplace manifest declaring the grace plugin and its 15 skills.</purpose>
+      <path>.claude-plugin/marketplace.json</path>
+      <depends>M-SKILLS-PACKAGED</depends>
+      <verification-ref>V-M-MARKETPLACE-MANIFEST</verification-ref>
+      <annotations>
+        <export-plugins PURPOSE="Shipped plugin set and skill paths" />
+      </annotations>
+    </M-MARKETPLACE-MANIFEST>
+
+    <M-VALIDATE-MARKETPLACE NAME="ValidateMarketplace" TYPE="INTEGRATION" STATUS="implemented">
+      <purpose>Script that validates marketplace packaging: canonical/packaged sync, version consistency, structure, path safety.</purpose>
+      <path>scripts/validate-marketplace.ts</path>
+      <depends>M-MARKETPLACE-MANIFEST, M-SKILLS-CANONICAL, M-SKILLS-PACKAGED</depends>
+      <verification-ref>V-M-VALIDATE-MARKETPLACE</verification-ref>
+      <annotations>
+        <export-main PURPOSE="Run all validation checks and print the PASS/FAIL report" />
+      </annotations>
+    </M-VALIDATE-MARKETPLACE>
+
+    <CrossLink from="M-CLI-ENTRY" to="M-CLI-LINT" relation="dispatches-subcommand" />
+    <CrossLink from="M-CLI-ENTRY" to="M-CLI-MODULE" relation="dispatches-subcommand" />
+    <CrossLink from="M-CLI-ENTRY" to="M-CLI-FILE" relation="dispatches-subcommand" />
+    <CrossLink from="M-CLI-ENTRY" to="M-CLI-STATUS" relation="dispatches-subcommand" />
+    <CrossLink from="M-CLI-LINT" to="M-LINT-CORE" relation="invokes" />
+    <CrossLink from="M-LINT-CORE" to="M-LINT-ADAPTERS" relation="uses" />
+    <CrossLink from="M-LINT-CORE" to="M-LINT-CONFIG" relation="uses" />
+    <CrossLink from="M-LINT-CORE" to="M-LINT-SKILL-SECTIONS" relation="uses" />
+    <CrossLink from="M-CLI-MODULE" to="M-QUERY-CORE" relation="uses" />
+    <CrossLink from="M-CLI-FILE" to="M-QUERY-CORE" relation="uses" />
+    <CrossLink from="M-CLI-STATUS" to="M-STATUS-RUNTIME" relation="delegates-to" />
+    <CrossLink from="M-STATUS-RUNTIME" to="M-QUERY-CORE" relation="uses" />
+    <CrossLink from="M-QUERY-CORE" to="M-LINT-CONFIG" relation="reads-ignored-dirs" />
+    <CrossLink from="M-QUERY-RENDER" to="M-QUERY-CORE" relation="formats-types-from" />
+    <CrossLink from="M-SKILLS-PACKAGED" to="M-SKILLS-CANONICAL" relation="mirror-of" />
+    <CrossLink from="M-MARKETPLACE-MANIFEST" to="M-SKILLS-PACKAGED" relation="declares-skills" />
+    <CrossLink from="M-VALIDATE-MARKETPLACE" to="M-MARKETPLACE-MANIFEST" relation="validates" />
+    <CrossLink from="M-VALIDATE-MARKETPLACE" to="M-SKILLS-CANONICAL" relation="validates-sync-with" />
+    <CrossLink from="M-VALIDATE-MARKETPLACE" to="M-SKILLS-PACKAGED" relation="validates-sync-with" />
+  </Project>
+</KnowledgeGraph>

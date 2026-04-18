@@ -1,0 +1,255 @@
+<VerificationPlan VERSION="3.7.0">
+  <GlobalPolicy>
+    <log-format>[Module][function][BLOCK_NAME] message</log-format>
+    <deterministic-first>true</deterministic-first>
+    <module-level-focus>Bun test suites for CLI modules; pure-function tests for status-runtime and lint helpers.</module-level-focus>
+    <wave-level-focus>`bun test` across all test files; `bun run ./scripts/validate-marketplace.ts`.</wave-level-focus>
+    <phase-level-focus>`bun run grace lint --path . --allow-missing-docs` plus smoke run of `bun run ./src/grace.ts status --brief --path .`.</phase-level-focus>
+    <redaction>No secrets are handled by any module; nothing to redact.</redaction>
+  </GlobalPolicy>
+
+  <ModuleVerification>
+    <V-M-CLI-LINT MODULE="M-CLI-LINT" PRIORITY="high">
+      <test-files>
+        <file>src/grace-lint.test.ts</file>
+      </test-files>
+      <module-checks>
+        <check-1>bun test src/grace-lint.test.ts</check-1>
+        <check-2>bun run grace lint --path . --allow-missing-docs</check-2>
+      </module-checks>
+      <scenarios>
+        <scenario-1 kind="success">`grace lint` produces zero errors on a clean GRACE project.</scenario-1>
+        <scenario-2 kind="failure">Missing verification entry referenced by graph is reported as error.</scenario-2>
+      </scenarios>
+    </V-M-CLI-LINT>
+
+    <V-M-CLI-ENTRY MODULE="M-CLI-ENTRY" PRIORITY="medium">
+      <test-files>
+        <file>covered indirectly by subcommand tests</file>
+      </test-files>
+      <module-checks>
+        <check-1>bun run ./src/grace.ts --help</check-1>
+      </module-checks>
+      <scenarios>
+        <scenario-1 kind="success">Root --help lists all four subcommands (lint, module, file, status).</scenario-1>
+      </scenarios>
+    </V-M-CLI-ENTRY>
+
+    <V-M-CLI-STATUS MODULE="M-CLI-STATUS" PRIORITY="high">
+      <test-files>
+        <file>src/grace-status.test.ts</file>
+      </test-files>
+      <module-checks>
+        <check-1>bun test src/grace-status.test.ts</check-1>
+        <check-2>bun run ./src/grace.ts status --brief --path .</check-2>
+      </module-checks>
+      <scenarios>
+        <scenario-1 kind="success">--brief on a fully-initialized project prints &lt;=30 lines with module count, verification coverage, next action.</scenario-1>
+        <scenario-2 kind="failure">Project missing required docs yields "Initialized: NO" and a next-action pointing to `grace-init`.</scenario-2>
+        <scenario-3 kind="success">--format json emits machine-readable BriefStatus.</scenario-3>
+      </scenarios>
+    </V-M-CLI-STATUS>
+
+    <V-M-STATUS-RUNTIME MODULE="M-STATUS-RUNTIME" PRIORITY="high">
+      <test-files>
+        <file>src/grace-status.test.ts</file>
+      </test-files>
+      <module-checks>
+        <check-1>bun test src/grace-status.test.ts</check-1>
+      </module-checks>
+      <scenarios>
+        <scenario-1 kind="success">`collectBrief` on initialized project returns correct moduleCount, verificationCount, coveredModules.</scenario-1>
+        <scenario-2 kind="failure">Missing required docs -&gt; initialized=false, missingRequired populated, next action references `grace-init`.</scenario-2>
+        <scenario-3 kind="success">CLAUDE.md missing promotes "CLAUDE.md missing" into nextAction.</scenario-3>
+        <scenario-4 kind="success">Coverage &lt; 100% demotes nextAction to grace-verification.</scenario-4>
+      </scenarios>
+      <required-log-markers>
+        <marker-1>None; this is pure computation.</marker-1>
+      </required-log-markers>
+    </V-M-STATUS-RUNTIME>
+
+    <V-M-LINT-SKILL-SECTIONS MODULE="M-LINT-SKILL-SECTIONS" PRIORITY="high">
+      <test-files>
+        <file>src/lint-skill-sections.test.ts</file>
+      </test-files>
+      <module-checks>
+        <check-1>bun test src/lint-skill-sections.test.ts</check-1>
+      </module-checks>
+      <scenarios>
+        <scenario-1 kind="success">Complete skill emits no issues.</scenario-1>
+        <scenario-2 kind="failure">Skill with no sections yields three warnings (rationalizations, when-not, verification).</scenario-2>
+        <scenario-3 kind="success">Partial skill yields only warnings for the missing sections.</scenario-3>
+        <scenario-4 kind="success">Scans plugins/ mirror in addition to skills/.</scenario-4>
+        <scenario-5 kind="success">Project without skills/ directory returns no issues (no crash).</scenario-5>
+      </scenarios>
+    </V-M-LINT-SKILL-SECTIONS>
+
+    <V-M-LINT-CORE MODULE="M-LINT-CORE" PRIORITY="high">
+      <test-files>
+        <file>src/grace-lint.test.ts</file>
+      </test-files>
+      <module-checks>
+        <check-1>bun test src/grace-lint.test.ts</check-1>
+      </module-checks>
+      <scenarios>
+        <scenario-1 kind="success">Unique-tag XML passes.</scenario-1>
+        <scenario-2 kind="failure">Generic Module tag with ID attribute flagged.</scenario-2>
+        <scenario-3 kind="failure">Graph references V-M-xxx not in verification-plan -&gt; error.</scenario-3>
+      </scenarios>
+    </V-M-LINT-CORE>
+
+    <V-M-LINT-ADAPTERS MODULE="M-LINT-ADAPTERS" PRIORITY="medium">
+      <test-files>
+        <file>src/grace-lint.test.ts</file>
+      </test-files>
+      <module-checks>
+        <check-1>bun test src/grace-lint.test.ts</check-1>
+      </module-checks>
+      <scenarios>
+        <scenario-1 kind="success">TypeScript adapter resolves exports via AST.</scenario-1>
+        <scenario-2 kind="success">Python adapter detects exports via regex.</scenario-2>
+      </scenarios>
+    </V-M-LINT-ADAPTERS>
+
+    <V-M-LINT-CONFIG MODULE="M-LINT-CONFIG" PRIORITY="low">
+      <test-files>
+        <file>src/grace-lint.test.ts</file>
+      </test-files>
+      <module-checks>
+        <check-1>bun test src/grace-lint.test.ts</check-1>
+      </module-checks>
+      <scenarios>
+        <scenario-1 kind="success">Valid .grace-lint.json parses.</scenario-1>
+        <scenario-2 kind="failure">Unknown keys produce schema-level error.</scenario-2>
+      </scenarios>
+    </V-M-LINT-CONFIG>
+
+    <V-M-CLI-MODULE MODULE="M-CLI-MODULE" PRIORITY="high">
+      <test-files>
+        <file>src/grace-query.test.ts</file>
+      </test-files>
+      <module-checks>
+        <check-1>bun test src/grace-query.test.ts</check-1>
+      </module-checks>
+      <scenarios>
+        <scenario-1 kind="success">`find` resolves modules by name, path, dependency, verification ref.</scenario-1>
+        <scenario-2 kind="success">`show` returns a module record with verification excerpt when requested.</scenario-2>
+      </scenarios>
+    </V-M-CLI-MODULE>
+
+    <V-M-CLI-FILE MODULE="M-CLI-FILE" PRIORITY="high">
+      <test-files>
+        <file>src/grace-query.test.ts</file>
+      </test-files>
+      <module-checks>
+        <check-1>bun test src/grace-query.test.ts</check-1>
+      </module-checks>
+      <scenarios>
+        <scenario-1 kind="success">`file show` returns MODULE_CONTRACT, MODULE_MAP, blocks.</scenario-1>
+      </scenarios>
+    </V-M-CLI-FILE>
+
+    <V-M-QUERY-CORE MODULE="M-QUERY-CORE" PRIORITY="high">
+      <test-files>
+        <file>src/grace-query.test.ts</file>
+      </test-files>
+      <module-checks>
+        <check-1>bun test src/grace-query.test.ts</check-1>
+      </module-checks>
+      <scenarios>
+        <scenario-1 kind="success">loadGraceArtifactIndex returns correct modules and verifications.</scenario-1>
+        <scenario-2 kind="success">findModules with type filter narrows results.</scenario-2>
+      </scenarios>
+    </V-M-QUERY-CORE>
+
+    <V-M-QUERY-RENDER MODULE="M-QUERY-RENDER" PRIORITY="medium">
+      <test-files>
+        <file>src/grace-query.test.ts</file>
+      </test-files>
+      <module-checks>
+        <check-1>bun test src/grace-query.test.ts</check-1>
+      </module-checks>
+      <scenarios>
+        <scenario-1 kind="success">formatModuleText produces readable output.</scenario-1>
+      </scenarios>
+    </V-M-QUERY-RENDER>
+
+    <V-M-SKILLS-CANONICAL MODULE="M-SKILLS-CANONICAL" PRIORITY="high">
+      <test-files>
+        <file>none (content artifact)</file>
+      </test-files>
+      <module-checks>
+        <check-1>bun run grace lint --path . --allow-missing-docs</check-1>
+      </module-checks>
+      <scenarios>
+        <scenario-1 kind="success">Every SKILL.md contains three required sections (Common Rationalizations, When NOT to Use, Verification).</scenario-1>
+        <scenario-2 kind="success">Every SKILL.md has valid YAML frontmatter.</scenario-2>
+      </scenarios>
+    </V-M-SKILLS-CANONICAL>
+
+    <V-M-SKILLS-PACKAGED MODULE="M-SKILLS-PACKAGED" PRIORITY="high">
+      <test-files>
+        <file>none (content artifact)</file>
+      </test-files>
+      <module-checks>
+        <check-1>bun run ./scripts/validate-marketplace.ts</check-1>
+      </module-checks>
+      <scenarios>
+        <scenario-1 kind="success">plugins/grace/skills/grace/* matches skills/grace/* byte-for-byte.</scenario-1>
+      </scenarios>
+    </V-M-SKILLS-PACKAGED>
+
+    <V-M-MARKETPLACE-MANIFEST MODULE="M-MARKETPLACE-MANIFEST" PRIORITY="high">
+      <test-files>
+        <file>none (content artifact)</file>
+      </test-files>
+      <module-checks>
+        <check-1>bun run ./scripts/validate-marketplace.ts</check-1>
+      </module-checks>
+      <scenarios>
+        <scenario-1 kind="success">marketplace.json version matches README, package.json, openpackage.yml, plugin.json.</scenario-1>
+        <scenario-2 kind="success">Each declared skill path exists in plugins/grace/skills/grace/.</scenario-2>
+        <scenario-3 kind="success">using-grace is declared in the shipped skill list.</scenario-3>
+      </scenarios>
+    </V-M-MARKETPLACE-MANIFEST>
+
+    <V-M-VALIDATE-MARKETPLACE MODULE="M-VALIDATE-MARKETPLACE" PRIORITY="high">
+      <test-files>
+        <file>manual: invoke against self</file>
+      </test-files>
+      <module-checks>
+        <check-1>bun run ./scripts/validate-marketplace.ts</check-1>
+      </module-checks>
+      <scenarios>
+        <scenario-1 kind="success">Reports PASS for a clean repo.</scenario-1>
+        <scenario-2 kind="failure">Reports FAIL when canonical and packaged drift apart.</scenario-2>
+      </scenarios>
+    </V-M-VALIDATE-MARKETPLACE>
+  </ModuleVerification>
+
+  <PhaseGates>
+    <Gate-Phase-4 PHASE="Phase-4">
+      <goal>CLI support fully tested and integrated.</goal>
+      <commands>
+        <command-1>bun test</command-1>
+        <command-2>bun run ./scripts/validate-marketplace.ts</command-2>
+      </commands>
+      <required-evidence>
+        <evidence-1>All status-runtime and lint-skill-sections tests pass.</evidence-1>
+        <evidence-2>validate-marketplace reports PASS.</evidence-2>
+      </required-evidence>
+    </Gate-Phase-4>
+
+    <Gate-Phase-5 PHASE="Phase-5">
+      <goal>Reference project passes self-lint.</goal>
+      <commands>
+        <command-1>bun run grace lint --path . --allow-missing-docs</command-1>
+        <command-2>bun run ./src/grace.ts status --brief --path .</command-2>
+      </commands>
+      <required-evidence>
+        <evidence-1>Lint reports PASS (warnings allowed).</evidence-1>
+        <evidence-2>Status reports Initialized: YES with non-zero moduleCount.</evidence-2>
+      </required-evidence>
+    </Gate-Phase-5>
+  </PhaseGates>
+</VerificationPlan>
