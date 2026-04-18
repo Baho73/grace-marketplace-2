@@ -44,6 +44,23 @@ Exit codes from `tick`:
 - `42` — `BUDGET_EXHAUSTED` (time expired)
 - `43` — no active session
 - `44` — session was stopped
+- `45` — Telegram sendMessage failed (only from `ask`)
+- `46` — `.grace-afk.json` missing (only from `ask` / `check`)
+- `2`  — bad arguments (unknown --class, missing --context, etc.)
+
+### Windows-specific note on exit codes
+
+On Windows, if the agent invokes `bun run ./src/grace.ts afk tick` via a shell
+wrapper, `bun run` can squash custom exit codes into `1` or `255`. Two defences:
+
+1. Prefer invoking `bun <file>` directly (no `run` verb) when spawning subprocesses
+   from the harness.
+2. Also parse the first line of stderr as a fallback — `tick` prints the reason
+   before exiting (`Budget exhausted`, `no active session`, `stopped`). If the
+   numeric code is squashed to 1/255, the stderr line still disambiguates.
+
+The agent must NOT assume a non-zero exit is always `BUDGET_EXHAUSTED`. Check the
+value first; if it is 1 or 255, read stderr to disambiguate before acting.
 
 ## Startup Protocol
 
