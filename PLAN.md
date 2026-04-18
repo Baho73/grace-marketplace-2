@@ -313,7 +313,12 @@ SKILL.md предписывает: начинать с Level 1, повышать
 
 **Отдельный brainstorm-сессии требуют:** eval harness design, budget-controls implementation, archive schema, safety boundaries.
 
-### PR-3: `grace-afk` — harness для автономной работы «пока пользователь ушёл»
+### PR-3: `grace-afk` — harness для автономной работы «пока пользователь ушёл» ✅ РЕАЛИЗОВАНО
+
+**Статус:** shipped в ветке `feature/grace-afk` (от тега `hardening-pass-1-tip`).
+**Зависимость от PR-2 `grace-evolve` снята:** uncertain-путь теперь ведёт не в `grace-evolve`, а в `deferred.md` (или Telegram escalation, если это one-way door). PR-2 остаётся полезным future work, но не блокирует PR-3.
+
+**Ключевое отличие от исходного дизайна:** budget enforcement перенесён из LLM-skill в **CLI** (по ревью). `grace afk tick` exits 42/43/44 — агент не может рационализировать просрочку.
 
 **Мотивация:** пользователь ушёл на обед / лёг спать / улетел — Claude должен не простаивать, а двигать план вперёд, принимая решения от имени пользователя в очерченных границах. При реально неразрешимом вопросе — эскалировать в Telegram коротким сообщением, не простынёй. Hardening-pass-1 был ручной прототип этого workflow (пользователь ушёл AFK на ~2h, вернулся к готовому PR).
 
@@ -437,34 +442,42 @@ Recommended next:
   3. Delete afk branch after merge
 ```
 
-**Зависимости:**
-- PR-2 `grace-evolve` (нужен как bridge для uncertainty)
-- hardening-pass-1 (wave thresholds в `grace-multiagent-execute`, progressive disclosure в `grace-ask`)
-- MCP telegram (или аналогичный транспорт) — опционально, fallback работает без него
+**Зависимости (итоговые, shipped):**
+- hardening-pass-1 (wave thresholds в `grace-multiagent-execute`, progressive disclosure в `grace-ask`) ✓
+- Telegram Bot API (не MCP — native fetch с dependency-injected транспортом для тестов) ✓
+- PR-2 `grace-evolve` изначально планировался как bridge для uncertainty — **снят**, заменён на fallback в `deferred.md`
 
-**Ветка:** `feature/grace-afk` (после `feature/grace-evolve`).
+**Ветка:** `feature/grace-afk` (ответвлена от `hardening-pass-1-tip`, 3 основных + N polish коммитов).
 
-**Отдельный brainstorm-сессии требуют:**
-- Точная калибровка «uncertainty threshold» → evolve (ложно-уверенные решения = главный риск)
-- Полный hard-deny list команд для safety layer
-- Протокол `STOP` kill switch (что именно сохраняется, как очищается состояние)
-- Формат `grace-ask-human` (может быть отдельный sub-skill)
+**Будущие уточнения (не блокируют merge):**
+- Точная калибровка «uncertainty threshold» → `grace-evolve` когда PR-2 приземлится
+- Полный hard-deny list команд для safety layer — документирован в `grace-afk/SKILL.md`, enforcement на уровне subprocess-sandbox — отдельная задача
+- Протокол `STOP` kill switch — реализован: `grace afk stop --reason ...`, агент обязан exit'нуть loop по non-zero tick
 
 ### PR-4+: backlog
 
+**Из ревью feature/grace-afk:**
+- **Git pre-commit hook** с `grace lint` — как жёсткий gate против коммитов с broken markup или не-обновлённым графом. Более дёшев чем PreToolUse.
+- **Автоматический rollback** в `grace-multiagent-execute`: если CLI фиксирует RED threshold, сам выполняет `git reset --hard` вместо того чтобы надеяться на дисциплину агента.
+- **`grace-doctor`** / `grace lint --autofix-dry-run`: self-healing, когда lint находит сломанный граф — предложить JSON-патчи для восстановления.
+- **PreToolUse hook** на Edit/Write — опционально, если hook'а pre-commit недостаточно.
+- **Существующие src/ файлы без GRACE markup** (query/core.ts, lint/core.ts и т.д.) — задним числом добавить для полного dog-food.
+
+**Ранее запланированное:**
+- PR-2 `grace-evolve` — evolutionary search когда понадобится (сейчас fallback defer работает)
 - CLI: адаптер для Java/Go/Rust (role-aware lint)
 - PCAM semver: версионирование контрактов с breaking-change signaling
 - Knowledge-graph partitioning для монолитов (>1000 модулей)
-- `grace-ask-human` как standalone скил (если Telegram-обёртка вырастет за пределы PR-3)
 
 ---
 
 ## Открытые вопросы к пользователю
 
-1. **Именование**: устраивает `using-grace` для meta-скила или переименовать (`grace-bootstrap`, `grace-activator`)?
-2. **Hook-agressiveness**: делаем только SessionStart (мягкий) или добавляем PreToolUse hook для блокировки Edit/Write без загруженного GRACE-контекста (жёсткий)?
-3. **Фаза 5**: делать reference-проект в том же PR или отдельным follow-up?
-4. **Upstream-трекинг**: добавить `upstream` remote на оригинал Baho73 для будущих update'ов?
-5. **`grace-evolve` budget**: устраивают defaults 20% weekly / 100% 5h / adaptive по remaining, или нужны другие пороги?
-6. **`grace-afk` uncertainty threshold**: чем точно отличается «я уверен, действую» от «неуверен, в evolve»? Требует калибровки — обсудить в отдельной сессии перед имплементацией PR-3.
-7. **`grace-afk` kill-switch protocol**: достаточно `STOP` в Telegram или нужен web-dashboard для интерактивного управления?
+(Q1 resolved — переименовано в `grace-bootstrap` в ветке grace-afk.)
+(Q3 resolved — reference-проект сделан в hardening-pass-1 как phase 5; follow-up ревью отметило это как компромисс, запомнено для следующих PR.)
+(Q6 resolved — uncertainty-путь в `grace-afk` ведёт в `deferred.md` пока evolve не появится.)
+(Q7 resolved — STOP через Telegram + `grace afk stop --reason` реализовано.)
+
+1. **Hook-agressiveness (ещё актуально):** добавлять ли pre-commit git hook с `grace lint`, или оставить только SessionStart + активационный protocol? Рекомендация ревью — да, добавлять, как **backlog item**.
+2. **Upstream-трекинг:** добавить `upstream` remote на оригинал Baho73 для будущих update'ов?
+3. **`grace-evolve` budget (когда приземлится PR-2):** устраивают defaults 20% weekly / 100% 5h / adaptive по remaining?

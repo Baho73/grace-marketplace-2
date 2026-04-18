@@ -22,7 +22,7 @@ The CLI generates this from your input to `grace afk ask`. You pass:
 
 - `--title "<5-10 word decision title>"`
 - `--context "<one sentence — the situation>"`
-- `--options "A:<1 line>|B:<1 line>|C:<1 line>"` (2-5 options)
+- `--options "A:<1 line>;B:<1 line>;C:<1 line>"` (2-5 options). Use `;` as a separator — it is safer than `|` across Windows shells.
 - `--mypick <letter>` — the option you'd pick if forced
 - `--confidence <0-100>` — your percent confidence in that pick
 
@@ -47,7 +47,7 @@ grace afk ask \
   --path . \
   --title "Merge afk branch into main" \
   --context "Plan step-12 complete, 14 commits, all gates green; ready to merge" \
-  --options "A:merge to main|B:open PR for review|C:leave as afk branch" \
+  --options "A:merge to main;B:open PR for review;C:leave as afk branch" \
   --mypick B \
   --confidence 80
 ```

@@ -277,16 +277,21 @@
       </scenarios>
     </V-M-AFK-JOURNAL>
 
-    <V-M-AFK-CONFIG MODULE="M-AFK-CONFIG" PRIORITY="low">
+    <V-M-AFK-CONFIG MODULE="M-AFK-CONFIG" PRIORITY="medium">
       <test-files>
-        <file>covered indirectly via afk-cli.test.ts</file>
+        <file>src/afk-config.test.ts</file>
       </test-files>
       <module-checks>
-        <check-1>bun test src/afk-cli.test.ts</check-1>
+        <check-1>bun test src/afk-config.test.ts</check-1>
       </module-checks>
       <scenarios>
-        <scenario-1 kind="success">loadAfkConfig returns null + error when file is missing.</scenario-1>
-        <scenario-2 kind="success">getTelegram returns null if config lacks bot credentials.</scenario-2>
+        <scenario-1 kind="success">loadAfkConfig returns null + descriptive error when file is missing.</scenario-1>
+        <scenario-2 kind="failure">loadAfkConfig returns null + error on invalid JSON.</scenario-2>
+        <scenario-3 kind="success">loadAfkConfig parses a valid file with telegram and autoStop sections.</scenario-3>
+        <scenario-4 kind="success">getTelegram returns null if config lacks either botToken or chatId.</scenario-4>
+        <scenario-5 kind="success">getTelegram returns the credentials when both are present.</scenario-5>
+        <scenario-6 kind="success">getMaxEscalations defaults to 3 and honors the configured value.</scenario-6>
+        <scenario-7 kind="success">getMaxEscalations falls back when configured value is negative or non-finite.</scenario-7>
       </scenarios>
     </V-M-AFK-CONFIG>
 

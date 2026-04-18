@@ -195,18 +195,28 @@
     </M-QUERY-RENDER>
 
     <M-SKILLS-CANONICAL NAME="SkillsCanonical" TYPE="UTILITY" STATUS="implemented">
-      <purpose>Canonical source of truth for the shipped skills (including `grace-bootstrap`).</purpose>
+      <purpose>Canonical source of truth for all 17 shipped skills. Mirrored byte-for-byte into plugins/grace/skills/grace by scripts/validate-marketplace.ts.</purpose>
       <path>skills/grace</path>
       <depends>none</depends>
       <verification-ref>V-M-SKILLS-CANONICAL</verification-ref>
       <annotations>
-        <export-grace-init PURPOSE="Bootstrap GRACE project structure; emits docs, AGENTS.md, CLAUDE.md, .claude/settings.json" />
-        <export-grace-bootstrap PURPOSE="Meta-skill; enforces GRACE activation protocol at session start" />
-        <export-grace-fix PURPOSE="Debug with the Prove-It Pattern (failing test before fix)" />
-        <export-grace-reviewer PURPOSE="5-axis integrity review with severity labels" />
-        <export-grace-multiagent-execute PURPOSE="Wave-based parallel execution with success thresholds" />
+        <export-grace-bootstrap PURPOSE="Meta-skill; enforces GRACE activation protocol at session start (subagent fast-track included)" />
+        <export-grace-init PURPOSE="Bootstrap GRACE project structure; emits docs, AGENTS.md, CLAUDE.md, .claude/settings.json, optionally .grace-afk.json" />
         <export-grace-plan PURPOSE="Architectural planning with phases, checkpoints, dependency discipline" />
+        <export-grace-execute PURPOSE="Sequential execution of plan steps" />
+        <export-grace-multiagent-execute PURPOSE="Wave-based parallel execution with success thresholds and pre-wave checklist" />
+        <export-grace-verification PURPOSE="Design tests, traces, and log-driven evidence" />
+        <export-grace-fix PURPOSE="Debug with the Prove-It Pattern (failing test before fix)" />
+        <export-grace-refactor PURPOSE="Safe rename/move/split/merge with graph + verification sync" />
+        <export-grace-refresh PURPOSE="Targeted or full artifact refresh when drift is suspected" />
+        <export-grace-reviewer PURPOSE="5-axis integrity review with severity labels" />
+        <export-grace-status PURPOSE="Project health snapshot (consumed by SessionStart hook via grace CLI)" />
         <export-grace-ask PURPOSE="Q&amp;A with progressive disclosure (4-level context hierarchy)" />
+        <export-grace-cli PURPOSE="Quick reference for grace-cli subcommands" />
+        <export-grace-explainer PURPOSE="Methodology explanation" />
+        <export-grace-setup-subagents PURPOSE="Scaffold worker/reviewer presets for Claude Code, OpenCode, Codex" />
+        <export-grace-afk PURPOSE="Autonomous harness; CLI enforces time budget, agent polls grace afk tick" />
+        <export-grace-ask-human PURPOSE="Short-form Telegram escalation wrapper for one-way-door decisions" />
       </annotations>
     </M-SKILLS-CANONICAL>
 
@@ -244,6 +254,7 @@
     <CrossLink from="M-CLI-ENTRY" to="M-CLI-MODULE" relation="dispatches-subcommand" />
     <CrossLink from="M-CLI-ENTRY" to="M-CLI-FILE" relation="dispatches-subcommand" />
     <CrossLink from="M-CLI-ENTRY" to="M-CLI-STATUS" relation="dispatches-subcommand" />
+    <CrossLink from="M-CLI-ENTRY" to="M-CLI-AFK" relation="dispatches-subcommand" />
     <CrossLink from="M-CLI-LINT" to="M-LINT-CORE" relation="invokes" />
     <CrossLink from="M-LINT-CORE" to="M-LINT-ADAPTERS" relation="uses" />
     <CrossLink from="M-LINT-CORE" to="M-LINT-CONFIG" relation="uses" />

@@ -31,7 +31,7 @@ Every subcommand below takes `--path <project-root>` (defaults to `.`).
 |---|---|
 | `grace afk start <hours> [<budget%>] [--checkpoint <min>]` | Initialize a session; writes `docs/afk-sessions/<id>/state.json` with `expiresAt`. |
 | `grace afk tick` | CLI-side active-session check. Non-zero exit = session over. |
-| `grace afk ask --title ... --context ... --options "A:...|B:..." --mypick B --confidence 60` | Send a Telegram escalation; returns `{correlationId, messageId}`. |
+| `grace afk ask --title ... --context ... --options "A:...;B:..." --mypick B --confidence 60` | Send a Telegram escalation; returns `{correlationId, messageId}`. Use `;` as a separator (safer across Windows shells) or `\|`. |
 | `grace afk check --correlation <id> --messageid <n> [--offset <o>]` | Poll Telegram; returns `{status, verb, raw, nextOffset}`. |
 | `grace afk journal --class <c> --title ... --rationale ... --outcome ...` | Append to `decisions.md`. |
 | `grace afk defer --question ... --contextLine ...` | Append to `deferred.md`. |

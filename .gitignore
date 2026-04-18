@@ -2,3 +2,7 @@ node_modules/
 !docs
 !AGENTS.md
 !CLAUDE.md
+
+# grace-afk Telegram credentials — never commit
+.grace-afk.json
+docs/afk-sessions/
