@@ -1,46 +1,147 @@
 ---
 name: grace-ask
-description: "Answer a question about a GRACE project using full project context. Use when the user has a question about the codebase, architecture, modules, or implementation — loads all GRACE artifacts, navigates the knowledge graph, and provides a grounded answer with citations."
+description: "Answer a question about a GRACE project using progressive context disclosure. Use when the user has a question about the codebase, architecture, modules, or implementation — starts with the cheapest context layer, escalates ONLY when needed, and provides a grounded answer with citations."
 ---
 
-Answer a question about the current GRACE project.
+Answer a question about the current GRACE project using the **smallest context that still answers
+correctly**. Naïve loading of every XML artifact and every governed file wastes tokens and buries
+the answer in noise.
+
+## Context Hierarchy (Progressive Disclosure)
+
+Load context in escalating levels. Announce the level you are loading in one line in your working
+notes: `"Loading Level 2 context: docs/development-plan.xml scope = Phase-1"`. Do not silently
+escalate.
+
+### Level 1 — ALWAYS (cheap, fixed cost)
+Every `grace-ask` invocation loads exactly this set:
+
+- `AGENTS.md` — conventions, keywords, stack
+- `CLAUDE.md` — project-specific activation rules
+- `grace status --path . --brief` output (if the CLI is installed) — single-screen health snapshot
+
+This is enough to:
+- route the question to the right module family
+- identify the stack and its constraints
+- know whether the project is in a clean or drift state
+
+### Level 2 — PER-FEATURE (load only the relevant slice)
+Load only when Level 1 does not answer the question.
+
+- Relevant section of `docs/development-plan.xml` (one phase, one module, one dataflow)
+- Relevant section of `docs/knowledge-graph.xml` (one `M-xxx` plus its direct CrossLinks)
+- `grace module show M-XXX --path . --with verification` (if CLI available)
+
+Rule: scope by name. If the question is about M-AUTH, load only M-AUTH plus its one-hop neighbors.
+Do NOT load the whole graph.
+
+### Level 3 — PER-TASK (deep dive on a specific code path)
+Load only when Level 2 does not answer the question.
+
+- Governed file(s) for the module under discussion
+- Specific `START_BLOCK_*` / `END_BLOCK_*` ranges, not the whole file
+- Matching V-M-xxx entry in `docs/verification-plan.xml`
+- Tests and log markers attached to the block in question
+- `grace file show <path> --path . --contracts --blocks` (if CLI available)
+
+Rule: read blocks, not whole files. If a function's CONTRACT is enough, do NOT read its implementation.
+
+### Level 4 — ON DEMAND (expensive, avoid)
+Load only when Level 3 is insufficient.
+
+- Full `docs/verification-plan.xml`
+- `docs/operational-packets.xml` (canonical packet, delta, failure-handoff shapes)
+- `docs/requirements.xml` (use cases, requirements)
+- `docs/technology.xml` (stack, tooling, observability)
+- Full repository scan (`grace lint --path .` for structural anomalies)
+
+Rule: Level 4 is for cross-cutting or methodology questions ("how is verification organized across
+the project?"), not for specific-module questions.
 
 ## Process
 
-### Step 1: Load Project Context
-Read the following files (skip any that don't exist):
-1. `AGENTS.md` — project principles and conventions
-2. `docs/knowledge-graph.xml` — module map, dependencies, exports
-3. `docs/requirements.xml` — use cases and requirements
-4. `docs/technology.xml` — stack, runtime, libraries
-5. `docs/development-plan.xml` — phases, modules, contracts
-6. `docs/verification-plan.xml` — tests, traces, log markers, and execution gates
-7. `docs/operational-packets.xml` — canonical packet, delta, and failure handoff shapes
+### Step 1: Load Level 1
+Read `AGENTS.md` and `CLAUDE.md`. If `grace` CLI is installed, run `grace status --brief`. Announce:
+`"Level 1 loaded."`
 
-### Step 2: Identify Relevant Modules
-Based on the question, find the most relevant modules:
-1. Use the knowledge graph to locate modules related to the question
-2. Follow CrossLinks to find connected modules
-3. Read MODULE_CONTRACTs of relevant modules for detailed context
-4. Read matching verification entries when the question is about behavior, failure modes, or testing
+### Step 2: Decide if Level 1 Is Enough
+If the answer is about conventions, stack, or project health — stop here. Answer and cite the
+Level 1 sources.
 
-If the optional `grace` CLI is available, you may use:
-- `grace module find <query> --path <project-root>` to resolve module IDs from names, paths, dependencies, or verification refs
-- `grace module show M-XXX --path <project-root> --with verification` to pull the shared/public module snapshot
-- `grace file show <path> --path <project-root> --contracts --blocks` to pull file-local/private context for the implementation details
+If the answer requires specific modules or behavior — escalate to Level 2.
 
-### Step 3: Dive Into Code If Needed
-If the question is about specific behavior or implementation:
-1. Use MODULE_MAP to locate relevant functions/blocks
-2. Read the specific START_BLOCK/END_BLOCK sections
-3. Read function CONTRACTs for intent vs implementation details
-4. Read nearby tests or log-marker assertions when they are the strongest evidence for expected behavior
+### Step 3: Load Level 2 (Scoped)
+Identify the smallest set of modules that could contain the answer. Use
+`grace module find <query>` if available — it is cheaper than reading the XML by hand. Pull the
+relevant `M-xxx` entries from the graph and plan, plus their direct CrossLinks.
 
-### Step 4: Answer
-Provide a clear, concise answer grounded in the actual project artifacts. Always cite which files/modules/blocks your answer is based on.
+Announce: `"Level 2 loaded: M-XXX, M-YYY."`
 
-### Important
-- Never guess — if the information isn't in the project artifacts, say so
-- If the question reveals a gap in documentation or contracts, mention it
-- If the question reveals a gap in tests, traces, or verification docs, mention it
-- If the answer requires changes to the project, suggest the appropriate `$grace-*` skill
+### Step 4: Decide if Level 2 Is Enough
+If the answer is about architecture, contracts, or dependencies — stop here. Answer and cite the
+Level 1–2 sources.
+
+If the answer requires specific implementation behavior — escalate to Level 3.
+
+### Step 5: Load Level 3 (Block-Scoped)
+For each governed file in scope:
+- Read the MODULE_CONTRACT and MODULE_MAP (header of the file)
+- Jump to the relevant `START_BLOCK_*` and read ONLY that block plus the function CONTRACT that contains it
+- Read the matching V-M-xxx entry
+
+Announce: `"Level 3 loaded: path/to/file.ts::BLOCK_NAME, V-M-XXX."`
+
+### Step 6: Decide if Level 3 Is Enough
+Most implementation questions stop here. Escalate to Level 4 ONLY for cross-cutting or methodology
+questions.
+
+### Step 7: Level 4 (Only If Justified)
+Load additional artifacts only when Level 3 cannot answer. Explicitly state why: `"Escalating to
+Level 4 because the question spans verification policy across all modules."`
+
+### Step 8: Answer
+Provide a clear, concise answer grounded in the actual project artifacts. Cite which files /
+modules / blocks your answer is based on using `path:line` references. Close with the context
+level at which you stopped: `"Answered at Level 2."`
+
+## Common Rationalizations
+
+| Rationalization | Reality |
+|---|---|
+| "Load everything to be safe" | Loading everything buries the signal. Scope to the smallest answer-bearing slice. |
+| "Level 1 is too little, skip to Level 3" | Often Level 1 is enough — you learn by trying. Skipping hides the efficient path. |
+| "Announcing the level is bureaucratic" | The announcement is a cost-tracking signal. It tells the user (and future-you) why the token bill was X. |
+| "One file read is cheap, skip the block scoping" | On a multi-thousand-line file, reading the block is 10x cheaper than reading the file. Do it. |
+| "CLI is optional, read the XML by hand" | The CLI is 10-100x cheaper for scoped queries. Use it when available. |
+| "Cite generically: 'per the plan'" | Specific citations (`development-plan.xml#M-AUTH`) are verifiable. Generic citations rot. |
+
+## Red Flags
+
+- You loaded Level 4 without having exhausted Levels 1–3 first.
+- You read a full governed file without scoping to the relevant block.
+- Your answer has no citations.
+- Your answer relies on "I remember" instead of artifact evidence.
+- You loaded the whole knowledge graph to answer a single-module question.
+
+## When NOT to Use
+
+- The user wants to MODIFY code — route to `$grace-fix`, `$grace-refactor`, or `$grace-execute`.
+- The user is asking a GRACE-methodology question ("how does PCAM work?") — route to `$grace-explainer`.
+- The project is not GRACE-managed yet — the artifacts do not exist.
+- You already have a complete answer from a previous turn in this session and the project has not changed.
+
+## Important
+
+- Never guess — if the information is not in the project artifacts, say so.
+- If the question reveals a gap in documentation or contracts, mention it as a follow-up.
+- If the question reveals a gap in tests, traces, or verification docs, mention it as a follow-up.
+- If the answer requires changes to the project, suggest the appropriate `$grace-*` skill.
+
+## Verification
+
+Before finalizing the answer, confirm:
+
+- [ ] The highest context level loaded is announced (verification: the reply contains `"Answered at Level N"`)
+- [ ] Every fact in the answer cites a specific `path` or `M-xxx` (verification: no bare claims)
+- [ ] You did not escalate past the level actually needed (verification: check that each higher level was justified in one sentence)
+- [ ] If information was missing from artifacts, the gap is named as a follow-up

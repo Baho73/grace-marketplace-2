@@ -1,9 +1,20 @@
 ---
 name: grace-fix
-description: "Debug an issue using GRACE semantic navigation. Use when encountering bugs, errors, or unexpected behavior - navigate through the graph, verification plan, and semantic blocks to analyze the mismatch and apply a targeted fix."
+description: "Debug and fix an issue using GRACE semantic navigation with the Prove-It Pattern. Use when encountering bugs, errors, or unexpected behavior - navigate through the graph, verification plan, and semantic blocks, write a FAILING test that proves the bug, apply a targeted fix, verify the test passes, and guard against regression."
 ---
 
-Debug an issue using GRACE semantic navigation.
+Debug and fix an issue using GRACE semantic navigation — with a **failing test written before the fix**.
+
+## Prove-It Pattern
+
+A bug that is not reproduced in a test is not proven. A fix that does not flip a test from red to green
+is not verified. Every bug fix produced by this skill goes through the following pipeline:
+
+```
+Locate → Prove (write RED test) → Fix → Verify (test goes GREEN) → Guard (regression entry)
+```
+
+Skipping any phase is drift. In particular: fixing before writing a failing test is forbidden.
 
 ## Process
 
@@ -39,21 +50,109 @@ Read the identified block, its CONTRACT, and relevant verification entry. Determ
 - What the block is supposed to do (from CONTRACT)
 - What evidence should prove that behavior (from tests, traces, or log markers)
 - What it actually does (from code)
-- Where the mismatch is
+- **Where exactly the mismatch is** — in a single sentence ("the JOIN returns duplicates because the filter is applied post-aggregation")
 
-### Step 4: Fix
-Apply the fix WITHIN the semantic block boundaries. Do NOT restructure blocks unless the fix requires it.
+Distinguish root cause from symptom. Never fix a symptom while the root cause remains ("dedupe in UI" is a patch; "fix the JOIN" is a fix).
 
-### Step 5: Update Metadata
-After fixing:
-1. Add a CHANGE_SUMMARY entry with what was fixed and why
-2. If the fix changed the function's behavior — update its CONTRACT
-3. If the fix changed module dependencies — update knowledge-graph.xml CrossLinks
-4. If the fix changed tests, commands, or required markers — update `docs/verification-plan.xml`
-5. Run the relevant module-local verification commands
-6. If the failure revealed weak tests, weak logs, or poor execution-trace visibility — use `$grace-verification` to strengthen automated checks before considering the issue fully closed
+### Step 4: Prove — write a FAILING test FIRST (RED)
 
-### Important
+**This step is not optional. A bug that is not reproduced in a test is not proven.**
+
+1. Open the existing test file for the affected module (or create one under the path declared in `V-M-xxx`).
+2. Write a single minimal test that:
+   - exercises the exact code path that produces the bug
+   - asserts the expected correct behavior (what SHOULD happen)
+   - names the test with a reference to the original failure (`"regression: GH#123 duplicate rows in list endpoint"`)
+3. Run only this test. It MUST fail. If it passes, you have not reproduced the bug — stop and return to Step 3.
+4. Record the observed failure output verbatim — it becomes part of the `FailurePacket` evidence.
+
+If the bug is deep inside a block that cannot be reached from a unit test, add a narrower integration
+test or a property-based case. Do not skip the RED step by claiming "this cannot be tested".
+
+### Step 5: Fix
+Apply the fix WITHIN the semantic block boundaries. Do NOT restructure blocks unless the fix requires
+it. Keep the change scoped to the root cause — no drive-by refactors, no adjacent cleanup.
+
+### Step 6: Verify — test goes GREEN
+Re-run the test written in Step 4. It MUST pass. If it still fails, the fix is wrong — return to Step 5.
+If it passes, run the full module-local verification suite to confirm no neighboring tests regressed.
+
+### Step 7: Guard — update metadata and regression entry
+After the fix is verified:
+1. Add a CHANGE_SUMMARY entry with what was fixed and why (one or two sentences, reference the failure).
+2. If the fix changed the function's behavior — update its CONTRACT.
+3. If the fix changed module dependencies — update `docs/knowledge-graph.xml` CrossLinks.
+4. Add or update the regression test entry in `docs/verification-plan.xml` for the affected module:
+   - reference the new test file and test name
+   - add the failure scenario to the `<scenarios>` block
+   - add any new log markers that would help diagnose a recurrence
+5. If the failure revealed weak tests, weak logs, or poor execution-trace visibility — use
+   `$grace-verification` to strengthen automated checks before considering the issue fully closed.
+
+### Step 8: Commit test + fix together
+Produce a single commit containing:
+- the new failing-then-passing test
+- the fix itself
+- the metadata updates (CHANGE_SUMMARY, verification-plan, graph updates as needed)
+
+Commit message format:
+```
+grace(MODULE_ID): fix <short description>
+
+Regression test: tests/<file>::<test-name>
+Root cause: <one sentence>
+Verification: V-M-xxx updated with <scenario>
+```
+
+## Common Rationalizations
+
+Thoughts that mean STOP — you are about to skip the Prove-It discipline.
+
+| Rationalization | Reality |
+|---|---|
+| "The fix is trivial, a regression test is overkill" | Trivial bugs reappear. Without the test the fix is only temporary. The test IS the fix's guarantee. |
+| "I'll reproduce it in my head" | If it is not in code it is not reproduced. Head-reproduction is how wrong fixes ship. |
+| "I already see the bug, writing a test is wasted time" | Writing the test takes 2-5 minutes and often reveals that the bug is NOT where you thought. |
+| "The test is hard to write because of setup" | That is a signal the module has testability debt. Adding the test surfaces the debt for the next engineer. |
+| "I'll add the test after" | You will not. By the time the fix is committed, the failure mode is gone and you cannot verify the RED step. |
+| "The bug is in a third-party library, no test needed" | Write a test at YOUR boundary that pins the observed-external-behavior contract. When the third party fixes it upstream, your test will flag the change. |
+| "Root cause is unclear, so I'll patch the symptom first" | Patching the symptom buries the root cause. Either invest to find the root cause, or label the PR as a short-term workaround and open a follow-up ticket. |
+| "Updating the verification plan is bureaucracy" | Verification plan is the only thing that stops this exact bug from regressing silently in a year. |
+
+## Red Flags
+
+Stop immediately if any of the below apply — you are off the rails:
+
+- You have edited source code before writing the failing test.
+- Your "test" does not actually fail against the unpatched code.
+- You are fixing a symptom in one module when the root cause is in another module.
+- Your fix changes a MODULE_CONTRACT without user approval.
+- You are about to commit without updating `docs/verification-plan.xml`.
+- The regression test's name does not reference the real failure (generic names like `"it works"` mean you did not understand the bug).
+
+## When NOT to Use
+
+- Pure cosmetic edits (typo in a comment, formatting-only change) — these are not bug fixes.
+- Deliberate architectural change — use `$grace-plan` + `$grace-execute` or `$grace-refactor` instead.
+- The "bug" is actually an architectural mistake in the CONTRACT — escalate to user, do not silently change the contract.
+- You cannot reproduce the issue at all — DO NOT invent a fix. Return to the user with the investigation log and ask for clarification.
+- The failure is an infrastructure / environment issue (DNS, disk full, CI runner flake) — handle outside of GRACE.
+
+## Important
 - Never fix code without first reading its CONTRACT
 - Never change a CONTRACT without user approval
 - If the bug is in the architecture (wrong CONTRACT) — escalate to user, don't silently change it
+- The RED step is load-bearing: an unwritten test = unproven bug = possibly no bug at all
+
+## Verification
+
+Before claiming this skill is complete, confirm every box:
+
+- [ ] Affected module located in `docs/knowledge-graph.xml` (verification: name the M-xxx id)
+- [ ] Failing test exists and initially fails (verification: attach RED run output)
+- [ ] Fix applied WITHIN existing semantic blocks (verification: no new top-level blocks unless approved)
+- [ ] Test passes after fix (verification: attach GREEN run output)
+- [ ] Module-local verification suite passes (verification: attach command + result)
+- [ ] CHANGE_SUMMARY entry added (verification: grep the file for the new entry)
+- [ ] `docs/verification-plan.xml` updated with regression entry (verification: grep for the new test name)
+- [ ] Commit message cites root cause, test path, and V-M-xxx reference

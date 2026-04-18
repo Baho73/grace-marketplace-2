@@ -50,6 +50,33 @@ For every significant module, define during planning:
 - the log or trace anchors needed to debug failures later
 - which checks stay module-local versus wave-level or phase-level
 
+### Phases With Checkpoints
+Group modules into phases; close each phase with an explicit CHECKPOINT that enumerates the
+conditions required to advance. A phase without a checkpoint is a pile of tasks.
+
+A checkpoint lists:
+- Which tests must pass (module-local, wave-level, phase-level)
+- Which shared artifacts must be up to date (graph, plan, verification)
+- Which cross-module flows must run end-to-end
+- What to do if any check fails (which skill to invoke, how to rollback)
+
+Checkpoints are not decoration — they are gates. The controller in `$grace-multiagent-execute`
+reads them when deciding whether to advance waves.
+
+### Dependency Discipline
+Before adding a new module, new external dependency, or new cross-module CrossLink, run the
+following discipline — record each answer in the plan's rationale block:
+
+1. **Duplicate check** — does the existing graph already provide this capability? (`grace module find <query>`)
+2. **Size estimate** — how many files / how much complexity? If the answer is "a lot", split now.
+3. **Maintenance** — for external deps: is it actively maintained, what is the release cadence, who owns it upstream?
+4. **License** — compatible with the project's license?
+5. **Security** — known CVEs? (`npm audit` / ecosystem equivalent)
+6. **Blast radius** — how many modules will import this? If many, consider whether it deserves its own module instead of inline use.
+
+If the discipline surfaces a concern, write it as a `<risk>` entry in the plan. Do NOT silently
+skip the check — the absence of a rationale block is itself a defect.
+
 ## Process
 
 ### Phase 1: Analyze Requirements
@@ -106,5 +133,42 @@ Always produce:
 1. Module breakdown table (ID, name, type, purpose, dependencies, target paths, verification ref)
 2. Data flow diagrams (textual)
 3. Verification surface overview (critical flows, module-local checks, log or trace anchors)
-4. Implementation order (phased, with dependency justification)
-5. Risk assessment (what could go wrong)
+4. Implementation order grouped into **phases with checkpoints** (each phase ends with enumerated gate conditions)
+5. Risk assessment (what could go wrong, including open dependency-discipline concerns)
+
+## Common Rationalizations
+
+| Rationalization | Reality |
+|---|---|
+| "Architecture is obvious, skip the mental walkthrough" | Obvious to you may be wrong. The walkthrough IS the verification. Every skipped walkthrough is a bug you paid for later. |
+| "We can refactor module boundaries later" | Boundaries are contracts. Refactoring them later breaks every dependent agent. Plan right the first time. |
+| "Verification-ref can be added after we have tests" | Without V-M-xxx on the plan, execution will ship modules without verification entries. Plan the verification surface with the architecture. |
+| "We do not need phases for a small project" | Even 5-module projects benefit from at least one checkpoint. Without it the 'done' signal is vibes. |
+| "Adding a new dep is a one-liner, skip the discipline" | The discipline takes 2 minutes. Debugging a supply-chain mistake takes 2 weeks. |
+| "Plan is just a draft, approval is a formality" | User approval is the only gate that separates GRACE from waterfall-with-extra-steps. Never skip it. |
+
+## Red Flags
+
+- You are writing code before user has approved the module breakdown.
+- You added a new module without a V-M-xxx entry.
+- You added a phase without a closing checkpoint.
+- You added an external dependency without running the discipline.
+- Your plan has no `<risk>` block — every non-trivial plan has risks worth naming.
+
+## When NOT to Use
+
+- A bug fix with clear root cause — use `$grace-fix` instead (no architectural change).
+- A pure rename / move / split / merge — use `$grace-refactor`.
+- Exploratory spike where contracts are intentionally informal — label the spike as non-GRACE and revisit plan when the spike concludes.
+- The requirements are still in flux. Return to `$grace-init` to firm up `docs/requirements.xml` first.
+
+## Verification
+
+After running this skill:
+
+- [ ] `docs/development-plan.xml` has at least one Phase-N with a checkpoint block (verification: grep for `<checkpoint`)
+- [ ] Every module in the plan has a V-M-xxx reference (verification: no M-xxx lacks `verification-ref`)
+- [ ] `docs/knowledge-graph.xml` lists every planned module with unique `M-xxx` tags (verification: `grace module find --path .` returns expected count)
+- [ ] `docs/verification-plan.xml` has stub V-M-xxx entries for every module (verification: grep for each `V-M-xxx`)
+- [ ] User has explicitly approved module breakdown and verification surface (verification: attach approval message)
+- [ ] Dependency discipline rationale recorded for every new external dep (verification: each new dep has its own `<rationale>` block)

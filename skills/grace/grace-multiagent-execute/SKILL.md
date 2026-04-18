@@ -185,6 +185,46 @@ Verification: module-local passed / wave checks passed / follow-up required
 Remaining waves: count
 ```
 
+## Wave Success Thresholds
+
+Before advancing from one wave to the next, the controller measures the completed wave against
+the thresholds below. The thresholds are explicit because silent "looks good enough" decisions are
+how multi-agent waves accumulate drift.
+
+| Metric | Advance (green) | Hold (yellow) — investigate before next wave | Rollback (red) |
+|---|---|---|---|
+| Lint pass rate (`grace lint`) | 100% (exit 0) | warnings only | errors present |
+| Module-local tests | 100% pass | ≥1 flaky test | ≥1 hard fail |
+| Graph consistency | valid, no orphans | orphan entries or one-sided CrossLinks | cycle introduced OR graph claims imports that do not exist |
+| Verification coverage for modules in this wave | ≥80% of wave modules have V-M-xxx entries | 60-79% | <60% |
+| Contract drift | none | MODULE_MAP delta without MODULE_CONTRACT update | CONTRACT silently widened beyond packet write scope |
+| Worker commits | each module committed with `grace(MODULE_ID):` message | generic / missing bodies | missing commits or cross-module commits |
+
+Decision model:
+- **all green** → dispatch next wave using the same profile
+- **any yellow** → pause dispatch, run scoped `$grace-reviewer`, open a targeted fix ticket, then re-evaluate
+- **any red** → rollback the wave (revert worker commits), return to `$grace-plan` or `$grace-fix` depending on root cause
+
+The threshold table is the only acceptable "are we ready for the next wave?" answer. Do not proceed
+on vibes.
+
+## Pre-Wave Checklist
+
+Before dispatching wave N+1, confirm every box. If any box is unchecked, the next wave is not
+ready — hold and fix.
+
+- [ ] Previous wave produced an APPROVE from `$grace-reviewer` (scoped-gate at minimum)
+- [ ] `grace lint --path .` exits 0 OR known warnings are triaged and logged
+- [ ] `docs/knowledge-graph.xml` valid, includes every module completed in the previous wave, no cycles
+- [ ] `docs/verification-plan.xml` has V-M-xxx entries for every new module (≥80% coverage threshold met)
+- [ ] `docs/development-plan.xml` step status updated for every completed step
+- [ ] Every worker from the previous wave committed with a concrete `grace(MODULE_ID):` message
+- [ ] Budget check: remaining token / time budget allows the next wave; abort or shrink the wave otherwise
+- [ ] Wave N+1 execution packets are prepared (module ID, write scope, dependency contracts, verification excerpt)
+- [ ] For `safe` profile: user has explicitly approved the next wave's scope
+
+Record the checklist status in the wave report so that downstream reviewers can audit the decision.
+
 ## Dispatch Rules
 - Parse shared XML artifacts once per run unless the plan changes
 - Prefer controller-built execution packets over repeated raw XML reads by workers
@@ -199,6 +239,25 @@ Remaining waves: count
 - Reserve full reviewer audits and full refresh scans for phase boundaries, drift suspicion, or critical failures
 - If verification is weak, slow down and move to `safe` rather than pretending `fast` is safe
 
+## Common Rationalizations
+
+| Rationalization | Reality |
+|---|---|
+| "Waves 1 and 2 went well, skip the threshold check for wave 3" | Threshold check is the only defense against cumulative drift. Never skip. |
+| "Verification coverage is only 70%, but the modules are simple" | 70% means three in ten modules ship without a V-M-xxx. Those are the ones that rot in six months. Move to Hold. |
+| "Rolling back the wave is too expensive" | Shipping a red wave into the graph is more expensive. Rollback is cheap compared to tracking down ghosts later. |
+| "I'll let workers share a shared XML file if they are careful" | They will not. Shared-artifact contention is a controller-only responsibility. |
+| "We can reuse a worker across modules to save tokens" | Fresh workers are non-negotiable. Reused sessions leak context and invent architecture. |
+| "Skip the pre-wave checklist, we already know it's fine" | If you know it is fine you can tick it in 30 seconds. If you cannot tick it, it is not fine. |
+
+## Red Flags
+
+- You advanced a wave despite a yellow or red threshold.
+- A worker edited a shared XML file directly.
+- You reused a worker session across modules.
+- You ran `fast` profile when module-local verification is missing.
+- You dispatched wave N+1 without an APPROVE from `$grace-reviewer` on wave N.
+
 ## When NOT to Use
 - Only one module remains
 - Steps are tightly coupled and share the same files
@@ -206,3 +265,14 @@ Remaining waves: count
 - The team has not defined reliable module-local verification yet
 
 Use `$grace-execute` for sequential execution when dependency risk is higher than the parallelism gain.
+
+## Verification
+
+Before marking a wave complete, confirm:
+
+- [ ] 5 threshold metrics scored green OR hold/rollback action taken (verification: attach threshold table)
+- [ ] Pre-wave checklist for next wave attached to report (verification: all boxes ticked or justified)
+- [ ] `grace lint --path .` exit code recorded (verification: 0 or triaged warnings)
+- [ ] Every worker committed with concrete `grace(MODULE_ID):` message (verification: `git log --oneline` shows them)
+- [ ] Controller committed shared-artifact sync with `grace(meta):` message (verification: last commit on meta branch)
+- [ ] Wave report emitted with profile, module list, and remaining-waves count
