@@ -122,31 +122,40 @@ grace file show src/auth/index.ts --path /path/to/project --contracts --blocks
 
 | Skill | Purpose |
 | --- | --- |
-| `grace-init` | Bootstrap the GRACE docs, templates, and agent guidance |
-| `grace-plan` | Design modules, phases, flows, dependencies, and contracts |
+| `grace-bootstrap` | Activation protocol — runs first in any GRACE-managed repo, routes intent to the right skill, blocks edits until project context is loaded |
+| `grace-init` | Bootstrap the GRACE docs, templates, and agent guidance (plus optional `CLAUDE.md`, SessionStart hook, and `.grace-afk.json`) |
+| `grace-plan` | Design modules, phases with checkpoints, flows, dependencies, and contracts |
 | `grace-verification` | Build and maintain `verification-plan.xml`, tests, traces, and log evidence |
 | `grace-execute` | Execute the plan sequentially with scoped review and commits |
-| `grace-multiagent-execute` | Execute parallel-safe waves with controller-managed synchronization |
+| `grace-multiagent-execute` | Execute parallel-safe waves with controller-managed synchronization, Wave Success Thresholds, and a Pre-Wave Checklist |
 | `grace-refactor` | Rename, move, split, merge, and extract modules without shared-artifact drift |
-| `grace-fix` | Debug issues from graph, contracts, tests, traces, and semantic blocks |
+| `grace-fix` | Debug using the Prove-It Pattern: failing test first, then fix, then regression entry |
 | `grace-refresh` | Refresh graph and verification artifacts against the real codebase |
-| `grace-reviewer` | Review semantic integrity, graph consistency, and verification quality |
+| `grace-reviewer` | 5-axis integrity review (Completeness / Contractual / Semantic / Verification / Graph) with Critical/Important/Suggestion/FYI labels |
 | `grace-status` | Report overall project health and suggest the next safe action |
-| `grace-ask` | Answer architecture and implementation questions from project artifacts |
+| `grace-ask` | Answer questions with progressive context disclosure (4-level hierarchy) |
 | `grace-cli` | Use the optional `grace` binary as a fast lint and artifact-query layer for GRACE projects |
 | `grace-explainer` | Explain the GRACE methodology itself |
 | `grace-setup-subagents` | Scaffold shell-specific GRACE worker and reviewer presets |
+| `grace-afk` | Autonomous harness for unattended work — `/afk [hours] [budget%]` runs the plan on an isolated branch with CLI-enforced budget and Telegram escalation |
+| `grace-ask-human` | Short-form Telegram escalation for one-way-door decisions inside a `grace-afk` session |
 
 ## CLI Overview
 
 | Command | What It Does |
 | --- | --- |
-| `grace lint --path <root>` | Validate current GRACE artifacts, semantic markup, unique XML tags, and export/map drift |
+| `grace lint --path <root>` | Validate current GRACE artifacts, semantic markup, unique XML tags, export/map drift, and SKILL.md discipline sections |
 | `grace module find <query> --path <root>` | Search by module ID, name, path, purpose, annotations, dependency IDs, verification IDs, and `LINKS` |
 | `grace module show <id-or-path> --path <root>` | Show the shared/public module record from plan, graph, steps, and linked files |
 | `grace module show <id> --with verification --path <root>` | Include verification excerpt when a `V-M-*` entry exists |
 | `grace file show <path> --path <root>` | Show file-local `MODULE_CONTRACT`, `MODULE_MAP`, and `CHANGE_SUMMARY` |
 | `grace file show <path> --contracts --blocks --path <root>` | Include scoped contracts and semantic block navigation |
+| `grace status [--brief] [--path <root>]` | Artifact presence, module count, verification coverage, pending steps, next recommended action. `--brief` is `≤30` lines for SessionStart hooks |
+| `grace afk start <hours> [<budget%>] [--checkpoint <min>]` | Start an autonomous session — creates isolated branch + `state.json` with `expiresAt` |
+| `grace afk tick` | CLI-side active-session gate. Exits `42 BUDGET_EXHAUSTED`, `43 NO_SESSION`, `44 SESSION_STOPPED`. The agent polls between every step |
+| `grace afk ask / check` | Send a Telegram escalation (needs `.grace-afk.json`), poll for reply |
+| `grace afk journal / defer / increment` | Append structured entries to `docs/afk-sessions/<id>/{decisions,deferred}.md` and update counters |
+| `grace afk report / stop` | Emit the return dashboard / manually stop a session |
 
 Current output modes:
 
@@ -154,6 +163,57 @@ Current output modes:
 - `grace module find`: `table`, `json`
 - `grace module show`: `text`, `json`
 - `grace file show`: `text`, `json`
+- `grace status`: `text`, `json` (with `--brief` for compact mode)
+- `grace afk ask / check`: `json`
+
+## Autonomous Workflow (`/afk`)
+
+The `grace-afk` skill turns idle time into forward progress. The user types `/afk <hours> [<budget%>]`,
+the CLI creates an isolated branch and a session with a hard expiry timestamp, and the agent works
+through `docs/development-plan.xml` step by step. Between every step the agent polls `grace afk tick` —
+the CLI (not the LLM) decides when the session ends, so the agent cannot rationalize its way past a
+budget cap.
+
+One-way-door decisions (irreversible actions, contract changes, anything that cannot be undone by
+`git reset`) escalate to Telegram via `grace afk ask` in a hard `≤10`-line format. Reversible work is
+done autonomously and journaled. Scope creep and threshold-yellow failures are deferred or rolled
+back instead of forced through.
+
+```mermaid
+flowchart TD
+    Start([User: /afk 8 20]) --> CreateSess["grace afk start<br/>• tag baseline<br/>• branch afk-TS<br/>• write state.json with expiresAt"]
+    CreateSess --> Tick{"grace afk tick<br/>exit code"}
+
+    Tick -->|"0 — active"| NextStep["Pick next pending step<br/>from development-plan.xml"]
+    Tick -->|"42 — BUDGET_EXHAUSTED"| Report["grace afk report<br/>(dashboard)"]
+    Tick -->|"44 — stopped"| Report
+
+    NextStep --> Classify{"Autonomy matrix:<br/>decision class?"}
+
+    Classify -->|"reversible"| Act["invoke grace-fix /<br/>grace-execute /<br/>grace-refactor<br/>→ commit on afk branch"]
+    Classify -->|"one-way door"| Ask["grace afk ask<br/>→ Telegram"]
+    Classify -->|"scope creep"| Defer["grace afk defer<br/>→ deferred.md"]
+    Classify -->|"threshold yellow"| Rollback["git reset --hard<br/>on afk branch"]
+
+    Act --> Gates{"bun test<br/>+ grace lint"}
+    Gates -->|"green"| Tick
+    Gates -->|"yellow"| Rollback
+    Gates -->|"red"| Ask
+
+    Ask -->|"A / B / PROCEED"| Act
+    Ask -->|"STOP"| StopCmd["grace afk stop"]
+    Ask -->|"no reply 2h"| Defer
+
+    StopCmd --> Report
+    Defer --> Tick
+    Rollback --> Tick
+
+    Report --> End(["Session complete:<br/>human reviews deferred.md,<br/>merges afk-TS branch"])
+```
+
+Setup requires `.grace-afk.json` with a Telegram bot token and chat id — see `grace-init` for
+scaffolding and remember to gitignore it. Full protocol and red-flag list in
+`skills/grace/grace-afk/SKILL.md`. Diagram sources: `docs/diagrams/grace-afk-loop.md`.
 
 ## Public Shared Docs vs File-Local Markup
 
@@ -242,7 +302,15 @@ $grace-fix
 | `src/grace-lint.ts` | `grace lint` command |
 | `src/grace-module.ts` | `grace module find/show` commands |
 | `src/grace-file.ts` | `grace file show` command |
+| `src/grace-status.ts` + `src/grace-status-runtime.ts` | `grace status` command and its pure-logic computation layer |
+| `src/grace-afk.ts` | `grace afk` subcommand tree (start/tick/ask/check/journal/defer/increment/report/stop) |
+| `src/afk/*` | `grace afk` building blocks — session state, journal, config, Telegram transport |
+| `src/lint/*` | Lint engine, language adapters, config loader, SKILL.md section rule |
 | `src/query/*` | Artifact loader, index, and render layer for CLI queries |
+| `docs/knowledge-graph.xml`, `docs/development-plan.xml`, `docs/verification-plan.xml` | Self-governance — this repo is GRACE-managed |
+| `docs/diagrams/*` | Mermaid diagrams rendered inline on GitHub |
+| `PLAN.md` | Roadmap, shipped / in-flight / backlog PRs |
+| `REVIEW_PROMPT.md` | Self-contained prompt for cross-model independent code review |
 | `scripts/validate-marketplace.ts` | Packaging and release validation |
 
 ## For Maintainers
