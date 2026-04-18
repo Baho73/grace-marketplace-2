@@ -209,7 +209,7 @@
       <scenarios>
         <scenario-1 kind="success">marketplace.json version matches README, package.json, openpackage.yml, plugin.json.</scenario-1>
         <scenario-2 kind="success">Each declared skill path exists in plugins/grace/skills/grace/.</scenario-2>
-        <scenario-3 kind="success">using-grace is declared in the shipped skill list.</scenario-3>
+        <scenario-3 kind="success">grace-bootstrap is declared in the shipped skill list.</scenario-3>
       </scenarios>
     </V-M-MARKETPLACE-MANIFEST>
 
@@ -225,6 +225,87 @@
         <scenario-2 kind="failure">Reports FAIL when canonical and packaged drift apart.</scenario-2>
       </scenarios>
     </V-M-VALIDATE-MARKETPLACE>
+
+    <V-M-CLI-AFK MODULE="M-CLI-AFK" PRIORITY="high">
+      <test-files>
+        <file>src/afk-cli.test.ts</file>
+      </test-files>
+      <module-checks>
+        <check-1>bun test src/afk-cli.test.ts</check-1>
+      </module-checks>
+      <scenarios>
+        <scenario-1 kind="success">`grace afk start 1` writes state.json under docs/afk-sessions/<id>/.</scenario-1>
+        <scenario-2 kind="success">`grace afk tick` returns remaining time while session is fresh.</scenario-2>
+        <scenario-3 kind="failure">`grace afk tick` exits 42 (BUDGET_EXHAUSTED) once expiresAt passes.</scenario-3>
+        <scenario-4 kind="failure">`grace afk tick` exits 43 (NO_SESSION) when no session exists.</scenario-4>
+        <scenario-5 kind="failure">`grace afk tick` exits 44 (SESSION_STOPPED) after `grace afk stop`.</scenario-5>
+        <scenario-6 kind="success">`grace afk journal` and `grace afk defer` append to the session markdown files.</scenario-6>
+        <scenario-7 kind="success">`grace afk report` prints summary and marks session completed.</scenario-7>
+      </scenarios>
+      <required-log-markers>
+        <marker-1>None; CLI writes structured JSON / plain text for the agent to parse.</marker-1>
+      </required-log-markers>
+    </V-M-CLI-AFK>
+
+    <V-M-AFK-SESSION MODULE="M-AFK-SESSION" PRIORITY="high">
+      <test-files>
+        <file>src/afk-session.test.ts</file>
+      </test-files>
+      <module-checks>
+        <check-1>bun test src/afk-session.test.ts</check-1>
+      </module-checks>
+      <scenarios>
+        <scenario-1 kind="success">createSession writes docs/afk-sessions/<id>/state.json with correct expiresAt.</scenario-1>
+        <scenario-2 kind="failure">Invalid hours or checkpoint values throw.</scenario-2>
+        <scenario-3 kind="success">checkActive returns `ok=true` while fresh and `expired` after expiresAt.</scenario-3>
+        <scenario-4 kind="success">markStopped sets status=stopped; findActiveSession returns null.</scenario-4>
+        <scenario-5 kind="success">incrementCounter updates commits/escalations/deferred independently.</scenario-5>
+        <scenario-6 kind="success">markCompleted makes the session not-active.</scenario-6>
+      </scenarios>
+    </V-M-AFK-SESSION>
+
+    <V-M-AFK-JOURNAL MODULE="M-AFK-JOURNAL" PRIORITY="medium">
+      <test-files>
+        <file>src/afk-session.test.ts</file>
+      </test-files>
+      <module-checks>
+        <check-1>bun test src/afk-session.test.ts</check-1>
+      </module-checks>
+      <scenarios>
+        <scenario-1 kind="success">appendDecision writes header and entry fields (class, title, context, rationale, outcome).</scenario-1>
+        <scenario-2 kind="success">appendDeferred adds a single-line entry with timestamp and optional suggestion.</scenario-2>
+      </scenarios>
+    </V-M-AFK-JOURNAL>
+
+    <V-M-AFK-CONFIG MODULE="M-AFK-CONFIG" PRIORITY="low">
+      <test-files>
+        <file>covered indirectly via afk-cli.test.ts</file>
+      </test-files>
+      <module-checks>
+        <check-1>bun test src/afk-cli.test.ts</check-1>
+      </module-checks>
+      <scenarios>
+        <scenario-1 kind="success">loadAfkConfig returns null + error when file is missing.</scenario-1>
+        <scenario-2 kind="success">getTelegram returns null if config lacks bot credentials.</scenario-2>
+      </scenarios>
+    </V-M-AFK-CONFIG>
+
+    <V-M-AFK-TELEGRAM MODULE="M-AFK-TELEGRAM" PRIORITY="high">
+      <test-files>
+        <file>src/afk-telegram.test.ts</file>
+      </test-files>
+      <module-checks>
+        <check-1>bun test src/afk-telegram.test.ts</check-1>
+      </module-checks>
+      <scenarios>
+        <scenario-1 kind="success">sendMessage posts to /sendMessage and returns messageId.</scenario-1>
+        <scenario-2 kind="failure">sendMessage returns ok=false with error description from API.</scenario-2>
+        <scenario-3 kind="success">fetchUpdates filters replies by chatId.</scenario-3>
+        <scenario-4 kind="success">matchReply matches by reply_to_message_id or correlation id prefix.</scenario-4>
+        <scenario-5 kind="success">classifyAnswer recognizes A-E, PROCEED, STOP, EVOLVE, DEFER in any token position.</scenario-5>
+        <scenario-6 kind="success">classifyAnswer returns UNKNOWN with recognized=false for free-form text.</scenario-6>
+      </scenarios>
+    </V-M-AFK-TELEGRAM>
   </ModuleVerification>
 
   <PhaseGates>

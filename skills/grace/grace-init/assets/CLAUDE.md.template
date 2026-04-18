@@ -19,7 +19,7 @@ Before editing ANY code, you MUST:
 Do NOT bypass semantic markup (`START_BLOCK_*` / `END_BLOCK_*`, `MODULE_CONTRACT`,
 `CHANGE_SUMMARY`). When you edit a block, update its markup in the SAME commit.
 
-If unsure, start with `using-grace` — it will route you to the correct skill.
+If unsure, start with `grace-bootstrap` — it will route you to the correct skill.
 </CRITICAL>
 
 ## Project Summary

@@ -1,11 +1,26 @@
 ---
-name: using-grace
+name: grace-bootstrap
 description: "Use when starting any conversation in a repository that may be managed by GRACE. Establishes activation protocol: if GRACE artifacts exist, load minimal project context and route the request through the correct grace-* skill BEFORE taking any action (including clarifying questions, file reads, or code edits)."
 ---
 
-<SUBAGENT-STOP>
-If you were dispatched as a subagent for a narrowly scoped task, skip this skill.
-</SUBAGENT-STOP>
+<SUBAGENT-FAST-TRACK>
+If you were dispatched as a subagent for a narrowly scoped task, skip the full activation
+protocol below BUT you are still subject to GRACE integrity rules on the files you touch:
+
+1. BEFORE editing any governed file, run `grace file show <path> --contracts --blocks` (or
+   `grace-cli file show`) — this shows you the MODULE_CONTRACT, MODULE_MAP, semantic blocks,
+   and function contracts you must preserve.
+2. NEVER delete or rename a `START_BLOCK_*` / `END_BLOCK_*` marker. If your task requires
+   changing the block's shape, flag it in your return packet and stop — the parent agent must
+   invoke `grace-refactor`.
+3. If your edits change the module's public surface (MODULE_CONTRACT, MODULE_MAP, exports,
+   or DEPENDS) — DO NOT silently update. Flag it in your return packet under
+   `requires-parent-graph-update` so the parent can run `grace-refresh`.
+4. Add a CHANGE_SUMMARY entry for any non-trivial edit.
+5. Return packet MUST list: files touched, blocks touched, whether parent must update graph.
+
+Subagents are never exempt from GRACE. They are exempt from the full activation cycle.
+</SUBAGENT-FAST-TRACK>
 
 <EXTREMELY-IMPORTANT>
 If a repository is managed by GRACE and you skip the activation protocol below, you WILL produce drift:
@@ -37,7 +52,7 @@ Presence of **any** of these means: **project is under GRACE governance → run 
 
 ## When NOT to Use
 
-- You were spawned as a narrowly scoped subagent with a pre-set task (see `<SUBAGENT-STOP>` above).
+- You were spawned as a narrowly scoped subagent — use the fast-track block above, not this skill.
 - The repository has NO `docs/` with GRACE XML files AND no GRACE markers in `AGENTS.md` — this is
   not a GRACE project, proceed normally.
 - The user explicitly instructs "ignore GRACE for this task" — honor the override, but log it.
@@ -71,10 +86,10 @@ Read at minimum:
 
 If the optional `grace` CLI is installed, prefer:
 ```
-grace status --path . --brief
+grace status --path . --brief --format json
 ```
-This returns a ≤30-line snapshot (artifact health, module count, verification coverage, last
-updated timestamps, next recommended action). Use this output as the primary orientation.
+JSON output gives deterministic fields (moduleCount, coveredModules, pendingSteps, nextAction,
+missingActivation) that are easier for you to parse than prose. The `text` format is for humans.
 
 ### Step 2 — Classify user intent
 
@@ -92,6 +107,7 @@ user in one sentence ("Routing to grace-fix because you described a runtime erro
 | "Is the code correct? Review the changes" | `grace-reviewer` |
 | "How does GRACE work?" / methodology question | `grace-explainer` |
 | Test / trace / log-marker design | `grace-verification` |
+| "I'm going AFK, keep working on the plan" | `grace-afk` |
 | Optimize architecture / choose between approaches | `grace-evolve` (when available) |
 | Need CLI commands (lint, module find, file show) | `grace-cli` |
 
@@ -116,6 +132,7 @@ Thoughts that mean STOP — you are about to skip GRACE activation and cause dri
 | "I'll update the graph at the end" | You won't. By the time you finish, the graph deltas are no longer visible to you. Update in the same step. |
 | "User just wants X, they don't care about GRACE overhead" | The user chose GRACE precisely to prevent this shortcut. If they truly want a bypass they will say so explicitly. |
 | "I don't remember this skill, I'll freestyle" | Skills evolve. Read the current `grace-*` SKILL.md — do not rely on memory. |
+| "I'm a subagent, skip everything" | Subagents use the fast-track block above — they are never exempt from preserving markup on the files they touch. |
 
 ## Red Flags
 

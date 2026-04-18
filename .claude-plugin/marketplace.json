@@ -35,7 +35,9 @@
       "strict": true,
       "agents": [],
       "skills": [
-        "./skills/grace/using-grace",
+        "./skills/grace/grace-bootstrap",
+        "./skills/grace/grace-afk",
+        "./skills/grace/grace-ask-human",
         "./skills/grace/grace-init",
         "./skills/grace/grace-plan",
         "./skills/grace/grace-execute",

@@ -3,7 +3,7 @@
     <objective>Ship and maintain the GRACE methodology as a Claude Code marketplace plugin + npm-published CLI, with a self-dogfooded reference project so agents cannot forget the framework they ship.</objective>
     <non-goal>Be a generic engineering-advice framework. GRACE is domain-specific (contract-first, graph-anchored, verification-first) — the skills are not interchangeable with plain prompting rules.</non-goal>
     <risk-1>Drift between canonical `skills/grace/*` and packaged `plugins/grace/skills/grace/*`. Mitigated by scripts/validate-marketplace.ts.</risk-1>
-    <risk-2>LLM forgets to activate GRACE when the repo is GRACE-managed. Mitigated by the using-grace meta-skill + SessionStart hook + CLAUDE.md preamble.</risk-2>
+    <risk-2>LLM forgets to activate GRACE when the repo is GRACE-managed. Mitigated by the grace-bootstrap meta-skill + SessionStart hook + CLAUDE.md preamble.</risk-2>
     <risk-3>Skill docs drift out of the three-section discipline (Common Rationalizations / When NOT to Use / Verification). Mitigated by `grace lint` skill-section warnings.</risk-3>
   </ArchitectureNotes>
 
@@ -199,6 +199,51 @@
       <target><source>scripts/validate-marketplace.ts</source></target>
       <verification-ref>V-M-VALIDATE-MARKETPLACE</verification-ref>
     </M-VALIDATE-MARKETPLACE>
+
+    <M-CLI-AFK NAME="CliAfk" TYPE="CORE_LOGIC" LAYER="2" ORDER="5" STATUS="implemented">
+      <contract>
+        <purpose>citty subcommand grouping: start, tick, ask, check, journal, defer, increment, report, stop.</purpose>
+      </contract>
+      <depends>M-AFK-SESSION, M-AFK-JOURNAL, M-AFK-CONFIG, M-AFK-TELEGRAM</depends>
+      <target><source>src/grace-afk.ts</source><tests>src/afk-cli.test.ts</tests></target>
+      <verification-ref>V-M-CLI-AFK</verification-ref>
+    </M-CLI-AFK>
+
+    <M-AFK-SESSION NAME="AfkSession" TYPE="DATA_LAYER" LAYER="0" ORDER="5" STATUS="implemented">
+      <contract>
+        <purpose>Session state store with expiresAt enforcement; exit codes BUDGET_EXHAUSTED(42), NO_SESSION(43), SESSION_STOPPED(44).</purpose>
+      </contract>
+      <depends>none</depends>
+      <target><source>src/afk/session.ts</source><tests>src/afk-session.test.ts</tests></target>
+      <verification-ref>V-M-AFK-SESSION</verification-ref>
+    </M-AFK-SESSION>
+
+    <M-AFK-JOURNAL NAME="AfkJournal" TYPE="UTILITY" LAYER="0" ORDER="6" STATUS="implemented">
+      <contract>
+        <purpose>Append-only writers for decisions.md and deferred.md.</purpose>
+      </contract>
+      <depends>none</depends>
+      <target><source>src/afk/journal.ts</source><tests>src/afk-session.test.ts</tests></target>
+      <verification-ref>V-M-AFK-JOURNAL</verification-ref>
+    </M-AFK-JOURNAL>
+
+    <M-AFK-CONFIG NAME="AfkConfig" TYPE="UTILITY" LAYER="0" ORDER="7" STATUS="implemented">
+      <contract>
+        <purpose>Parse .grace-afk.json (Telegram credentials + escalation caps).</purpose>
+      </contract>
+      <depends>none</depends>
+      <target><source>src/afk/config.ts</source></target>
+      <verification-ref>V-M-AFK-CONFIG</verification-ref>
+    </M-AFK-CONFIG>
+
+    <M-AFK-TELEGRAM NAME="AfkTelegram" TYPE="INTEGRATION" LAYER="0" ORDER="8" STATUS="implemented">
+      <contract>
+        <purpose>Telegram Bot API transport with injectable fetch; send + poll + classify answers.</purpose>
+      </contract>
+      <depends>none</depends>
+      <target><source>src/afk/telegram.ts</source><tests>src/afk-telegram.test.ts</tests></target>
+      <verification-ref>V-M-AFK-TELEGRAM</verification-ref>
+    </M-AFK-TELEGRAM>
   </Modules>
 
   <ImplementationOrder>
@@ -212,7 +257,7 @@
 
     <Phase-1 name="Activation Mechanisms" status="done">
       <goal>Make it hard for Claude Code to forget GRACE: meta-skill, SessionStart hook, CLAUDE.md preamble.</goal>
-      <step-1 module="M-SKILLS-CANONICAL" status="done">Create `using-grace` meta-skill with EXTREMELY-IMPORTANT block and activation flowchart.</step-1>
+      <step-1 module="M-SKILLS-CANONICAL" status="done">Create `grace-bootstrap` meta-skill with EXTREMELY-IMPORTANT block and activation flowchart.</step-1>
       <step-2 module="M-CLI-STATUS" status="done" verification="V-M-CLI-STATUS">Implement `grace status` and `grace status --brief`.</step-2>
       <step-3 status="done">Add `settings.json.template` in grace-init assets for SessionStart hook.</step-3>
       <step-4 status="done">Add `CLAUDE.md.template` in grace-init assets with CRITICAL preamble.</step-4>

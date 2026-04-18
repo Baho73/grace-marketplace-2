@@ -8,7 +8,7 @@
     <M-CLI-ENTRY NAME="CliEntry" TYPE="ENTRY_POINT" STATUS="implemented">
       <purpose>Top-level CLI entry point; wires subcommands and handles Bun shebang execution.</purpose>
       <path>src/grace.ts</path>
-      <depends>M-CLI-LINT, M-CLI-MODULE, M-CLI-FILE, M-CLI-STATUS</depends>
+      <depends>M-CLI-LINT, M-CLI-MODULE, M-CLI-FILE, M-CLI-STATUS, M-CLI-AFK</depends>
       <verification-ref>V-M-CLI-ENTRY</verification-ref>
       <annotations>
         <export-main PURPOSE="citty command root aggregating subcommands" />
@@ -96,6 +96,67 @@
       </annotations>
     </M-CLI-STATUS>
 
+    <M-CLI-AFK NAME="CliAfk" TYPE="CORE_LOGIC" STATUS="implemented">
+      <purpose>Implements `grace afk` — autonomous-harness subcommands (start/tick/ask/check/journal/defer/increment/report/stop). CLI enforces session time budget; agents cannot rationalize past it.</purpose>
+      <path>src/grace-afk.ts</path>
+      <depends>M-AFK-SESSION, M-AFK-JOURNAL, M-AFK-CONFIG, M-AFK-TELEGRAM</depends>
+      <verification-ref>V-M-CLI-AFK</verification-ref>
+      <annotations>
+        <export-afkCommand PURPOSE="citty root for grace afk" />
+        <export-buildAskMessage PURPOSE="Hard-format Telegram escalation text" />
+      </annotations>
+    </M-CLI-AFK>
+
+    <M-AFK-SESSION NAME="AfkSession" TYPE="DATA_LAYER" STATUS="implemented">
+      <purpose>State store for /afk sessions under docs/afk-sessions/<id>/state.json; enforces expiresAt and exit codes (BUDGET_EXHAUSTED / NO_SESSION / SESSION_STOPPED).</purpose>
+      <path>src/afk/session.ts</path>
+      <depends>none</depends>
+      <verification-ref>V-M-AFK-SESSION</verification-ref>
+      <annotations>
+        <fn-createSession PURPOSE="Start a new session with hours + optional budget%" />
+        <fn-checkActive PURPOSE="Resolve active session or return expired/stopped/no-session" />
+        <fn-markStopped PURPOSE="Mark session stopped" />
+        <fn-markCompleted PURPOSE="Mark session completed" />
+        <fn-incrementCounter PURPOSE="Update commits/escalations/deferred counters" />
+      </annotations>
+    </M-AFK-SESSION>
+
+    <M-AFK-JOURNAL NAME="AfkJournal" TYPE="UTILITY" STATUS="implemented">
+      <purpose>Append-only writers for decisions.md and deferred.md inside each /afk session directory.</purpose>
+      <path>src/afk/journal.ts</path>
+      <depends>none</depends>
+      <verification-ref>V-M-AFK-JOURNAL</verification-ref>
+      <annotations>
+        <fn-appendDecision PURPOSE="Append a structured decision entry" />
+        <fn-appendDeferred PURPOSE="Append a one-line deferred question" />
+      </annotations>
+    </M-AFK-JOURNAL>
+
+    <M-AFK-CONFIG NAME="AfkConfig" TYPE="UTILITY" STATUS="implemented">
+      <purpose>Parse .grace-afk.json: Telegram credentials + autoStop caps. Not in git.</purpose>
+      <path>src/afk/config.ts</path>
+      <depends>none</depends>
+      <verification-ref>V-M-AFK-CONFIG</verification-ref>
+      <annotations>
+        <fn-loadAfkConfig PURPOSE="Read .grace-afk.json" />
+        <fn-getTelegram PURPOSE="Extract botToken + chatId if present" />
+        <fn-getMaxEscalations PURPOSE="Resolve per-session escalation cap" />
+      </annotations>
+    </M-AFK-CONFIG>
+
+    <M-AFK-TELEGRAM NAME="AfkTelegram" TYPE="INTEGRATION" STATUS="implemented">
+      <purpose>Minimal Telegram Bot API transport (sendMessage + getUpdates) with dependency-injected fetch for tests. No external dependencies.</purpose>
+      <path>src/afk/telegram.ts</path>
+      <depends>none</depends>
+      <verification-ref>V-M-AFK-TELEGRAM</verification-ref>
+      <annotations>
+        <fn-sendMessage PURPOSE="POST to Telegram Bot API sendMessage, return messageId" />
+        <fn-fetchUpdates PURPOSE="GET getUpdates, filter by chatId" />
+        <fn-matchReply PURPOSE="Match reply to correlation id" />
+        <fn-classifyAnswer PURPOSE="Parse reply into verb enum (A/B/C/.../STOP/PROCEED/EVOLVE/DEFER)" />
+      </annotations>
+    </M-AFK-TELEGRAM>
+
     <M-STATUS-RUNTIME NAME="StatusRuntime" TYPE="CORE_LOGIC" STATUS="implemented">
       <purpose>Pure logic for status computation: artifact presence, counts, next-action heuristic, brief/full rendering.</purpose>
       <path>src/grace-status-runtime.ts</path>
@@ -134,13 +195,13 @@
     </M-QUERY-RENDER>
 
     <M-SKILLS-CANONICAL NAME="SkillsCanonical" TYPE="UTILITY" STATUS="implemented">
-      <purpose>Canonical source of truth for the 15 shipped skills (including `using-grace`).</purpose>
+      <purpose>Canonical source of truth for the shipped skills (including `grace-bootstrap`).</purpose>
       <path>skills/grace</path>
       <depends>none</depends>
       <verification-ref>V-M-SKILLS-CANONICAL</verification-ref>
       <annotations>
         <export-grace-init PURPOSE="Bootstrap GRACE project structure; emits docs, AGENTS.md, CLAUDE.md, .claude/settings.json" />
-        <export-using-grace PURPOSE="Meta-skill; enforces GRACE activation protocol at session start" />
+        <export-grace-bootstrap PURPOSE="Meta-skill; enforces GRACE activation protocol at session start" />
         <export-grace-fix PURPOSE="Debug with the Prove-It Pattern (failing test before fix)" />
         <export-grace-reviewer PURPOSE="5-axis integrity review with severity labels" />
         <export-grace-multiagent-execute PURPOSE="Wave-based parallel execution with success thresholds" />
@@ -190,6 +251,10 @@
     <CrossLink from="M-CLI-MODULE" to="M-QUERY-CORE" relation="uses" />
     <CrossLink from="M-CLI-FILE" to="M-QUERY-CORE" relation="uses" />
     <CrossLink from="M-CLI-STATUS" to="M-STATUS-RUNTIME" relation="delegates-to" />
+    <CrossLink from="M-CLI-AFK" to="M-AFK-SESSION" relation="uses" />
+    <CrossLink from="M-CLI-AFK" to="M-AFK-JOURNAL" relation="uses" />
+    <CrossLink from="M-CLI-AFK" to="M-AFK-CONFIG" relation="uses" />
+    <CrossLink from="M-CLI-AFK" to="M-AFK-TELEGRAM" relation="uses" />
     <CrossLink from="M-STATUS-RUNTIME" to="M-QUERY-CORE" relation="uses" />
     <CrossLink from="M-QUERY-CORE" to="M-LINT-CONFIG" relation="reads-ignored-dirs" />
     <CrossLink from="M-QUERY-RENDER" to="M-QUERY-CORE" relation="formats-types-from" />
