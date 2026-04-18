@@ -112,3 +112,47 @@ After scaffolding, report:
 - Do not create architecture-planning agents here; this skill is for execution support
 - Do not introduce worker-pool or worker-reuse assumptions into the generated presets
 - If the shell supports agents differently, create the nearest working equivalent and explain the difference
+
+## Common Rationalizations
+
+| Rationalization | Reality |
+|---|---|
+| "Claude Code and OpenCode look similar enough — I can reuse the same frontmatter" | Frontmatter fields (model aliases, permission blocks, subagent mode flags) diverge silently between shells. Always confirm against a real local example from Step 2 before writing any file. |
+| "One combined `grace-worker-reviewer` agent is simpler than four separate roles" | Mixing worker and reviewer duties in one preset breaks the execution-packet contract: workers own a single module's write scope, reviewers operate read-only across the wave. Never merge the roles. |
+| "I will skip Step 2 and write the file from memory — I know this shell" | Shell formats change. Rendering from memory is how you ship a preset that the shell silently ignores. Find a real local example, or ask for a canonical sample. |
+| "The shared role body in `references/roles/*.md` is generic, let me rewrite it" | The shared bodies carry the execution-packet, scoped-review, and three-level verification assumptions that the whole multi-agent workflow depends on. Only the shell wrapper should change. |
+| "AGENTS.md is documentation, it does not need to mention the new presets" | `AGENTS.md` is how `$grace-multiagent-execute` discovers which presets to dispatch. A preset that is not listed there will not be picked up by the controller. |
+| "Global install is fine — I will scope it later" | Project-local is the default for a reason: global presets leak across unrelated repositories and hide GRACE version skew. Install to the project's local agent directory unless the user explicitly overrode. |
+
+## Red Flags
+
+- You wrote preset files without first locating a real local agent-file example for the target shell.
+- The generated presets combine worker and reviewer responsibilities in a single file, or omit one of the four default roles (`grace-module-implementer`, `grace-contract-reviewer`, `grace-verification-reviewer`, `grace-fixer`).
+- You created a `grace-controller` or `grace-planner` agent — this skill is strictly execution support, not architecture.
+- An existing file with the same name was overwritten without explicit user intent.
+- `AGENTS.md` was not updated to point at the new presets after scaffolding.
+- The shell-specific frontmatter (model field names, permission blocks, subagent flags) was guessed rather than copied from the local example.
+- The shared role body from `references/roles/*.md` was rewritten or paraphrased instead of embedded verbatim.
+- Presets were installed globally when the user did not ask for global scope.
+
+## When NOT to Use
+
+- The user runs a single-agent workflow and has no intention of calling `$grace-multiagent-execute` — there is nothing to scaffold.
+- The shell has no subagent or preset concept at all, and the user has not asked for a nearest-equivalent workaround — do not create files the shell will ignore.
+- The project already has working GRACE presets and the user only wants them edited — use direct edits, not this scaffolding skill.
+- The user is asking for a planner or controller agent — that is outside this skill's scope; return and clarify.
+- No `references/roles/*.md` exist in the skill bundle (packaging drift) — stop and report the missing shared role bodies; do not invent them.
+- The target shell cannot be detected and the user cannot confirm it — do not guess; ask for the shell name first.
+
+## Verification
+
+Before claiming this skill is complete, confirm:
+
+- [ ] Detected shell and target directory are named explicitly in the final report (verification: report lists `Shell:` and `Target:`).
+- [ ] All four default role files exist at the target path (verification: `ls <target-dir>/grace-module-implementer.* <target-dir>/grace-contract-reviewer.* <target-dir>/grace-verification-reviewer.* <target-dir>/grace-fixer.*`).
+- [ ] Each generated file embeds the corresponding shared role body verbatim (verification: `diff <(sed -n '/^---$/,/^---$/!p' <generated>) references/roles/<role>.md` shows only the wrapper differences).
+- [ ] Frontmatter fields match the local example from Step 2 (verification: `head -n 20 <local-example>` and `head -n 20 <generated>` share the same field shape).
+- [ ] `AGENTS.md` references the newly created presets (verification: `grep -n "grace-module-implementer\|grace-contract-reviewer\|grace-verification-reviewer\|grace-fixer" AGENTS.md`).
+- [ ] No controller or planner agent was generated (verification: `ls <target-dir>` contains no `grace-controller*` or `grace-planner*` files).
+- [ ] No pre-existing files were silently overwritten (verification: for each created file, confirm it did not exist before or the user explicitly approved the overwrite).
+- [ ] Model aliases and permission blocks flagged in the report as fields the user may need to adjust manually.

@@ -176,3 +176,52 @@ When using this skill, produce:
 - When tests are too brittle or too shallow
 - When bugs recur and logs are not actionable
 - When business logic is hard to verify with plain equality asserts alone
+
+## Common Rationalizations
+
+Thoughts that mean STOP — you are about to ship verification that autonomous agents cannot trust.
+
+| Rationalization | Reality |
+|---|---|
+| "This branch is critical but log markers slow things down, skip them" | A critical branch without a stable log marker is invisible to every future agent debugging a failure. The marker IS the trace anchor — skipping it turns trace assertions into guesses. |
+| "After the refactor I'll just reuse the old log-marker names, they're close enough" | Reused marker names after a refactor silently redirect trace assertions to the wrong block. If the block moved or split, mint a new name and update every `V-M-xxx` and test reference in the same commit. |
+| "Module-level tests cover everything, phase-level gates are bureaucracy" | Module-level tests cannot observe cross-module state, merged surfaces, or wave-to-wave regression. Without phase-level gates, cross-wave drift ships undetected. |
+| "The tests read like good documentation, that's enough" | A test with no assertions is a doc comment that allocates memory. Trajectory or outcome must be asserted — otherwise the test passes forever, including when the code is deleted. |
+| "Verification-plan entry is a bit thin but it's good enough for now" | "Good enough" verification is how autonomous runs produce silent failures. Either the plan names concrete tests, commands, log markers, and scenarios, or it is not ready for `$grace-execute`. |
+| "Deterministic asserts are too strict, a semantic evaluator will be more flexible" | Flexible means "unfalsifiable". If an exact assertion is possible, use it. Semantic evaluation is the last resort, never the default. |
+| "Logging the full reasoning trace makes debugging easier" | Logging chain-of-thought or hidden reasoning is forbidden — it leaks into evidence and corrupts the rubric. Log stable structured fields, not monologue. |
+
+## Red Flags
+
+Stop immediately if any of the below apply — your verification plan is unsafe for autonomous or multi-agent execution:
+
+- A `V-M-xxx` entry references a test file or command that does not exist on disk.
+- A critical branch has no `[Module][function][BLOCK_NAME]` log marker or no trace assertion covering it.
+- A refactor renamed semantic blocks but the verification-plan still references the old marker names.
+- Phase-level gates are missing entirely, and wave-level checks are doing phase-level work.
+- Test files contain scenario names and setup code but no `expect(...)` / `assert` statements.
+- The verification-plan says "see tests" instead of naming scenarios, commands, markers, and expected evidence.
+- A semantic evaluation is used where an exact assertion would have worked.
+- Logs in critical paths contain redaction-violating data (tokens, PII, credentials) or raw model reasoning.
+
+## When NOT to Use
+
+- The project has no `docs/development-plan.xml` or module contracts yet — run `$grace-plan` first; verification without contracts is guessing.
+- You are fixing a single reproducible bug — use `$grace-fix` (which writes its own RED-GREEN test) rather than redesigning the whole verification plan.
+- The codebase is a throwaway spike that will be deleted — verification-plan overhead is not justified.
+- The user wants project health status, not evidence design — route to `$grace-status`.
+- The change is outside GRACE governance (e.g. lockfile update, typo in a comment) — regular code review is enough.
+- You are mid-execution in a wave and the caller needs a worker-local check only — use the module-level entry that already exists; do not rewrite the plan mid-wave.
+
+## Verification
+
+Before claiming this skill is complete, confirm every box:
+
+- [ ] `docs/verification-plan.xml` updated and still well-formed (verification: open the file and confirm each touched `V-M-xxx` has targets, commands, scenarios, and markers)
+- [ ] Every critical branch has a stable log marker (verification: `grep -rn "\[.*\]\[.*\]\[.*\]" src/` matches the markers named in the plan)
+- [ ] Marker names in the plan exist in code AND match the block names (verification: for each marker `X`, `grep -rn "START_BLOCK_X" src/` returns exactly one match)
+- [ ] Module-, wave-, and phase-level commands are explicit and runnable (verification: each listed command executes, e.g. `bun test <path>` returns a real exit code)
+- [ ] Tests contain real assertions, not just scenario setup (verification: `grep -rEn "expect\(|assert(Equal|That|True|False)?\(" tests/` for each target test file)
+- [ ] No chain-of-thought or sensitive payloads logged (verification: `grep -rnE "reasoning|thought|password|token|secret" src/` in logged strings returns no hits that escape redaction)
+- [ ] Failure packet shape matches `docs/operational-packets.xml` when that file exists (verification: grep the packet fields against the canonical `FailurePacket`)
+- [ ] `grace lint --path <project-root>` (if CLI available) passes after the plan update, and its exit code is cited in the deliverable

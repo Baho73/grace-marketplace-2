@@ -132,3 +132,47 @@ For in-depth documentation on each GRACE component, see the reference files in t
 - `references/contract-driven-dev.md` — MODULE_CONTRACT, function contracts, PCAM
 - `references/verification-driven-dev.md` — Verification plans, test design, traces, and log-driven development
 - `references/unique-tag-convention.md` — Unique ID-based XML tags, why they work, full naming table
+
+## Common Rationalizations
+
+| Rationalization | Reality |
+|---|---|
+| "I know GRACE from previous sessions, I can answer without reading this SKILL.md" | GRACE evolves — the Six Core Principles, the five-artifact diagram (adding `operational-packets.xml`), and the public/private boundary rule all change between releases. Answer from the current SKILL.md and the `references/` files, not memory. |
+| "I'll summarize the methodology in my own words, faster than quoting" | Paraphrased GRACE loses load-bearing terms: "MODULE_CONTRACT" vs. "module spec," "CrossLink" vs. "dependency edge," "V-M-xxx" vs. "test ID." The user then asks a follow-up using the paraphrase and nothing in `docs/*.xml` matches. Quote the canonical terms. |
+| "The user asked a simple question, I don't need to cite a reference file path" | This skill IS the reference. Every claim should point to either a section in this SKILL.md or a specific file in `references/` (e.g. `references/semantic-markup.md`). No path = no grounding, and the user cannot verify or deep-dive. |
+| "Semantic markup is basically comments with a naming convention" | Explicit in Core Principle 2: "Semantic Markup Is Not Comments." They are navigation anchors for LLM context management and RAG retrieval points — calling them comments misleads the user about what they do and when to add them. |
+| "Shared docs should describe every helper for completeness" | Explicit boundary rule: "shared GRACE docs describe only public module contracts and public module interfaces; private helpers, local-only types, and internal orchestration details stay in the module file header." Over-sharing violates the public/private split and causes graph bloat. |
+| "`grace` CLI replaces `$grace-reviewer` / `$grace-refresh` / `$grace-verification`" | Explicit in the Optional CLI Support section: "The CLI does not replace `$grace-reviewer`, `$grace-refresh`, or `$grace-verification`. It is a cheap automated guardrail before or alongside those higher-context workflows." Do not describe it as a substitute. |
+| "Contracts are documentation, code is the real artifact" | Core Principle 1 inverts this: "code implements the contract, not the other way around." Describing contracts as documentation leads users to write code first and back-fill contracts, which is the exact drift GRACE exists to prevent. |
+| "I'll skip explaining PCAM, it's just jargon" | PCAM (Purpose / Constraints / Autonomy / Metrics) is Core Principle 6 — it is how governed autonomy is defined. Skipping it means the user thinks they have freedom in WHAT, when the rule is freedom in HOW only. |
+
+## Red Flags
+
+- You answered a GRACE question without re-reading this SKILL.md or the relevant `references/*.md` file in the current session.
+- You described semantic markup as "comments," "annotations," or "documentation" instead of navigation anchors.
+- You listed the GRACE artifacts without mentioning the shared-docs-public-only boundary rule, or you included `operational-packets.xml` in one place and omitted it in another.
+- You named a skill as `grace-ask` or `/grace-ask` while the canonical developer-workflow list uses `$grace-ask`.
+- Your explanation of the workflow omitted `$grace-verification` between `$grace-plan` and `$grace-execute`, or omitted `$grace-multiagent-execute`.
+- You cited a fact with no path to a reference file or a section of this SKILL.md.
+- You described the `grace` CLI as a replacement for `$grace-reviewer`, `$grace-refresh`, or `$grace-verification`.
+- You mixed up the public/private split: attributing MODULE_MAP or CHANGE_SUMMARY to shared docs, or attributing CrossLinks to the file-local plane.
+
+## When NOT to Use
+
+- The user wants to execute, plan, fix, refactor, review, or refresh an actual GRACE project — route to the specific `$grace-*` skill; this skill is reference material, not an action skill.
+- The user wants project-specific answers grounded in their `docs/*.xml` — use `$grace-ask`, which loads artifacts and cites them; `$grace-explainer` describes the methodology, not the project.
+- The user needs machine-readable lint output or module navigation — use `$grace-cli`.
+- The user's codebase is not (and will not be) a GRACE project — explaining GRACE as prescription rather than context misleads; answer the underlying question in their stack's terms instead.
+- The user asked "what should I do next in my project" — that is `$grace-status` or `$grace-ask`, not an explainer answer.
+
+## Verification
+
+Before claiming this skill is complete, confirm:
+
+- [ ] Every claim in the answer maps to a section in this SKILL.md or a specific file under `skills/grace/grace-explainer/references/` (verification: each assertion is followed by a path or section heading)
+- [ ] The Six Core Principles were named by their canonical names when the answer covered principles (verification: `grep -E "Never Write Code Without a Contract|Semantic Markup Is Not Comments|Knowledge Graph Is Always Current|Top-Down Synthesis|Verification Is Architecture|Governed Autonomy" <answer>`)
+- [ ] The artifact list, when mentioned, included all five: `development-plan.xml`, `verification-plan.xml`, `knowledge-graph.xml`, `operational-packets.xml`, plus the MODULE_CONTRACT / markup layer (verification: grep the answer for each filename)
+- [ ] The public/private split was stated correctly: `grace module show` = shared/public, `grace file show` = file-local/private (verification: cite the "Public/private split" section)
+- [ ] Skill references used the `$grace-*` form as in the Development Workflow list (verification: `grep -E "\\$grace-(init|plan|verification|execute|multiagent-execute|refactor|refresh|fix|status|ask)" <answer>`)
+- [ ] The optional `grace` CLI was described as a guardrail, not a replacement for `$grace-reviewer` / `$grace-refresh` / `$grace-verification` (verification: grep for the exact phrase "does not replace" or an equivalent disclaimer)
+- [ ] Any deep-dive question was routed to the correct `references/*.md` file by name (verification: `ls skills/grace/grace-explainer/references/` matches the files cited)

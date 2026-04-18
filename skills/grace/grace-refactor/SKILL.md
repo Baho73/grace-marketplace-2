@@ -142,3 +142,45 @@ Before declaring success:
 4. verification delta proposal
 5. verification evidence
 6. remaining risks or follow-up checks
+
+## Common Rationalizations
+
+| Rationalization | Reality |
+|---|---|
+| "It is just a rename, I can update `docs/knowledge-graph.xml` later" | A renamed module ID with stale CrossLinks means every consumer is pointing at a ghost. Every `M-xxx` reference must be updated in the same commit or the graph is already lying. |
+| "Split is clean — the two halves share one module record for now" | Shared ownership is the bug you are creating. Each resulting module needs its own MODULE_CONTRACT, its own write scope in the packet, and its own `V-M-xxx` entry. Anything else is a merge conflict waiting inside the graph. |
+| "The old semantic blocks still work after the move — I will leave them" | `START_BLOCK_*` names attached to a different file mislead every future navigator and break log markers like `[Module][function][BLOCK_NAME]`. Either delete or rename them in the moved file. |
+| "Merging these two modules does not need a contract change — scopes just union" | Union-of-scopes is how architectural boundaries silently erode. Write the combined MODULE_CONTRACT.SCOPE deliberately and get approval before the merge edit lands. |
+| "path-only change does not need a graph update" | `docs/knowledge-graph.xml` stores file paths and verification refs. A silent path change breaks `grace module show M-xxx` lookups and `V-M-xxx` test-file fields. |
+| "Extract is low-risk, I will not touch `docs/verification-plan.xml`" | The extracted helper inherits none of the parent's verification evidence. Either attach new `V-M-xxx` coverage to the extracted module or document why it is intentionally untested. |
+
+## Red Flags
+
+- You moved or renamed a file but `docs/knowledge-graph.xml` still contains the old path or old `M-xxx` id.
+- A `split` or `merge` commit leaves two modules claiming ownership of the same function or file.
+- You edited imports to match the new module layout but did not re-run the module-local verification suite.
+- CrossLinks in the graph reference a module id that `grace module show M-xxx` can no longer resolve.
+- The refactor introduced a new module and you have not added the matching `V-M-xxx` block to `docs/verification-plan.xml`.
+- Old `START_BLOCK_*` / `END_BLOCK_*` markers or `[Module][function][BLOCK_NAME]` log anchors remain pointing at code that no longer exists.
+- You are about to commit without running a scoped `$grace-reviewer` pass on the changed files and shared-artifact deltas.
+
+## When NOT to Use
+
+- A bug fix is the real goal — use `$grace-fix` so the Prove-It cycle is honored instead of smuggling a fix inside a refactor.
+- The work requires designing new architecture or new modules — use `$grace-plan` first, then `$grace-execute` for the implementation.
+- The change is a pure formatting / whitespace / comment-typo edit that does not touch contracts, paths, or module boundaries — standard tooling is enough; the shared artifacts have nothing to learn from it.
+- You have no approval for a contract change but the refactor would force one — stop and return to the user with the delta before touching code.
+- The project has no `docs/knowledge-graph.xml` or `docs/development-plan.xml` yet — run `$grace-init` and `$grace-plan` first; there is nothing to keep in sync.
+
+## Verification
+
+Before claiming this skill is complete, confirm:
+
+- [ ] Every touched module id resolves with `grace module find <new-path>` and `grace module show M-xxx --path . --with verification` returns a non-empty contract.
+- [ ] `bun run grace lint --path . --allow-missing-docs` reports no drift on semantic markup, graph, or verification plan.
+- [ ] `grep -rn "START_BLOCK_" <old-path>` returns nothing after a `move` or `rename` (the old location must be free of orphan markers).
+- [ ] `grep -n "<old-module-id>" docs/` returns zero hits after a rename — no stale `M-xxx` references in graph or plan.
+- [ ] Module-local verification command from `docs/verification-plan.xml` for each changed module exits 0 (attach command + result).
+- [ ] For `split` / `merge`: each resulting module has its own `MODULE_CONTRACT` block (verification: `grep -n "MODULE_CONTRACT" <new-file>` for every new module id).
+- [ ] `docs/development-plan.xml` step status and file paths reflect the new layout (verification: `grep -n "<new-path>" docs/development-plan.xml`).
+- [ ] A scoped `$grace-reviewer` pass over the refactor diff returns APPROVE with no Critical findings on axes 1, 3, and 5.
