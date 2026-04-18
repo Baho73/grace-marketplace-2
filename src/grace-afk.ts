@@ -1,9 +1,25 @@
+// FILE: src/grace-afk.ts
+// VERSION: 1.0.0
+// START_MODULE_CONTRACT
+//   PURPOSE: citty subcommand `grace afk` — autonomous-harness start / tick / ask / check / journal / defer / increment / report / stop.
+//   SCOPE: CLI wiring + I/O only. Business logic lives in src/afk/*; this module orchestrates them and enforces the active-session gate.
+//   DEPENDS: citty, node:crypto, node:path, ./afk/config, ./afk/journal, ./afk/session, ./afk/telegram
+//   LINKS: docs/knowledge-graph.xml#M-CLI-AFK, docs/verification-plan.xml#V-M-CLI-AFK, skills/grace/grace-afk/SKILL.md
+//   ROLE: RUNTIME
+//   MAP_MODE: EXPORTS
+// END_MODULE_CONTRACT
+//
+// START_MODULE_MAP
+//   afkCommand       - Root citty command with 9 subcommands
+//   buildAskMessage  - Format the <=10-line Telegram payload (plain text, no markdown)
+// END_MODULE_MAP
+
 import { defineCommand } from "citty";
 import { randomBytes } from "node:crypto";
 import path from "node:path";
 
 import { getMaxEscalations, getTelegram, loadAfkConfig } from "./afk/config";
-import { appendDecision, appendDeferred, readJournal } from "./afk/journal";
+import { DECISION_CLASSES, appendDecision, appendDeferred, isDecisionClass, readJournal } from "./afk/journal";
 import {
   EXIT_BUDGET_EXHAUSTED,
   EXIT_NO_SESSION,
@@ -18,13 +34,11 @@ import {
   resolveSessionPaths,
   updateLastTick,
 } from "./afk/session";
-import {
-  classifyAnswer,
-  fetchUpdates,
-  matchReply,
-  sendMessage,
-  type TelegramTransport,
-} from "./afk/telegram";
+import { classifyAnswer, fetchUpdates, matchReply, sendMessage } from "./afk/telegram";
+
+const EXIT_BAD_ARGS = 2;
+const EXIT_TELEGRAM_FAILURE = 45;
+const EXIT_CONFIG_MISSING = 46;
 
 function toPath(value: unknown, fallback = ".") {
   return path.resolve(String(value ?? fallback));
@@ -152,7 +166,7 @@ export const afkCommand = defineCommand({
         options: {
           type: "string",
           required: true,
-          description: 'Options in "A:label|B:label|C:label" form',
+          description: 'Options as "A:label|B:label" or "A:label;B:label" (semicolon is safer on Windows shells)',
         },
         mypick: { type: "string", description: "Letter you currently favor (A/B/...)", default: "" },
         confidence: { type: "string", description: "Confidence percent (0-100)", default: "50" },
@@ -168,7 +182,8 @@ export const afkCommand = defineCommand({
             `grace afk ask: Telegram not configured (${error ?? "missing telegram.botToken/chatId"}). ` +
               "Agent MUST fall back to `grace afk defer` for one-way-door decisions.\n",
           );
-          process.exit(1);
+          process.exitCode = EXIT_CONFIG_MISSING;
+          return;
         }
 
         const session = readSession(projectRoot, sessionId);
@@ -178,12 +193,15 @@ export const afkCommand = defineCommand({
             `grace afk ask: max ${maxEscalations} escalations already sent this session. ` +
               "Agent MUST defer remaining one-way-door decisions.\n",
           );
-          process.exit(1);
+          process.exitCode = EXIT_BAD_ARGS;
+          return;
         }
 
         const correlationId = shortCorrelationId();
+        // Accept both "|" and ";" as separators: cmd.exe on Windows interprets unquoted "|" as
+        // a pipe even when the whole argument is quoted, because bun.cmd is a shim that re-parses.
         const optionsList = String(context.args.options)
-          .split("|")
+          .split(/[|;]/)
           .map((entry) => entry.trim())
           .filter(Boolean);
 
@@ -202,7 +220,8 @@ export const afkCommand = defineCommand({
           process.stderr.write(
             `grace afk ask: Telegram sendMessage failed (${result.errorDescription ?? "unknown"}).\n`,
           );
-          process.exit(1);
+          process.exitCode = EXIT_TELEGRAM_FAILURE;
+          return;
         }
 
         incrementCounter(projectRoot, sessionId, "escalations");
@@ -239,7 +258,8 @@ export const afkCommand = defineCommand({
         const telegram = getTelegram(config);
         if (!telegram) {
           process.stderr.write(`grace afk check: Telegram not configured (${error ?? "missing config"}).\n`);
-          process.exit(1);
+          process.exitCode = EXIT_CONFIG_MISSING;
+          return;
         }
 
         const offset = Number(context.args.offset);
@@ -278,31 +298,47 @@ export const afkCommand = defineCommand({
       },
       args: {
         path: { type: "string", alias: "p", description: "Project root", default: "." },
-        class: { type: "string", required: true, description: "Decision class (e.g. reversible-act)" },
+        class: {
+          type: "string",
+          required: true,
+          description: `Decision class. One of: ${DECISION_CLASSES.join(", ")}`,
+        },
         title: { type: "string", required: true, description: "Short title" },
-        contextLine: { type: "string", description: "Context / plan step reference", default: "-" },
+        // `--context` is the canonical name. `--contextLine` accepted as an alias for back-compat.
+        context: { type: "string", description: "Context / plan step reference", default: "-" },
+        contextLine: { type: "string", description: "Alias for --context", default: "" },
         options: { type: "string", description: "Pipe-separated options considered", default: "" },
         chosen: { type: "string", description: "Chosen option", default: "" },
         rationale: { type: "string", required: true, description: "1-2 sentence rationale" },
         outcome: { type: "string", required: true, description: "Commit hash, deferred ref, etc." },
       },
-      async run(context) {
-        const projectRoot = toPath(context.args.path);
+      async run(ctx) {
+        const projectRoot = toPath(ctx.args.path);
         const { sessionId } = enforceActive(projectRoot);
         const paths = resolveSessionPaths(projectRoot, sessionId);
 
+        const klassArg = String(ctx.args.class);
+        if (!isDecisionClass(klassArg)) {
+          process.stderr.write(
+            `grace afk journal: invalid --class "${klassArg}". Allowed: ${DECISION_CLASSES.join(", ")}\n`,
+          );
+          process.exit(EXIT_BAD_ARGS);
+        }
+
+        const contextValue = String(ctx.args.context || ctx.args.contextLine || "-");
+
         appendDecision(paths.decisionsPath, {
           timestamp: new Date().toISOString(),
-          klass: String(context.args.class) as ReturnType<typeof String>,
-          title: String(context.args.title),
-          context: String(context.args.contextLine),
-          optionsConsidered: String(context.args.options)
+          klass: klassArg,
+          title: String(ctx.args.title),
+          context: contextValue,
+          optionsConsidered: String(ctx.args.options)
             .split("|")
             .map((entry) => entry.trim())
             .filter(Boolean),
-          chosen: String(context.args.chosen) || undefined,
-          rationale: String(context.args.rationale),
-          outcome: String(context.args.outcome),
+          chosen: String(ctx.args.chosen) || undefined,
+          rationale: String(ctx.args.rationale),
+          outcome: String(ctx.args.outcome),
         });
 
         process.stdout.write(`appended to ${paths.decisionsPath}\n`);
@@ -317,19 +353,27 @@ export const afkCommand = defineCommand({
       args: {
         path: { type: "string", alias: "p", description: "Project root", default: "." },
         question: { type: "string", required: true, description: "The question for the human" },
-        contextLine: { type: "string", required: true, description: "Context reference (step / file / decision)" },
+        // `--context` is the canonical name. `--contextLine` accepted as an alias for back-compat.
+        context: { type: "string", description: "Context reference (step / file / decision)", default: "" },
+        contextLine: { type: "string", description: "Alias for --context", default: "" },
         suggestion: { type: "string", description: "Optional recommended default", default: "" },
       },
-      async run(context) {
-        const projectRoot = toPath(context.args.path);
+      async run(ctx) {
+        const projectRoot = toPath(ctx.args.path);
         const { sessionId } = enforceActive(projectRoot);
         const paths = resolveSessionPaths(projectRoot, sessionId);
 
+        const contextValue = String(ctx.args.context || ctx.args.contextLine || "");
+        if (!contextValue) {
+          process.stderr.write("grace afk defer: --context is required (alias: --contextLine)\n");
+          process.exit(EXIT_BAD_ARGS);
+        }
+
         appendDeferred(paths.deferredPath, {
           timestamp: new Date().toISOString(),
-          question: String(context.args.question),
-          context: String(context.args.contextLine),
-          suggestion: String(context.args.suggestion) || undefined,
+          question: String(ctx.args.question),
+          context: contextValue,
+          suggestion: String(ctx.args.suggestion) || undefined,
         });
         incrementCounter(projectRoot, sessionId, "deferred");
 
@@ -349,7 +393,7 @@ export const afkCommand = defineCommand({
       async run(context) {
         const projectRoot = toPath(context.args.path);
         const check = checkActive(projectRoot);
-        const session = check.session ?? (check.ok ? check.session : null);
+        const session = check.session;
         if (!session) {
           process.stderr.write("grace afk report: no session found.\n");
           process.exit(EXIT_NO_SESSION);
@@ -412,7 +456,7 @@ export const afkCommand = defineCommand({
         const field = String(context.args.field);
         if (field !== "commits" && field !== "escalations" && field !== "deferred") {
           process.stderr.write(`grace afk increment: field must be commits|escalations|deferred, got ${field}\n`);
-          process.exit(1);
+          process.exit(EXIT_BAD_ARGS);
         }
         incrementCounter(projectRoot, sessionId, field);
         process.stdout.write(`incremented ${field}\n`);
@@ -430,20 +474,35 @@ export function buildAskMessage(input: {
   myPick: string;
   confidence: string;
 }): string {
-  const optionsBlock = input.options.length === 0
-    ? "  (no options enumerated)"
-    : input.options.map((option) => `  ${option}`).join("\n");
-  const pick = input.myPick ? `\nMy pick: ${input.myPick} (${input.confidence}% confidence)` : "";
+  // Plain text, no markdown. We intentionally strip any control characters from user-controlled
+  // fields (title/context/options) because the transport sends plain text and we do not want
+  // null bytes or CR/LF from malformed plan entries to garble the message.
+  const clean = (value: string) => value.replace(/[\u0000-\u001f\u007f]/g, " ").trim();
+
+  const optionsBlock =
+    input.options.length === 0
+      ? "  (no options enumerated)"
+      : input.options.map((option) => `  ${clean(option)}`).join("\n");
+  const pick = input.myPick ? `\nMy pick: ${clean(input.myPick)} (${clean(input.confidence)}% confidence)` : "";
   return [
-    `*/afk decision ${input.correlationId}* (session ${input.sessionId})`,
+    `/afk decision ${input.correlationId} (session ${input.sessionId})`,
     "",
-    `*${input.title}*`,
-    `Situation: ${input.context}`,
+    clean(input.title),
+    `Situation: ${clean(input.context)}`,
     "Options:",
     optionsBlock,
     pick,
     "",
     `Reply with one of: A / B / C / D / E / PROCEED / STOP / EVOLVE / DEFER`,
-    `Or prefix with \`${input.correlationId}\` so I can match your answer.`,
+    `Or prefix with "${input.correlationId}" so I can match your answer.`,
   ].join("\n");
 }
+
+// START_CHANGE_SUMMARY
+//   LAST_CHANGE: [3.7.0-grace-afk] Initial module. Post-review fixes:
+//                - plain-text buildAskMessage (control-char stripping, no markdown)
+//                - EXIT_TELEGRAM_FAILURE / EXIT_CONFIG_MISSING / EXIT_BAD_ARGS replace exit(1)
+//                - --class validated against DECISION_CLASSES (no more silent garbage)
+//                - --context canonical, --contextLine alias kept for back-compat
+//                - dead tautology in report cmd removed
+// END_CHANGE_SUMMARY

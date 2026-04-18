@@ -1,14 +1,38 @@
-/**
- * /afk session state.
- *
- * Budget enforcement is done by the CLI, NOT by the agent. The agent cannot rationalize
- * its way around an expired session because any `grace afk *` command first checks
- * expiresAt and exits with `BUDGET_EXHAUSTED` if it has passed.
- *
- * State file: `docs/afk-sessions/<ts>/state.json` — one session per timestamped directory.
- */
+// FILE: src/afk/session.ts
+// VERSION: 1.0.0
+// START_MODULE_CONTRACT
+//   PURPOSE: Session state store + budget enforcement for /afk. CLI, not the LLM, decides when the session is over.
+//   SCOPE: Create / read / write state.json atomically; expire check; counters; exit-code constants.
+//   DEPENDS: node:fs, node:crypto, node:path
+//   LINKS: docs/knowledge-graph.xml#M-AFK-SESSION, docs/verification-plan.xml#V-M-AFK-SESSION
+//   ROLE: RUNTIME
+//   MAP_MODE: EXPORTS
+// END_MODULE_CONTRACT
+//
+// START_MODULE_MAP
+//   SessionStatus         - "active" | "expired" | "stopped" | "completed"
+//   SessionState          - Shape of state.json
+//   ActiveSessionCheck    - Discriminated result of checkActive (ok | expired | stopped | no-session)
+//   newSessionId          - Compact ISO-ish id + 4-hex suffix (collision-safe within ms)
+//   createSession         - Validate args, create docs/afk-sessions/<id>/, write state.json
+//   listSessions          - List session ids in docs/afk-sessions
+//   findActiveSession     - Return the most recent still-active session
+//   readSession           - Read a session's state.json or null if missing
+//   writeSession          - Atomic write of state.json via .tmp + renameSync
+//   checkActive           - Discriminated check used by CLI to enforce budget
+//   markStopped           - Transition session to stopped status
+//   markCompleted         - Transition session to completed status
+//   incrementCounter      - Atomic increment of commits / escalations / deferred
+//   updateLastTick        - Stamp the last tick time
+//   formatRemaining       - Human-readable "Xh Ym" for reports
+//   resolveSessionPaths   - Resolve decisions.md / deferred.md / dashboard.md paths
+//   EXIT_BUDGET_EXHAUSTED - Numeric exit code 42
+//   EXIT_NO_SESSION       - Numeric exit code 43
+//   EXIT_SESSION_STOPPED  - Numeric exit code 44
+// END_MODULE_MAP
 
-import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, statSync, writeFileSync } from "node:fs";
+import { randomBytes } from "node:crypto";
 import path from "node:path";
 
 export type SessionStatus = "active" | "expired" | "stopped" | "completed";
@@ -48,12 +72,15 @@ function statePath(projectRoot: string, sessionId: string) {
 }
 
 export function newSessionId(now = new Date()) {
-  // Compact ISO-ish id, safe for paths across Windows/Linux.
-  return now
+  // Compact ISO-ish id, safe for paths across Windows/Linux, with a 4-hex-char suffix to
+  // prevent collision when two sessions happen to be created in the same millisecond (or
+  // when a test fakes `now` to a constant value, which is common).
+  const stamp = now
     .toISOString()
     .replace(/[:.]/g, "")
     .replace(/Z$/, "Z")
     .slice(0, 17);
+  return `${stamp}-${randomBytes(2).toString("hex")}`;
 }
 
 export function createSession(
@@ -91,7 +118,7 @@ export function createSession(
 
   const dir = sessionDir(projectRoot, id);
   mkdirSync(dir, { recursive: true });
-  writeFileSync(statePath(projectRoot, id), JSON.stringify(state, null, 2));
+  writeSession(projectRoot, state);
   return state;
 }
 
@@ -137,7 +164,14 @@ export function writeSession(projectRoot: string, state: SessionState) {
   if (!existsSync(dir)) {
     mkdirSync(dir, { recursive: true });
   }
-  writeFileSync(statePath(projectRoot, state.id), JSON.stringify(state, null, 2));
+  // Atomic write: serialize to a sibling .tmp file, then rename.
+  // rename(2) is atomic on POSIX and NTFS when source and target are on the same filesystem.
+  // Protects against concurrent `grace afk tick` / `grace afk journal` / `grace afk increment`
+  // calls from the agent clobbering each other's updates.
+  const targetPath = statePath(projectRoot, state.id);
+  const tmpPath = `${targetPath}.${randomBytes(3).toString("hex")}.tmp`;
+  writeFileSync(tmpPath, JSON.stringify(state, null, 2));
+  renameSync(tmpPath, targetPath);
 }
 
 export type ActiveSessionCheck =
@@ -243,3 +277,9 @@ export function resolveSessionPaths(projectRoot: string, sessionId: string) {
     dashboardPath: path.join(dir, "dashboard.md"),
   };
 }
+
+// START_CHANGE_SUMMARY
+//   LAST_CHANGE: [3.7.0-grace-afk] Initial module. writeSession uses atomic rename to protect
+//                concurrent tick/journal/increment updates. newSessionId now includes 4 hex
+//                chars of randomness to avoid same-millisecond collisions.
+// END_CHANGE_SUMMARY

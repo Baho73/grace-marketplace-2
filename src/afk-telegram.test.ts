@@ -106,7 +106,7 @@ describe("matchReply", () => {
 });
 
 describe("classifyAnswer", () => {
-  it("recognizes single letter options A-E", () => {
+  it("recognizes single letter options A-E when the letter stands alone", () => {
     expect(classifyAnswer("A").verb).toBe("A");
     expect(classifyAnswer("b").verb).toBe("B");
     expect(classifyAnswer(" c ").verb).toBe("C");
@@ -117,6 +117,12 @@ describe("classifyAnswer", () => {
     expect(classifyAnswer("proceed").verb).toBe("PROCEED");
     expect(classifyAnswer("STOP").verb).toBe("STOP");
     expect(classifyAnswer("defer now").verb).toBe("DEFER");
+    expect(classifyAnswer("yes proceed").verb).toBe("PROCEED");
+  });
+
+  it("recognizes an answer prefixed by a correlation id", () => {
+    expect(classifyAnswer("abc123 PROCEED").verb).toBe("PROCEED");
+    expect(classifyAnswer("abc123 STOP").verb).toBe("STOP");
   });
 
   it("returns UNKNOWN with recognized=false for free-form text", () => {
@@ -124,5 +130,28 @@ describe("classifyAnswer", () => {
     expect(result.verb).toBe("UNKNOWN");
     expect(result.recognized).toBe(false);
     expect(result.raw).toBe("let me think about it");
+  });
+
+  it("rejects replies containing a negation alongside a verb", () => {
+    expect(classifyAnswer("do not STOP").recognized).toBe(false);
+    expect(classifyAnswer("dont proceed").recognized).toBe(false);
+    expect(classifyAnswer("never defer").recognized).toBe(false);
+    expect(classifyAnswer("cancel PROCEED").recognized).toBe(false);
+  });
+
+  it("rejects free-form replies longer than 3 tokens even if a verb appears", () => {
+    expect(classifyAnswer("I think we should PROCEED").recognized).toBe(false);
+    expect(classifyAnswer("do not STOP do not PROCEED").recognized).toBe(false);
+  });
+
+  it("rejects single letters embedded in free-form text (regression: 'a cat' -> A)", () => {
+    expect(classifyAnswer("a cat").recognized).toBe(false);
+    expect(classifyAnswer("B please").recognized).toBe(false);
+    expect(classifyAnswer("option C maybe").recognized).toBe(false);
+  });
+
+  it("rejects empty / whitespace-only replies", () => {
+    expect(classifyAnswer("").recognized).toBe(false);
+    expect(classifyAnswer("   ").recognized).toBe(false);
   });
 });
