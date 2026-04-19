@@ -3,6 +3,7 @@
 import { defineCommand, type CommandDef, runMain } from "citty";
 
 import { afkCommand } from "./grace-afk";
+import { evolveCommand } from "./grace-evolve";
 import { fileCommand } from "./grace-file";
 import { lintCommand } from "./grace-lint";
 import { moduleCommand } from "./grace-module";
@@ -16,6 +17,7 @@ const main = defineCommand({
   },
   subCommands: {
     afk: afkCommand,
+    evolve: evolveCommand,
     file: fileCommand,
     lint: lintCommand,
     module: moduleCommand,
