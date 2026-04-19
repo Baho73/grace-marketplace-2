@@ -1,6 +1,6 @@
 ---
 name: grace-ask-human
-description: "Short-form Telegram escalation for autonomous sessions. Use ONLY from inside grace-afk when a one-way-door decision must be confirmed by the human. Produces a <=10-line message, sends via grace afk ask, and polls grace afk check with exponential backoff. Blocks until answered, timed out, or session expired."
+description: "Короткая эскалация в Telegram во время автономных сессий. Использовать ТОЛЬКО изнутри grace-afk, когда необратимое решение должно быть подтверждено человеком. Формирует сообщение ≤10 строк, отправляет через grace afk ask и опрашивает grace afk check с экспоненциальным backoff. Блокирует до получения ответа, тайм-аута или истечения сессии."
 ---
 
 Send a Telegram escalation to the human with a hard short format, then poll for the reply.

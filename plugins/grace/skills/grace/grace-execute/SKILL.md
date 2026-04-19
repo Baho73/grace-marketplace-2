@@ -1,6 +1,6 @@
 ---
 name: grace-execute
-description: "Execute the full GRACE development plan step by step with controller-managed context packets, verification-plan excerpts, scoped reviews, level-based verification, and commits after validated sequential steps."
+description: "Выполнение полного GRACE-плана разработки шаг за шагом с пакетами контекста под управлением контроллера, выдержками из verification-plan, локальными ревью, поуровневой верификацией и коммитами после валидных последовательных шагов."
 ---
 
 Execute the development plan step by step, generating code for each pending module with validation and commits.

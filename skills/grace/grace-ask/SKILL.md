@@ -1,6 +1,6 @@
 ---
 name: grace-ask
-description: "Answer a question about a GRACE project using progressive context disclosure. Use when the user has a question about the codebase, architecture, modules, or implementation — starts with the cheapest context layer, escalates ONLY when needed, and provides a grounded answer with citations."
+description: "Ответ на вопрос о GRACE-проекте с прогрессивным раскрытием контекста. Использовать, когда у пользователя есть вопрос о кодовой базе, архитектуре, модулях или реализации — начинает с самого дешёвого уровня контекста, углубляется ТОЛЬКО при необходимости и даёт обоснованный ответ со ссылками на источники."
 ---
 
 Answer a question about the current GRACE project using the **smallest context that still answers

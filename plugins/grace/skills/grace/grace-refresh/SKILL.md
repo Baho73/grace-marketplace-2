@@ -1,6 +1,6 @@
 ---
 name: grace-refresh
-description: "Synchronize GRACE shared artifacts with the actual codebase. Use targeted refresh after controlled waves, or full refresh after refactors and when you suspect wider drift between the graph, verification plan, and code."
+description: "Синхронизация общих GRACE-артефактов с актуальной кодовой базой. Использовать точечный refresh после контролируемых волн или полный refresh после рефакторингов и когда есть подозрение на расхождение между графом, планом верификации и кодом."
 ---
 
 Synchronize the GRACE shared artifacts with the actual codebase.

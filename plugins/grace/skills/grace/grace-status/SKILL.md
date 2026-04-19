@@ -1,6 +1,6 @@
 ---
 name: grace-status
-description: "Show the current health status of a GRACE project. Use to get an overview of project artifacts, codebase metrics, knowledge graph health, verification coverage, and suggested next actions."
+description: "Показать текущее состояние здоровья GRACE-проекта. Использовать для обзора артефактов проекта, метрик кодовой базы, состояния графа знаний, покрытия верификацией и подсказок по следующим шагам."
 ---
 
 Show the current state of the GRACE project.

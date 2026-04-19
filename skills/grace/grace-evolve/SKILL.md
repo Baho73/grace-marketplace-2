@@ -1,6 +1,6 @@
 ---
 name: grace-evolve
-description: "Evolutionary / comparative search over candidate solutions. Use when facing a design or implementation choice with multiple plausible approaches, clear measurable metrics, and enough budget to run them in isolation. MVP: user-authored candidates + metric runner + archive. Future: LLM-critic loop that generates new candidates from prior results."
+description: "Эволюционный / сравнительный поиск среди кандидатов-решений. Использовать при выборе дизайна или реализации, когда есть несколько разумных подходов, чёткие измеримые метрики и достаточный бюджет для изолированного запуска. MVP: кандидаты от пользователя + раннер метрик + архив. В планах: LLM-критик, который генерирует новых кандидатов на основе предыдущих результатов."
 ---
 
 Run a comparative experiment: N candidates, each scored by user-declared metrics, each executed in an isolated git worktree, winner archived with full trace.

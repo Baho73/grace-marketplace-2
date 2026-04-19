@@ -1,6 +1,6 @@
 ---
 name: grace-refactor
-description: "Refactor GRACE-governed code safely: rename, move, split, merge, or extract modules while keeping contracts, graph, verification, and semantic markup synchronized."
+description: "Безопасный рефакторинг кода под управлением GRACE: переименование, перенос, разделение, слияние или выделение модулей с синхронизацией контрактов, графа, верификации и семантической разметки."
 ---
 
 Refactor a GRACE project without letting architecture or verification drift.

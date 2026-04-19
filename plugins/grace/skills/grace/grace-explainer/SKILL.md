@@ -1,6 +1,6 @@
 ---
 name: grace-explainer
-description: "Complete GRACE methodology reference. Use when explaining GRACE to users, onboarding new projects, or when you need to understand the GRACE framework - its principles, semantic markup, knowledge graphs, contracts, testing, and unique tag conventions."
+description: "Полный справочник по методологии GRACE. Использовать при объяснении GRACE пользователям, онбординге новых проектов или когда нужно самому разобраться во фреймворке — принципах, семантической разметке, графах знаний, контрактах, тестировании и конвенциях уникальных тегов."
 ---
 
 # GRACE — Graph-RAG Anchored Code Engineering

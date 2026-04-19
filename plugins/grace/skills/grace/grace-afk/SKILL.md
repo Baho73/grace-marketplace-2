@@ -1,6 +1,6 @@
 ---
 name: grace-afk
-description: "Autonomous harness for when the user is AFK. Use when the user types `/afk [hours] [budget%] [--checkpoint <min>]` or asks the agent to keep working autonomously. The CLI enforces the time budget — the agent polls `grace afk tick` between steps and exits when the CLI says so. One-way-door decisions escalate to Telegram via `grace afk ask`; everything else is acted on, deferred, or rolled back per the autonomy matrix."
+description: "Автономный режим работы, когда пользователь AFK. Использовать, когда пользователь вводит `/afk [часы] [бюджет%] [--checkpoint <мин>]` или просит агента продолжать работу самостоятельно. CLI контролирует лимит времени — агент опрашивает `grace afk tick` между шагами и завершает работу, когда CLI это разрешит. Необратимые решения эскалируются в Telegram через `grace afk ask`; всё остальное выполняется, откладывается или откатывается согласно матрице автономии."
 ---
 
 Run the /afk harness: keep working through `docs/development-plan.xml` on an isolated branch,

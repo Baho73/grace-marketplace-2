@@ -1,6 +1,6 @@
 ---
 name: grace-bootstrap
-description: "Use when starting any conversation in a repository that may be managed by GRACE. Establishes activation protocol: if GRACE artifacts exist, load minimal project context and route the request through the correct grace-* skill BEFORE taking any action (including clarifying questions, file reads, or code edits)."
+description: "Использовать в начале любого разговора в репозитории, который может управляться GRACE. Устанавливает протокол активации: если GRACE-артефакты существуют, загружает минимальный контекст проекта и направляет запрос в подходящий grace-* скилл ДО любых действий (включая уточняющие вопросы, чтение файлов и правки кода)."
 ---
 
 <SUBAGENT-FAST-TRACK>

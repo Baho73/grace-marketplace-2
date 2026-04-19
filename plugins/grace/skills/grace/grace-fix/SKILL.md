@@ -1,6 +1,6 @@
 ---
 name: grace-fix
-description: "Debug and fix an issue using GRACE semantic navigation with the Prove-It Pattern. Use when encountering bugs, errors, or unexpected behavior - navigate through the graph, verification plan, and semantic blocks, write a FAILING test that proves the bug, apply a targeted fix, verify the test passes, and guard against regression."
+description: "Отладка и исправление проблемы через GRACE-семантическую навигацию с паттерном Prove-It. Использовать при встрече с багами, ошибками или неожиданным поведением — пройти по графу, плану верификации и семантическим блокам, написать ПАДАЮЩИЙ тест, который доказывает баг, применить точечное исправление, убедиться в прохождении теста и защититься от регрессии."
 ---
 
 Debug and fix an issue using GRACE semantic navigation — with a **failing test written before the fix**.

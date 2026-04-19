@@ -1,6 +1,6 @@
 ---
 name: grace-cli
-description: "Operate the optional `grace` CLI against a GRACE project. Use when you want to lint GRACE artifacts, resolve modules from names or file paths, inspect shared/public module context, or inspect file-local/private markup through `grace lint`, `grace module find`, `grace module show`, and `grace file show`."
+description: "Работа с опциональным `grace` CLI в GRACE-проекте. Использовать, когда нужно проверить GRACE-артефакты линтером, найти модули по именам или путям файлов, посмотреть общий/публичный контекст модуля или файловую/приватную разметку через `grace lint`, `grace module find`, `grace module show` и `grace file show`."
 ---
 
 Use the optional `grace` CLI as a fast GRACE-aware read/query layer.

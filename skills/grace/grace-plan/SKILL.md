@@ -1,6 +1,6 @@
 ---
 name: grace-plan
-description: "Run the GRACE architectural planning phase. Use when you have requirements and technology decisions defined and need to design the module architecture, create contracts, map data flows, and establish verification references. Produces development-plan.xml, verification-plan.xml, and knowledge-graph.xml."
+description: "Фаза архитектурного планирования GRACE. Использовать, когда определены требования и технологические решения и нужно спроектировать архитектуру модулей, создать контракты, описать потоки данных и задать точки верификации. Результат — development-plan.xml, verification-plan.xml и knowledge-graph.xml."
 ---
 
 Run the GRACE architectural planning phase.

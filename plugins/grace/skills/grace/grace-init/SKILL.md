@@ -1,6 +1,6 @@
 ---
 name: grace-init
-description: "Bootstrap GRACE framework structure for a new project. Use when starting a new project with GRACE methodology - creates docs/ directory, AGENTS.md, CLAUDE.md (Claude Code activation), .claude/settings.json (SessionStart hook), and XML templates for requirements, technology, development plan, verification plan, knowledge graph, and operational packet contracts."
+description: "Разворачивание структуры GRACE-фреймворка для нового проекта. Использовать при старте нового проекта по методологии GRACE — создаёт директорию docs/, AGENTS.md, CLAUDE.md (активация Claude Code), .claude/settings.json (SessionStart-хук) и XML-шаблоны для требований, технологий, плана разработки, плана верификации, графа знаний и контрактов операционных пакетов."
 ---
 
 Initialize GRACE framework structure for this project.

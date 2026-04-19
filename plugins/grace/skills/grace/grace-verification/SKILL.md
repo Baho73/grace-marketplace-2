@@ -1,6 +1,6 @@
 ---
 name: grace-verification
-description: "Design and enforce testing, traces, and log-driven verification for a GRACE project. Use when modules need stronger automated tests, execution-trace checks, or a maintained verification-plan.xml that autonomous and multi-agent workflows can trust."
+description: "Проектирование и обеспечение тестирования, трасс и log-driven-верификации для GRACE-проекта. Использовать, когда модулям нужны более сильные автотесты, проверки execution-trace или поддерживаемый verification-plan.xml, на который могут опираться автономные и мультиагентные сценарии."
 ---
 
 Design verification that autonomous agents can trust: deterministic where possible, observable and traceable where equality checks alone are not enough.

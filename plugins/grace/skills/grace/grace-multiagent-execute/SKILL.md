@@ -1,6 +1,6 @@
 ---
 name: grace-multiagent-execute
-description: "Execute a GRACE development plan in controller-managed parallel waves with selectable safety profiles, verification-plan excerpts, batched shared-artifact sync, and scoped reviews."
+description: "Выполнение GRACE-плана разработки параллельными волнами под управлением контроллера с выбираемыми профилями безопасности, выдержками из verification-plan, пакетной синхронизацией общих артефактов и локальными ревью."
 ---
 
 Execute a GRACE development plan with multiple agents while keeping planning artifacts and shared context consistent.
