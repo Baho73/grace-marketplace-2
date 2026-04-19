@@ -285,13 +285,15 @@
         <check-1>bun test src/afk-config.test.ts</check-1>
       </module-checks>
       <scenarios>
-        <scenario-1 kind="success">loadAfkConfig returns null + descriptive error when file is missing.</scenario-1>
-        <scenario-2 kind="failure">loadAfkConfig returns null + error on invalid JSON.</scenario-2>
-        <scenario-3 kind="success">loadAfkConfig parses a valid file with telegram and autoStop sections.</scenario-3>
-        <scenario-4 kind="success">getTelegram returns null if config lacks either botToken or chatId.</scenario-4>
-        <scenario-5 kind="success">getTelegram returns the credentials when both are present.</scenario-5>
-        <scenario-6 kind="success">getMaxEscalations defaults to 3 and honors the configured value.</scenario-6>
-        <scenario-7 kind="success">getMaxEscalations falls back when configured value is negative or non-finite.</scenario-7>
+        <scenario-1 kind="success">loadAfkConfig returns null + descriptive error when no candidate exists at env, project, or global.</scenario-1>
+        <scenario-2 kind="failure">loadAfkConfig returns null + error on invalid JSON at the resolved path.</scenario-2>
+        <scenario-3 kind="success">loadAfkConfig parses a valid project-local file and reports source=project.</scenario-3>
+        <scenario-4 kind="success">loadAfkConfig falls back to ~/.grace/afk.json when no project-local override exists and reports source=global.</scenario-4>
+        <scenario-5 kind="success">resolveAfkConfigPath picks $GRACE_AFK_CONFIG when it exists, overriding both project and global.</scenario-5>
+        <scenario-6 kind="success">resolveAfkConfigPath ignores $GRACE_AFK_CONFIG when the referenced file is missing and falls through to next candidate.</scenario-6>
+        <scenario-7 kind="success">resolveAfkConfigPath prefers project-local over global when both exist.</scenario-7>
+        <scenario-8 kind="success">getTelegram returns null if config lacks either botToken or chatId; returns credentials when both present.</scenario-8>
+        <scenario-9 kind="success">getMaxEscalations defaults to 3, honors configured value, falls back on negative/non-finite.</scenario-9>
       </scenarios>
     </V-M-AFK-CONFIG>
 

@@ -12,7 +12,7 @@ cannot act on from a phone.
 ## Preconditions
 
 - You are inside an active `grace-afk` session (checked by `grace afk tick` returning 0).
-- `.grace-afk.json` is configured with Telegram bot token and chat id.
+- Telegram config is available through any of: `$GRACE_AFK_CONFIG` env var, `<project>/.grace-afk.json`, or global `~/.grace/afk.json` (checked in that priority).
 - You have a decision that qualifies as `one-way-door-escalated` (see `grace-afk#Autonomy-Matrix`).
   **If the decision is reversible, do NOT escalate** — act and journal.
 

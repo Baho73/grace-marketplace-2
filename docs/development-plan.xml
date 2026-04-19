@@ -229,7 +229,7 @@
 
     <M-AFK-CONFIG NAME="AfkConfig" TYPE="UTILITY" LAYER="0" ORDER="7" STATUS="implemented">
       <contract>
-        <purpose>Parse .grace-afk.json (Telegram credentials + escalation caps).</purpose>
+        <purpose>Resolve and parse grace-afk config by priority ($GRACE_AFK_CONFIG env, then project-local .grace-afk.json, then ~/.grace/afk.json). Telegram credentials + escalation caps.</purpose>
       </contract>
       <depends>none</depends>
       <target><source>src/afk/config.ts</source></target>

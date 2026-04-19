@@ -133,12 +133,13 @@
     </M-AFK-JOURNAL>
 
     <M-AFK-CONFIG NAME="AfkConfig" TYPE="UTILITY" STATUS="implemented">
-      <purpose>Parse .grace-afk.json: Telegram credentials + autoStop caps. Not in git.</purpose>
+      <purpose>Resolve and parse grace-afk config by priority ($GRACE_AFK_CONFIG env var, then project-local .grace-afk.json, then ~/.grace/afk.json). Holds Telegram credentials + autoStop caps. Project-local file gitignored.</purpose>
       <path>src/afk/config.ts</path>
       <depends>none</depends>
       <verification-ref>V-M-AFK-CONFIG</verification-ref>
       <annotations>
-        <fn-loadAfkConfig PURPOSE="Read .grace-afk.json" />
+        <fn-resolveAfkConfigPath PURPOSE="Apply env/project/global lookup order; returns path + source or null" />
+        <fn-loadAfkConfig PURPOSE="Resolve the path and parse it; returns config + source + error" />
         <fn-getTelegram PURPOSE="Extract botToken + chatId if present" />
         <fn-getMaxEscalations PURPOSE="Resolve per-session escalation cap" />
       </annotations>

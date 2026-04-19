@@ -6,6 +6,51 @@ The format is inspired by Keep a Changelog, and this project follows Semantic Ve
 
 This changelog currently starts at `1.3.0`. Earlier history is available in the git log.
 
+## [4.0.0-beta.2] - 2026-04-19
+
+**Quality-of-life release focused on "minimum per-project setup"**. One global
+Telegram config now serves every project on a machine, and tests got isolated from
+the dev machine's real home.
+
+### Changed
+
+- **AFK config lookup is now tiered** (`src/afk/config.ts`). Priority order:
+  1. `$GRACE_AFK_CONFIG` env var (explicit path override)
+  2. `<projectRoot>/.grace-afk.json` (project-local override)
+  3. `~/.grace/afk.json` (global user-level fallback)
+
+  Any Claude Code session on the machine can now share one Telegram bot without a
+  per-project config file. Project-local files remain the way to run multi-bot
+  setups (e.g. different chat ids per repo). The returned shape now also includes
+  `source: "env" | "project" | "global"` for introspection.
+
+- **`grace-init` skill** updated to recommend the global path first. It checks for
+  an existing `~/.grace/afk.json`, tells the user the project will inherit it, and
+  only prompts for a project-local override when explicitly requested.
+
+- **CLI tests isolated** (`src/afk-cli.test.ts`). `runCli` now sets `HOME` /
+  `USERPROFILE` / `GRACE_AFK_CONFIG` to a throwaway tmp dir for every invocation,
+  so `EXIT_CONFIG_MISSING` tests behave identically on developer machines that
+  happen to have a real `~/.grace/afk.json`.
+
+### Added
+
+- `resolveAfkConfigPath(projectRoot, { env?, home? })` — exported helper that
+  returns the resolved path and source, testable without parsing.
+- New CLI test: `ask reads global ~/.grace/afk.json when no project-local config
+  exists` (end-to-end via spawnSync with a fake `$HOME`).
+- New unit tests for `resolveAfkConfigPath` covering all four priority paths
+  (env, project, global, none) plus env-points-to-nonexistent fallback.
+
+### Migration notes
+
+- If you already have a `.grace-afk.json` at a project root, it continues to work
+  (project-local overrides global). To unify, move it to `~/.grace/afk.json` and
+  delete the project-local copy.
+- No schema changes. Same JSON shape, different preferred location.
+- `EXIT_CONFIG_MISSING` error message now lists all three candidate paths that
+  were checked.
+
 ## [4.0.0-beta.1] - 2026-04-19
 
 **Major fork release.** This is a fork of upstream `osovv/grace-marketplace` with

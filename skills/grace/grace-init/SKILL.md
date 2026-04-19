@@ -15,7 +15,7 @@ Read each template file, replace the `$PLACEHOLDER` variables with actual values
 | `assets/AGENTS.md.template`              | `AGENTS.md` (project root)  | GRACE protocol for any agent |
 | `assets/CLAUDE.md.template`              | `CLAUDE.md` (project root)  | Claude Code activation preamble |
 | `assets/settings.json.template`          | `.claude/settings.json`     | SessionStart hook: runs `grace status --brief` on session start |
-| `assets/grace-afk.json.template`         | `.grace-afk.json` (optional)| Telegram config for `grace-afk`. User MUST gitignore this file. |
+| `assets/grace-afk.json.template`         | `~/.grace/afk.json` OR `.grace-afk.json` (project override) | Telegram config for `grace-afk`. Prefer the global location so every project on the machine reuses one Telegram bot. Project-local override exists for multi-bot setups and MUST be gitignored. |
 | `assets/docs/knowledge-graph.xml.template` | `docs/knowledge-graph.xml`  | |
 | `assets/docs/requirements.xml.template`    | `docs/requirements.xml`     | |
 | `assets/docs/technology.xml.template`      | `docs/technology.xml`       | |
@@ -57,9 +57,11 @@ Read each template file, replace the `$PLACEHOLDER` variables with actual values
     - If `.claude/settings.json` already exists — inform the user, show the template content, and ask whether to merge the `hooks.SessionStart` entry into the existing file or skip. Never silently overwrite existing settings.
 
 6. **Offer `grace-afk` config (optional):**
-    - Ask the user if they plan to use the autonomous harness (`grace-afk`).
-    - If yes — read `assets/grace-afk.json.template`, fill `$TELEGRAM_BOT_TOKEN` / `$TELEGRAM_CHAT_ID` from the user, write to `.grace-afk.json`, and REMIND the user to add it to `.gitignore` (verify `.gitignore` contains `.grace-afk.json` and add the line if missing).
-    - If no — skip; the user can add it later.
+    - First check whether a global config already exists at `~/.grace/afk.json`. If it does, tell the user the current project will use it automatically, and skip config creation unless they explicitly want a project-specific override.
+    - If no global config exists, ask the user where to place it:
+      - **Global** (recommended, default): fill the template and write to `~/.grace/afk.json` — every project on the machine inherits this Telegram bot.
+      - **Project-local override**: write to `<project>/.grace-afk.json` — only this project uses it; add to `.gitignore` (verify `.gitignore` contains `.grace-afk.json` and add the line if missing).
+    - If the user opts out entirely, skip; they can add it later. The CLI lookup will resolve `$GRACE_AFK_CONFIG` → project-local → global at runtime.
 
 7. **Print a summary** of all created files and suggest the next step:
     > "GRACE structure initialized. On your next Claude Code session, the SessionStart hook will surface `grace status --brief`. Run `$grace-plan` to design modules, data flows, and verification references. Then use `$grace-verification` to deepen tests, traces, and log-driven evidence before large execution waves. Use `docs/operational-packets.xml` as the canonical packet and delta reference during execution and refactors."
@@ -87,5 +89,5 @@ After running this skill:
 - [ ] `AGENTS.md` exists and contains GRACE keywords (verification: `grep -c "MODULE_CONTRACT" AGENTS.md` ≥ 1)
 - [ ] `CLAUDE.md` exists and contains the `<CRITICAL>` activation preamble (verification: `grep "<CRITICAL>" CLAUDE.md`)
 - [ ] `.claude/settings.json` exists with the SessionStart hook (verification: `grep "grace status" .claude/settings.json`)
-- [ ] If the user opted in to `grace-afk`: `.grace-afk.json` exists AND `.gitignore` contains `.grace-afk.json` (verification: `grep -F ".grace-afk.json" .gitignore`)
+- [ ] If the user opted in to `grace-afk`: either `~/.grace/afk.json` exists (global), OR `<project>/.grace-afk.json` exists AND `.gitignore` contains `.grace-afk.json` (verification: `grep -F ".grace-afk.json" .gitignore`)
 - [ ] Next recommended skill announced to user (verification: output contains `$grace-plan`)

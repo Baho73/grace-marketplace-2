@@ -2,7 +2,12 @@ import { mkdtempSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
-import { describe, expect, it } from "bun:test";
+import { describe, expect, it, setDefaultTimeout } from "bun:test";
+
+// Each runCli invocation spawns `bun` (~500ms cold-start on Windows) + mkdtemp for an isolated
+// $HOME. Tests that chain 3+ invocations approach the default 5s ceiling on slow machines.
+// Bump the per-test ceiling so the suite stays deterministic under CI/Windows load.
+setDefaultTimeout(15000);
 
 function tmpProject() {
   return mkdtempSync(path.join(os.tmpdir(), "grace-afk-cli-"));
@@ -26,14 +31,25 @@ const CLI_ENTRY = path.join(REPO_ROOT, "src", "grace.ts");
 // the binary directly avoids the shell entirely and lets Node.js do its normal arg-escaping.
 const BUN_BIN = process.platform === "win32" ? "bun.cmd" : "bun";
 
-function runCli(cwd: string, args: string[]) {
+function runCli(cwd: string, args: string[], opts: { home?: string } = {}) {
   // Invoke `bun <file>` rather than `bun run <file>`: `bun run` wraps the child and on Windows
   // does not reliably propagate custom exit codes above a single-digit range (observed: any
   // `process.exitCode = 46` became 255 at the parent).
+  //
+  // Isolate $HOME / $USERPROFILE: since 4.0.0-beta.2 afk config also falls back to a global
+  // ~/.grace/afk.json. If tests inherited the real home, presence of a dev machine's global
+  // config would flip EXIT_CONFIG_MISSING tests. Every runCli call gets a throwaway home,
+  // making tests deterministic regardless of local dev setup.
+  const home = opts.home ?? mkdtempSync(path.join(os.tmpdir(), "grace-afk-cli-home-"));
   const result = spawnSync(BUN_BIN, [CLI_ENTRY, "afk", ...args], {
     cwd,
     encoding: "utf8",
-    env: process.env,
+    env: {
+      ...process.env,
+      HOME: home,
+      USERPROFILE: home,
+      GRACE_AFK_CONFIG: "",
+    },
   });
   return {
     code: result.status ?? -1,
@@ -412,6 +428,42 @@ describe("grace afk CLI — argument validation and fallbacks", () => {
     expect(result.code).toBe(2); // EXIT_BAD_ARGS per post-review unification
     expect(result.stderr).toContain("max 3 escalations");
     expect(result.stderr).toContain("defer");
+  });
+
+  it("ask reads global ~/.grace/afk.json when no project-local config exists", () => {
+    const root = tmpProject();
+    const home = mkdtempSync(path.join(os.tmpdir(), "grace-afk-cli-home-"));
+    // Plant a global config in the fake home. Project root has no .grace-afk.json.
+    const globalDir = path.join(home, ".grace");
+    require("node:fs").mkdirSync(globalDir, { recursive: true });
+    writeFileSync(
+      path.join(globalDir, "afk.json"),
+      JSON.stringify({
+        telegram: { botToken: "global-bot", chatId: "global-chat" },
+        autoStop: { maxEscalationsPerSession: 3 },
+      }),
+    );
+
+    runCli(root, ["start", "1", "--path", root], { home });
+
+    // Bump escalations so we hit the max-escalations guard before touching telegram.
+    const docsDir = path.join(root, "docs", "afk-sessions");
+    const sessionId = require("node:fs").readdirSync(docsDir)[0];
+    const statePath = path.join(docsDir, sessionId, "state.json");
+    const state = JSON.parse(readFileSync(statePath, "utf8"));
+    state.escalations = 3;
+    writeFileSync(statePath, JSON.stringify(state, null, 2));
+
+    const result = runCli(
+      root,
+      ["ask", "--path", root, "--title", "t", "--context", "c", "--options", "A:x;B:y"],
+      { home },
+    );
+
+    // Hitting max-escalations (exit 2) proves the global config was loaded — otherwise we'd
+    // have gotten EXIT_CONFIG_MISSING (46) first.
+    expect(result.code).toBe(2);
+    expect(result.stderr).toContain("max 3 escalations");
   });
 
   it("tick updates lastTickAt atomically and is safe to call repeatedly", () => {

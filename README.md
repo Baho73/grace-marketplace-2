@@ -4,7 +4,7 @@
 
 This repository ships the GRACE skills plus the optional `grace` CLI. It is a packaging and distribution repository, not an end-user application.
 
-Current packaged version: `4.0.0-beta.1` — **Beta**: core stable (146/146 tests, clean lint), edge cases expected on non-Windows platforms. Fork of [`osovv/grace-marketplace`](https://github.com/osovv/grace-marketplace) with additional skills (grace-bootstrap, grace-afk, grace-ask-human, grace-evolve) and CLI surfaces (status, afk, evolve).
+Current packaged version: `4.0.0-beta.2` — **Beta**: core stable, edge cases expected on non-Windows platforms. Fork of [`osovv/grace-marketplace`](https://github.com/osovv/grace-marketplace) with additional skills (grace-bootstrap, grace-afk, grace-ask-human, grace-evolve), CLI surfaces (status, afk, evolve), and a global Telegram config at `~/.grace/afk.json` so one AFK setup serves every project on the machine.
 
 ## What This Repository Ships
 
@@ -131,7 +131,7 @@ grace file show src/auth/index.ts --path /path/to/project --contracts --blocks
 | Skill | Purpose |
 | --- | --- |
 | `grace-bootstrap` | Activation protocol — runs first in any GRACE-managed repo, routes intent to the right skill, blocks edits until project context is loaded |
-| `grace-init` | Bootstrap the GRACE docs, templates, and agent guidance (plus optional `CLAUDE.md`, SessionStart hook, and `.grace-afk.json`) |
+| `grace-init` | Bootstrap the GRACE docs, templates, and agent guidance (plus optional `CLAUDE.md`, SessionStart hook, and global `~/.grace/afk.json` or project-local `.grace-afk.json`) |
 | `grace-plan` | Design modules, phases with checkpoints, flows, dependencies, and contracts |
 | `grace-verification` | Build and maintain `verification-plan.xml`, tests, traces, and log evidence |
 | `grace-execute` | Execute the plan sequentially with scoped review and commits |
@@ -161,7 +161,7 @@ grace file show src/auth/index.ts --path /path/to/project --contracts --blocks
 | `grace status [--brief] [--path <root>]` | Artifact presence, module count, verification coverage, pending steps, next recommended action. `--brief` is `≤30` lines for SessionStart hooks |
 | `grace afk start <hours> [<budget%>] [--checkpoint <min>]` | Start an autonomous session — creates isolated branch + `state.json` with `expiresAt` |
 | `grace afk tick` | CLI-side active-session gate. Exits `42 BUDGET_EXHAUSTED`, `43 NO_SESSION`, `44 SESSION_STOPPED`. The agent polls between every step |
-| `grace afk ask / check` | Send a Telegram escalation (needs `.grace-afk.json`), poll for reply |
+| `grace afk ask / check` | Send a Telegram escalation (needs Telegram config at `$GRACE_AFK_CONFIG`, `<project>/.grace-afk.json`, or `~/.grace/afk.json`), poll for reply |
 | `grace afk journal / defer / increment` | Append structured entries to `docs/afk-sessions/<id>/{decisions,deferred}.md` and update counters |
 | `grace afk report / stop` | Emit the return dashboard / manually stop a session |
 
@@ -219,9 +219,12 @@ flowchart TD
     Report --> End(["Session complete:<br/>human reviews deferred.md,<br/>merges afk-TS branch"])
 ```
 
-Setup requires `.grace-afk.json` with a Telegram bot token and chat id — see `grace-init` for
-scaffolding and remember to gitignore it. Full protocol and red-flag list in
-`skills/grace/grace-afk/SKILL.md`. Diagram sources: `docs/diagrams/grace-afk-loop.md`.
+Setup requires a Telegram config with a bot token and chat id. The CLI looks for it in priority:
+`$GRACE_AFK_CONFIG` env var → `<project>/.grace-afk.json` → `~/.grace/afk.json` (global). Recommended
+setup is one global config at `~/.grace/afk.json` so every project on the machine inherits the same
+bot; use project-local `.grace-afk.json` (gitignored) only for multi-bot setups. See `grace-init` for
+scaffolding. Full protocol and red-flag list in `skills/grace/grace-afk/SKILL.md`. Diagram sources:
+`docs/diagrams/grace-afk-loop.md`.
 
 ## Public Shared Docs vs File-Local Markup
 

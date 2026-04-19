@@ -20,8 +20,7 @@ the CLI exit code.
 
 - Project is GRACE-managed (artifacts under `docs/` exist). If not, run `$grace-init` first.
 - `@osovv/grace-cli` installed (the binary `grace` is on PATH).
-- Optional: `.grace-afk.json` at project root with Telegram config — required for `grace-ask-human`
-  escalations. Without it, one-way-door decisions fall back to `grace afk defer`.
+- Telegram config resolved by lookup priority: `$GRACE_AFK_CONFIG` env var, then `<project>/.grace-afk.json`, then `~/.grace/afk.json` (global user-level fallback). Configure one of these if `grace-ask-human` escalations are expected — otherwise one-way-door decisions fall back to `grace afk defer`.
 
 ## Command Surface (CLI)
 
@@ -45,7 +44,7 @@ Exit codes from `tick`:
 - `43` — no active session
 - `44` — session was stopped
 - `45` — Telegram sendMessage failed (only from `ask`)
-- `46` — `.grace-afk.json` missing (only from `ask` / `check`)
+- `46` — grace-afk config missing at env var, project root, and `~/.grace/afk.json` (only from `ask` / `check`)
 - `2`  — bad arguments (unknown --class, missing --context, etc.)
 
 ### Windows-specific note on exit codes
