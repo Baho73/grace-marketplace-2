@@ -4,7 +4,7 @@
 
 This repository ships the GRACE skills plus the optional `grace` CLI. It is a packaging and distribution repository, not an end-user application.
 
-Current packaged version: `3.7.0`
+Current packaged version: `4.0.0-beta.1` — **Beta**: core stable (146/146 tests, clean lint), edge cases expected on non-Windows platforms. Fork of [`osovv/grace-marketplace`](https://github.com/osovv/grace-marketplace) with additional skills (grace-bootstrap, grace-afk, grace-ask-human, grace-evolve) and CLI surfaces (status, afk, evolve).
 
 ## What This Repository Ships
 
@@ -59,22 +59,30 @@ Skills and CLI are complementary, but they are distributed differently.
 #### OpenPackage
 
 ```bash
-opkg install gh@osovv/grace-marketplace
-opkg install gh@osovv/grace-marketplace -g
-opkg install gh@osovv/grace-marketplace --platforms claude-code
+opkg install gh@Baho73/grace-marketplace-2
+opkg install gh@Baho73/grace-marketplace-2 -g
+opkg install gh@Baho73/grace-marketplace-2 --platforms claude-code
 ```
 
 #### Claude Code Marketplace
 
 ```bash
-/plugin marketplace add osovv/grace-marketplace
+/plugin marketplace add Baho73/grace-marketplace-2
 /plugin install grace@grace-marketplace
+```
+
+If you previously installed the upstream `osovv/grace-marketplace`, remove it
+first to avoid name conflicts:
+
+```bash
+/plugin uninstall grace
+/plugin marketplace remove osovv/grace-marketplace
 ```
 
 #### Agent Skills-Compatible Install
 
 ```bash
-git clone https://github.com/osovv/grace-marketplace
+git clone https://github.com/Baho73/grace-marketplace-2
 cp -r grace-marketplace/skills/grace/grace-* /path/to/your/agent/skills/
 ```
 
