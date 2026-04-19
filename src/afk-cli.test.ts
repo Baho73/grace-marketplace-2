@@ -304,7 +304,9 @@ describe("grace afk CLI — argument validation and fallbacks", () => {
     const root = tmpProject();
     runCli(root, ["start", "2", "--path", root]);
 
-    for (let index = 0; index < 10; index += 1) {
+    // 3 iterations is enough to verify the atomic rename path without blowing the test timeout
+    // on Windows where each `bun` spawn is ~500ms. The original 10-loop hit the 5s default.
+    for (let index = 0; index < 3; index += 1) {
       const tick = runCli(root, ["tick", "--path", root]);
       expect(tick.code).toBe(0);
     }

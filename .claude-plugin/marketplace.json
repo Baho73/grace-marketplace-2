@@ -38,6 +38,7 @@
         "./skills/grace/grace-bootstrap",
         "./skills/grace/grace-afk",
         "./skills/grace/grace-ask-human",
+        "./skills/grace/grace-evolve",
         "./skills/grace/grace-init",
         "./skills/grace/grace-plan",
         "./skills/grace/grace-execute",

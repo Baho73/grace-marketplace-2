@@ -295,6 +295,150 @@
       </scenarios>
     </V-M-AFK-CONFIG>
 
+    <V-M-CLI-EVOLVE MODULE="M-CLI-EVOLVE" PRIORITY="high">
+      <test-files>
+        <file>covered indirectly by src/evolve-*.test.ts + manual smoke</file>
+      </test-files>
+      <module-checks>
+        <check-1>bun run ./src/grace.ts evolve --help</check-1>
+        <check-2>bun test src/evolve-spec.test.ts src/evolve-metric.test.ts src/evolve-score.test.ts src/evolve-archive.test.ts src/evolve-runner.test.ts</check-2>
+      </module-checks>
+      <scenarios>
+        <scenario-1 kind="success">`grace evolve --help` lists init / run / show subcommands.</scenario-1>
+        <scenario-2 kind="success">`grace evolve init &lt;topic&gt;` writes a starter spec.json and refuses to overwrite.</scenario-2>
+        <scenario-3 kind="failure">`grace evolve run` exits 47 with per-error stderr when the spec fails validation.</scenario-3>
+        <scenario-4 kind="success">`grace evolve run` produces docs/experiments/&lt;topic&gt;/results.xml after a successful loop.</scenario-4>
+      </scenarios>
+    </V-M-CLI-EVOLVE>
+
+    <V-M-EVOLVE-TYPES MODULE="M-EVOLVE-TYPES" PRIORITY="low">
+      <test-files>
+        <file>no tests (types only)</file>
+      </test-files>
+      <module-checks>
+        <check-1>bun x tsc --noEmit</check-1>
+      </module-checks>
+      <scenarios>
+        <scenario-1 kind="success">Type surface compiles under strict mode.</scenario-1>
+      </scenarios>
+    </V-M-EVOLVE-TYPES>
+
+    <V-M-EVOLVE-SPEC MODULE="M-EVOLVE-SPEC" PRIORITY="high">
+      <test-files>
+        <file>src/evolve-spec.test.ts</file>
+      </test-files>
+      <module-checks>
+        <check-1>bun test src/evolve-spec.test.ts</check-1>
+      </module-checks>
+      <scenarios>
+        <scenario-1 kind="success">validateSpec rejects non-object input.</scenario-1>
+        <scenario-2 kind="failure">validateSpec collects multiple errors for a spec missing version / topic / goal / metrics / candidates.</scenario-2>
+        <scenario-3 kind="failure">validateSpec rejects duplicate metric ids.</scenario-3>
+        <scenario-4 kind="failure">validateSpec rejects candidates with &gt;1 or 0 sources.</scenario-4>
+        <scenario-5 kind="success">validateSpec accepts a valid minimal spec.</scenario-5>
+        <scenario-6 kind="failure">loadSpec reports spec.missing for a non-existent file.</scenario-6>
+        <scenario-7 kind="failure">loadSpec reports spec.parse-error for broken JSON.</scenario-7>
+        <scenario-8 kind="success">loadSpec returns ok for a valid JSON file on disk.</scenario-8>
+      </scenarios>
+    </V-M-EVOLVE-SPEC>
+
+    <V-M-EVOLVE-METRIC MODULE="M-EVOLVE-METRIC" PRIORITY="high">
+      <test-files>
+        <file>src/evolve-metric.test.ts</file>
+      </test-files>
+      <module-checks>
+        <check-1>bun test src/evolve-metric.test.ts</check-1>
+      </module-checks>
+      <scenarios>
+        <scenario-1 kind="success">Default parser picks the last numeric-only line.</scenario-1>
+        <scenario-2 kind="failure">Default parser returns null + error when no numeric line is present.</scenario-2>
+        <scenario-3 kind="success">Custom parser regex extracts the capture group.</scenario-3>
+        <scenario-4 kind="failure">Custom parser returns null + error when regex does not match.</scenario-4>
+        <scenario-5 kind="failure">Invalid parser regex returns a descriptive error.</scenario-5>
+      </scenarios>
+    </V-M-EVOLVE-METRIC>
+
+    <V-M-EVOLVE-SCORE MODULE="M-EVOLVE-SCORE" PRIORITY="high">
+      <test-files>
+        <file>src/evolve-score.test.ts</file>
+      </test-files>
+      <module-checks>
+        <check-1>bun test src/evolve-score.test.ts</check-1>
+      </module-checks>
+      <scenarios>
+        <scenario-1 kind="success">normalizeMetric maps higher-is-better values correctly.</scenario-1>
+        <scenario-2 kind="success">normalizeMetric inverts for lower-is-better.</scenario-2>
+        <scenario-3 kind="success">normalizeMetric returns 1 when cohort min equals max.</scenario-3>
+        <scenario-4 kind="success">hasVeto returns false when no veto is set.</scenario-4>
+        <scenario-5 kind="failure">hasVeto catches a value below a higher-is-better veto.</scenario-5>
+        <scenario-6 kind="success">scoreTrials returns a per-candidate weighted score.</scenario-6>
+        <scenario-7 kind="failure">scoreTrials returns null for trials with any null metric value.</scenario-7>
+      </scenarios>
+    </V-M-EVOLVE-SCORE>
+
+    <V-M-EVOLVE-RUNNER MODULE="M-EVOLVE-RUNNER" PRIORITY="high">
+      <test-files>
+        <file>src/evolve-runner.test.ts</file>
+      </test-files>
+      <module-checks>
+        <check-1>bun test src/evolve-runner.test.ts</check-1>
+      </module-checks>
+      <scenarios>
+        <scenario-1 kind="success">runCandidate returns verdict=advance when all metric commands succeed and parse.</scenario-1>
+        <scenario-2 kind="failure">runCandidate returns verdict=failed when any metric command exits non-zero.</scenario-2>
+        <scenario-3 kind="failure">runCandidate returns verdict=failed with "setup failed" reason when setup exits non-zero.</scenario-3>
+        <scenario-4 kind="failure">runCandidate returns verdict=failed when worktree path does not exist.</scenario-4>
+        <scenario-5 kind="success">runCandidate runs teardown after metrics in order (journal-based check).</scenario-5>
+      </scenarios>
+    </V-M-EVOLVE-RUNNER>
+
+    <V-M-EVOLVE-WORKTREE MODULE="M-EVOLVE-WORKTREE" PRIORITY="high">
+      <test-files>
+        <file>manual / smoke only — requires a real git repo. Integration covered by the orchestrator smoke scenario.</file>
+      </test-files>
+      <module-checks>
+        <check-1>bun run ./src/grace.ts evolve run example</check-1>
+      </module-checks>
+      <scenarios>
+        <scenario-1 kind="success">prepareWorktree creates an isolated tree for a baseline candidate at HEAD.</scenario-1>
+        <scenario-2 kind="success">prepareWorktree creates a temp branch and applies a patch for patch candidates.</scenario-2>
+        <scenario-3 kind="success">cleanupWorktree removes the worktree and the temp branch.</scenario-3>
+      </scenarios>
+    </V-M-EVOLVE-WORKTREE>
+
+    <V-M-EVOLVE-ARCHIVE MODULE="M-EVOLVE-ARCHIVE" PRIORITY="high">
+      <test-files>
+        <file>src/evolve-archive.test.ts</file>
+      </test-files>
+      <module-checks>
+        <check-1>bun test src/evolve-archive.test.ts</check-1>
+      </module-checks>
+      <scenarios>
+        <scenario-1 kind="success">archivePath sanitizes unsafe characters in topic.</scenario-1>
+        <scenario-2 kind="success">renderArchive emits envelope, goal, metrics, trials.</scenario-2>
+        <scenario-3 kind="success">renderArchive omits optional top-level Winner / StoppedBy / FinishedAt when absent.</scenario-3>
+        <scenario-4 kind="success">renderArchive XML-escapes special characters in topic, goal, reason.</scenario-4>
+        <scenario-5 kind="success">writeArchive creates the target directory and atomically writes the file.</scenario-5>
+      </scenarios>
+    </V-M-EVOLVE-ARCHIVE>
+
+    <V-M-EVOLVE-ORCHESTRATOR MODULE="M-EVOLVE-ORCHESTRATOR" PRIORITY="medium">
+      <test-files>
+        <file>manual / smoke only — exercised end-to-end by `grace evolve run &lt;topic&gt;` on a real repo.</file>
+      </test-files>
+      <module-checks>
+        <check-1>bun run ./src/grace.ts evolve run example --path &lt;scratch-repo&gt;</check-1>
+      </module-checks>
+      <scenarios>
+        <scenario-1 kind="success">runEvolve walks all candidates when none of the stopping criteria trigger.</scenario-1>
+        <scenario-2 kind="success">runEvolve stops by maxCandidates.</scenario-2>
+        <scenario-3 kind="success">runEvolve stops by maxSeconds.</scenario-3>
+        <scenario-4 kind="success">runEvolve stops by targetScore.</scenario-4>
+        <scenario-5 kind="success">runEvolve stops by earlyStopAfterNoImprovement.</scenario-5>
+        <scenario-6 kind="success">winner is the trial with the highest non-null score; null when every trial failed/vetoed.</scenario-6>
+      </scenarios>
+    </V-M-EVOLVE-ORCHESTRATOR>
+
     <V-M-AFK-TELEGRAM MODULE="M-AFK-TELEGRAM" PRIORITY="high">
       <test-files>
         <file>src/afk-telegram.test.ts</file>

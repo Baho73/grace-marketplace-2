@@ -8,7 +8,7 @@
     <M-CLI-ENTRY NAME="CliEntry" TYPE="ENTRY_POINT" STATUS="implemented">
       <purpose>Top-level CLI entry point; wires subcommands and handles Bun shebang execution.</purpose>
       <path>src/grace.ts</path>
-      <depends>M-CLI-LINT, M-CLI-MODULE, M-CLI-FILE, M-CLI-STATUS, M-CLI-AFK</depends>
+      <depends>M-CLI-LINT, M-CLI-MODULE, M-CLI-FILE, M-CLI-STATUS, M-CLI-AFK, M-CLI-EVOLVE</depends>
       <verification-ref>V-M-CLI-ENTRY</verification-ref>
       <annotations>
         <export-main PURPOSE="citty command root aggregating subcommands" />
@@ -144,6 +144,108 @@
       </annotations>
     </M-AFK-CONFIG>
 
+    <M-CLI-EVOLVE NAME="CliEvolve" TYPE="CORE_LOGIC" STATUS="implemented">
+      <purpose>Implements `grace evolve` — init / run / show subcommands for evolutionary search over candidate solutions. MVP without LLM-critic loop.</purpose>
+      <path>src/grace-evolve.ts</path>
+      <depends>M-EVOLVE-ORCHESTRATOR, M-EVOLVE-SPEC, M-EVOLVE-ARCHIVE</depends>
+      <verification-ref>V-M-CLI-EVOLVE</verification-ref>
+      <annotations>
+        <export-evolveCommand PURPOSE="citty root for grace evolve" />
+      </annotations>
+    </M-CLI-EVOLVE>
+
+    <M-EVOLVE-TYPES NAME="EvolveTypes" TYPE="UTILITY" STATUS="implemented">
+      <purpose>Type surface for grace evolve — ProblemSpec, Candidate, MetricResult, TrialResult, EvolveArchive.</purpose>
+      <path>src/evolve/types.ts</path>
+      <depends>none</depends>
+      <verification-ref>V-M-EVOLVE-TYPES</verification-ref>
+      <annotations>
+        <type-ProblemSpec PURPOSE="Full experiment spec (topic, metrics, candidates, stopping, setup/teardown)" />
+        <type-MetricSpec PURPOSE="One metric: id, command, parser, direction, weight, veto" />
+        <type-TrialResult PURPOSE="Per-candidate outcome: metrics, score, verdict, reason, worktree" />
+        <type-EvolveArchive PURPOSE="Full archive persisted to docs/experiments/&lt;topic&gt;/results.xml" />
+      </annotations>
+    </M-EVOLVE-TYPES>
+
+    <M-EVOLVE-SPEC NAME="EvolveSpec" TYPE="UTILITY" STATUS="implemented">
+      <purpose>Read and validate a ProblemSpec from disk. Collects structured errors; never throws.</purpose>
+      <path>src/evolve/spec.ts</path>
+      <depends>M-EVOLVE-TYPES</depends>
+      <verification-ref>V-M-EVOLVE-SPEC</verification-ref>
+      <annotations>
+        <fn-loadSpec PURPOSE="Resolve spec file + parse + validate; returns result or SpecError[]" />
+        <fn-validateSpec PURPOSE="Validate an already-parsed object against ProblemSpec shape" />
+      </annotations>
+    </M-EVOLVE-SPEC>
+
+    <M-EVOLVE-METRIC NAME="EvolveMetric" TYPE="UTILITY" STATUS="implemented">
+      <purpose>Parse numeric values out of command stdout; default picks the last numeric-only line.</purpose>
+      <path>src/evolve/metric.ts</path>
+      <depends>none</depends>
+      <verification-ref>V-M-EVOLVE-METRIC</verification-ref>
+      <annotations>
+        <fn-parseMetricOutput PURPOSE="Return { value, error } from stdout + optional regex parser" />
+        <export-DEFAULT_PARSER PURPOSE="Regex source for the last numeric-only line" />
+      </annotations>
+    </M-EVOLVE-METRIC>
+
+    <M-EVOLVE-SCORE NAME="EvolveScore" TYPE="CORE_LOGIC" STATUS="implemented">
+      <purpose>Weighted min-max scoring across a cohort of trials, with per-metric direction and veto.</purpose>
+      <path>src/evolve/score.ts</path>
+      <depends>M-EVOLVE-TYPES</depends>
+      <verification-ref>V-M-EVOLVE-SCORE</verification-ref>
+      <annotations>
+        <fn-normalizeMetric PURPOSE="Map raw value to [0,1] given cohort min/max and direction" />
+        <fn-hasVeto PURPOSE="True if any metric value crosses its veto threshold" />
+        <fn-scoreTrials PURPOSE="Compute weighted score per trial from the cohort" />
+      </annotations>
+    </M-EVOLVE-SCORE>
+
+    <M-EVOLVE-RUNNER NAME="EvolveRunner" TYPE="CORE_LOGIC" STATUS="implemented">
+      <purpose>Execute a single candidate inside a worktree — setup, metric commands, teardown — producing a TrialResult.</purpose>
+      <path>src/evolve/runner.ts</path>
+      <depends>M-EVOLVE-TYPES, M-EVOLVE-METRIC</depends>
+      <verification-ref>V-M-EVOLVE-RUNNER</verification-ref>
+      <annotations>
+        <fn-runCandidate PURPOSE="Execute one candidate end-to-end; return TrialResult" />
+        <fn-makeDefaultDeps PURPOSE="Produce real spawnSync-backed RunnerDeps" />
+      </annotations>
+    </M-EVOLVE-RUNNER>
+
+    <M-EVOLVE-WORKTREE NAME="EvolveWorktree" TYPE="INTEGRATION" STATUS="implemented">
+      <purpose>Create and tear down git worktrees per candidate. Isolation mandatory; a bad patch must never corrupt the base repo.</purpose>
+      <path>src/evolve/worktree.ts</path>
+      <depends>M-EVOLVE-TYPES</depends>
+      <verification-ref>V-M-EVOLVE-WORKTREE</verification-ref>
+      <annotations>
+        <fn-prepareWorktree PURPOSE="git worktree add + optional git apply; returns worktreePath or error" />
+        <fn-cleanupWorktree PURPOSE="git worktree remove --force + best-effort directory rm + temp branch cleanup" />
+        <fn-makeWorktreeRoot PURPOSE="Resolve a per-session worktree root under os.tmpdir()" />
+      </annotations>
+    </M-EVOLVE-WORKTREE>
+
+    <M-EVOLVE-ARCHIVE NAME="EvolveArchiveWriter" TYPE="DATA_LAYER" STATUS="implemented">
+      <purpose>Serialize EvolveArchive to XML at docs/experiments/&lt;topic&gt;/results.xml using GRACE unique-tag conventions. Atomic write via .tmp + rename.</purpose>
+      <path>src/evolve/archive.ts</path>
+      <depends>M-EVOLVE-TYPES</depends>
+      <verification-ref>V-M-EVOLVE-ARCHIVE</verification-ref>
+      <annotations>
+        <fn-archivePath PURPOSE="Resolve docs/experiments/&lt;topic&gt;/results.xml (sanitizes topic)" />
+        <fn-renderArchive PURPOSE="Serialize EvolveArchive to GRACE-compliant XML text" />
+        <fn-writeArchive PURPOSE="Atomic write of archive to disk; returns absolute path" />
+      </annotations>
+    </M-EVOLVE-ARCHIVE>
+
+    <M-EVOLVE-ORCHESTRATOR NAME="EvolveOrchestrator" TYPE="CORE_LOGIC" STATUS="implemented">
+      <purpose>Drive the full evolve loop: for each candidate, prepare worktree, run metrics, rescore cohort, apply stopping, emit archive.</purpose>
+      <path>src/evolve/orchestrator.ts</path>
+      <depends>M-EVOLVE-RUNNER, M-EVOLVE-WORKTREE, M-EVOLVE-SCORE, M-EVOLVE-ARCHIVE</depends>
+      <verification-ref>V-M-EVOLVE-ORCHESTRATOR</verification-ref>
+      <annotations>
+        <fn-runEvolve PURPOSE="End-to-end evolve loop; returns finalized EvolveArchive + archivePath" />
+      </annotations>
+    </M-EVOLVE-ORCHESTRATOR>
+
     <M-AFK-TELEGRAM NAME="AfkTelegram" TYPE="INTEGRATION" STATUS="implemented">
       <purpose>Minimal Telegram Bot API transport (sendMessage + getUpdates) with dependency-injected fetch for tests. No external dependencies.</purpose>
       <path>src/afk/telegram.ts</path>
@@ -217,6 +319,7 @@
         <export-grace-setup-subagents PURPOSE="Scaffold worker/reviewer presets for Claude Code, OpenCode, Codex" />
         <export-grace-afk PURPOSE="Autonomous harness; CLI enforces time budget, agent polls grace afk tick" />
         <export-grace-ask-human PURPOSE="Short-form Telegram escalation wrapper for one-way-door decisions" />
+        <export-grace-evolve PURPOSE="Evolutionary / comparative search over candidate solutions with per-candidate worktree isolation and a GRACE-XML archive" />
       </annotations>
     </M-SKILLS-CANONICAL>
 
@@ -255,6 +358,15 @@
     <CrossLink from="M-CLI-ENTRY" to="M-CLI-FILE" relation="dispatches-subcommand" />
     <CrossLink from="M-CLI-ENTRY" to="M-CLI-STATUS" relation="dispatches-subcommand" />
     <CrossLink from="M-CLI-ENTRY" to="M-CLI-AFK" relation="dispatches-subcommand" />
+    <CrossLink from="M-CLI-ENTRY" to="M-CLI-EVOLVE" relation="dispatches-subcommand" />
+    <CrossLink from="M-CLI-EVOLVE" to="M-EVOLVE-ORCHESTRATOR" relation="invokes" />
+    <CrossLink from="M-CLI-EVOLVE" to="M-EVOLVE-SPEC" relation="uses" />
+    <CrossLink from="M-CLI-EVOLVE" to="M-EVOLVE-ARCHIVE" relation="uses" />
+    <CrossLink from="M-EVOLVE-ORCHESTRATOR" to="M-EVOLVE-RUNNER" relation="uses" />
+    <CrossLink from="M-EVOLVE-ORCHESTRATOR" to="M-EVOLVE-WORKTREE" relation="uses" />
+    <CrossLink from="M-EVOLVE-ORCHESTRATOR" to="M-EVOLVE-SCORE" relation="uses" />
+    <CrossLink from="M-EVOLVE-ORCHESTRATOR" to="M-EVOLVE-ARCHIVE" relation="uses" />
+    <CrossLink from="M-EVOLVE-RUNNER" to="M-EVOLVE-METRIC" relation="uses" />
     <CrossLink from="M-CLI-LINT" to="M-LINT-CORE" relation="invokes" />
     <CrossLink from="M-LINT-CORE" to="M-LINT-ADAPTERS" relation="uses" />
     <CrossLink from="M-LINT-CORE" to="M-LINT-CONFIG" relation="uses" />

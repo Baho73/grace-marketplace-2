@@ -236,6 +236,87 @@
       <verification-ref>V-M-AFK-CONFIG</verification-ref>
     </M-AFK-CONFIG>
 
+    <M-CLI-EVOLVE NAME="CliEvolve" TYPE="CORE_LOGIC" LAYER="2" ORDER="6" STATUS="implemented">
+      <contract>
+        <purpose>citty subcommand grouping: init, run, show. MVP of evolutionary search.</purpose>
+      </contract>
+      <depends>M-EVOLVE-ORCHESTRATOR, M-EVOLVE-SPEC, M-EVOLVE-ARCHIVE</depends>
+      <target><source>src/grace-evolve.ts</source></target>
+      <verification-ref>V-M-CLI-EVOLVE</verification-ref>
+    </M-CLI-EVOLVE>
+
+    <M-EVOLVE-TYPES NAME="EvolveTypes" TYPE="UTILITY" LAYER="0" ORDER="9" STATUS="implemented">
+      <contract>
+        <purpose>Type surface for evolve — ProblemSpec, Candidate, MetricResult, TrialResult, EvolveArchive.</purpose>
+      </contract>
+      <depends>none</depends>
+      <target><source>src/evolve/types.ts</source></target>
+      <verification-ref>V-M-EVOLVE-TYPES</verification-ref>
+    </M-EVOLVE-TYPES>
+
+    <M-EVOLVE-SPEC NAME="EvolveSpec" TYPE="UTILITY" LAYER="1" ORDER="4" STATUS="implemented">
+      <contract>
+        <purpose>Read and validate ProblemSpec from JSON. Collects structured errors.</purpose>
+      </contract>
+      <depends>M-EVOLVE-TYPES</depends>
+      <target><source>src/evolve/spec.ts</source><tests>src/evolve-spec.test.ts</tests></target>
+      <verification-ref>V-M-EVOLVE-SPEC</verification-ref>
+    </M-EVOLVE-SPEC>
+
+    <M-EVOLVE-METRIC NAME="EvolveMetric" TYPE="UTILITY" LAYER="0" ORDER="10" STATUS="implemented">
+      <contract>
+        <purpose>Parse numeric output from metric commands with default and custom regex parsers.</purpose>
+      </contract>
+      <depends>none</depends>
+      <target><source>src/evolve/metric.ts</source><tests>src/evolve-metric.test.ts</tests></target>
+      <verification-ref>V-M-EVOLVE-METRIC</verification-ref>
+    </M-EVOLVE-METRIC>
+
+    <M-EVOLVE-SCORE NAME="EvolveScore" TYPE="CORE_LOGIC" LAYER="1" ORDER="5" STATUS="implemented">
+      <contract>
+        <purpose>Weighted min-max scoring with direction awareness and veto enforcement.</purpose>
+      </contract>
+      <depends>M-EVOLVE-TYPES</depends>
+      <target><source>src/evolve/score.ts</source><tests>src/evolve-score.test.ts</tests></target>
+      <verification-ref>V-M-EVOLVE-SCORE</verification-ref>
+    </M-EVOLVE-SCORE>
+
+    <M-EVOLVE-RUNNER NAME="EvolveRunner" TYPE="CORE_LOGIC" LAYER="1" ORDER="6" STATUS="implemented">
+      <contract>
+        <purpose>Run one candidate in a worktree; setup / metrics / teardown with injectable exec.</purpose>
+      </contract>
+      <depends>M-EVOLVE-TYPES, M-EVOLVE-METRIC</depends>
+      <target><source>src/evolve/runner.ts</source><tests>src/evolve-runner.test.ts</tests></target>
+      <verification-ref>V-M-EVOLVE-RUNNER</verification-ref>
+    </M-EVOLVE-RUNNER>
+
+    <M-EVOLVE-WORKTREE NAME="EvolveWorktree" TYPE="INTEGRATION" LAYER="1" ORDER="7" STATUS="implemented">
+      <contract>
+        <purpose>Create / cleanup git worktrees per candidate. Supports baseline, branch, patch candidate sources.</purpose>
+      </contract>
+      <depends>M-EVOLVE-TYPES</depends>
+      <target><source>src/evolve/worktree.ts</source></target>
+      <verification-ref>V-M-EVOLVE-WORKTREE</verification-ref>
+    </M-EVOLVE-WORKTREE>
+
+    <M-EVOLVE-ARCHIVE NAME="EvolveArchiveWriter" TYPE="DATA_LAYER" LAYER="1" ORDER="8" STATUS="implemented">
+      <contract>
+        <purpose>Serialize EvolveArchive to docs/experiments/&lt;topic&gt;/results.xml atomically (.tmp + rename).</purpose>
+      </contract>
+      <depends>M-EVOLVE-TYPES</depends>
+      <target><source>src/evolve/archive.ts</source><tests>src/evolve-archive.test.ts</tests></target>
+      <verification-ref>V-M-EVOLVE-ARCHIVE</verification-ref>
+    </M-EVOLVE-ARCHIVE>
+
+    <M-EVOLVE-ORCHESTRATOR NAME="EvolveOrchestrator" TYPE="CORE_LOGIC" LAYER="2" ORDER="7" STATUS="implemented">
+      <contract>
+        <purpose>Loop through candidates; prepare worktree; run; rescore; stop per criteria; emit archive.</purpose>
+      </contract>
+      <depends>M-EVOLVE-RUNNER, M-EVOLVE-WORKTREE, M-EVOLVE-SCORE, M-EVOLVE-ARCHIVE</depends>
+      <target><source>src/evolve/orchestrator.ts</source></target>
+      <verification-ref>V-M-EVOLVE-ORCHESTRATOR</verification-ref>
+    </M-EVOLVE-ORCHESTRATOR>
+
     <M-AFK-TELEGRAM NAME="AfkTelegram" TYPE="INTEGRATION" LAYER="0" ORDER="8" STATUS="implemented">
       <contract>
         <purpose>Telegram Bot API transport with injectable fetch; send + poll + classify answers.</purpose>
