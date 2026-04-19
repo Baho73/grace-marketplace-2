@@ -23,6 +23,8 @@ The CLI generates this from your input to `grace afk ask`. You pass:
 - `--title "<5-10 word decision title>"`
 - `--context "<one sentence — the situation>"`
 - `--options "A:<1 line>;B:<1 line>;C:<1 line>"` (2-5 options). Use `;` as a separator — it is safer than `|` across Windows shells.
+- `--details "A|pros|cons|opportunities|risks;B|..."` (optional). When provided, the message gets a `[📖 Подробнее]` button. On tap the CLI sends a SWOT breakdown (Преимущества / Недостатки / Возможности / Риски) as a follow-up message without cancelling the ask — the user reads it, goes back to the first message, then picks A/B/C/PROCEED/DEFER/STOP.
+- `--wait <seconds>` (optional, default 0). When >0, the CLI blocks and polls `getUpdates` every 2 seconds. On an inline-button tap it calls `answerCallbackQuery` immediately so the spinner stops within ~2s (inside Telegram's 15-second callback timeout window), strips the keyboard on the original message, and returns the classified answer as JSON. Without `--wait`, the agent must call `grace afk check` separately to pick up and ack the reply — on Telegram that means the user's spinner shimmers until the next check.
 - `--mypick <letter>` — the option you'd pick if forced
 - `--confidence <0-100>` — your percent confidence in that pick
 

@@ -31,7 +31,7 @@ Every subcommand below takes `--path <project-root>` (defaults to `.`).
 |---|---|
 | `grace afk start <hours> [<budget%>] [--checkpoint <min>]` | Initialize a session; writes `docs/afk-sessions/<id>/state.json` with `expiresAt`. |
 | `grace afk tick` | CLI-side active-session check. Non-zero exit = session over. |
-| `grace afk ask --title ... --context ... --options "A:...;B:..." --mypick B --confidence 60` | Send a Telegram escalation; returns `{correlationId, messageId}`. Use `;` as a separator (safer across Windows shells) or `\|`. |
+| `grace afk ask --title ... --context ... --options "A:...;B:..." --mypick B --confidence 60 [--details "A\|pros\|cons\|opps\|risks;B\|..."] [--wait 120]` | Send a Telegram escalation; returns `{correlationId, messageId}`. Use `;` as a separator (safer across Windows shells) or `\|`. `--details` (5-field SWOT per option) adds a `[📖 Подробнее]` button that sends a follow-up breakdown without cancelling the ask. `--wait N` blocks up to N seconds polling, ack-ing inline-button taps within ~2s so the user's Telegram spinner stops immediately. |
 | `grace afk check --correlation <id> --messageid <n> [--offset <o>]` | Poll Telegram; returns `{status, verb, raw, nextOffset}`. |
 | `grace afk journal --class <c> --title ... --rationale ... --outcome ...` | Append to `decisions.md`. |
 | `grace afk defer --question ... --contextLine ...` | Append to `deferred.md`. |

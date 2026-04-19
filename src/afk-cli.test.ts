@@ -148,6 +148,82 @@ describe("grace afk CLI", () => {
   });
 });
 
+describe("projectNameFromPath (via ask smoke)", () => {
+  it("converts kebab-case basename to Title Case", async () => {
+    const { projectNameFromPath } = await import("./grace-afk");
+    expect(projectNameFromPath("/tmp/grace-marketplace-2")).toBe("Grace Marketplace 2");
+    expect(projectNameFromPath("D:/Python/GRACE_2/grace-marketplace-2")).toBe("Grace Marketplace 2");
+    expect(projectNameFromPath("/foo/bar_baz-quux")).toBe("Bar Baz Quux");
+    expect(projectNameFromPath(".")).not.toBe("");
+  });
+});
+
+describe("buildAskMessage", () => {
+  it("uses the project name as the visible first-line prefix", async () => {
+    const { buildAskMessage } = await import("./grace-afk");
+    const text = buildAskMessage({
+      correlationId: "abc123",
+      sessionId: "sess-1",
+      projectName: "Grace Marketplace 2",
+      title: "pick one",
+      context: "situation",
+      options: ["A:x"],
+      myPick: "A",
+      confidence: "80",
+    });
+    const firstLine = text.split("\n")[0];
+    expect(firstLine).toContain("Grace Marketplace 2");
+    expect(firstLine).toContain("abc123");
+  });
+});
+
+describe("parseDetailsArg + buildDetailsMessage + buildAskKeyboard(hasDetails)", () => {
+  it("parses the 5-field SWOT details arg", async () => {
+    const { parseDetailsArg } = await import("./grace-afk");
+    const map = parseDetailsArg("A|pros-a|cons-a|opps-a|risks-a;B|pros-b|cons-b|opps-b|risks-b");
+    expect(map.size).toBe(2);
+    expect(map.get("A")?.pros).toBe("pros-a");
+    expect(map.get("B")?.risks).toBe("risks-b");
+    expect(map.get("A")?.opportunities).toBe("opps-a");
+  });
+
+  it("renders the SWOT message with project name, correlation id, and all four sections per option", async () => {
+    const { buildDetailsMessage, parseDetailsArg } = await import("./grace-afk");
+    const map = parseDetailsArg("A|p|c|o|r;B|p2|c2|o2|r2");
+    const text = buildDetailsMessage({
+      projectName: "Grace Marketplace 2",
+      correlationId: "abc123",
+      options: ["A:first", "B:second"],
+      details: map,
+    });
+    expect(text).toContain("[Grace Marketplace 2] Детали решения abc123");
+    // The "A:" letter prefix from the raw option is stripped so we don't render "A — A:first".
+    expect(text).toContain("A — first");
+    expect(text).toContain("B — second");
+    expect(text).not.toContain("A — A:first");
+    expect(text).toContain("Преимущества: p");
+    expect(text).toContain("Недостатки:");
+    expect(text).toContain("Возможности:");
+    expect(text).toContain("Риски:");
+  });
+
+  it("adds the [Подробнее] row to the keyboard only when hasDetails=true", async () => {
+    const { buildAskKeyboard } = await import("./grace-afk");
+    const without = buildAskKeyboard("abc", ["A:x", "B:y"], false);
+    expect(without).toHaveLength(2);
+    const withDetails = buildAskKeyboard("abc", ["A:x", "B:y"], true);
+    expect(withDetails).toHaveLength(3);
+    expect(withDetails[2]?.[0]?.callbackData).toBe("abc:DETAILS");
+  });
+
+  it("classifies the DETAILS callback payload as a recognized non-terminal verb", async () => {
+    const { classifyAnswer } = await import("./afk/telegram");
+    const result = classifyAnswer("abc123:DETAILS");
+    expect(result.recognized).toBe(true);
+    expect(result.verb).toBe("DETAILS");
+  });
+});
+
 describe("grace afk CLI — argument validation and fallbacks", () => {
   it("journal rejects an unknown --class value with EXIT_BAD_ARGS", () => {
     const root = tmpProject();

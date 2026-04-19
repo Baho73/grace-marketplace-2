@@ -10,8 +10,13 @@
 // END_MODULE_CONTRACT
 //
 // START_MODULE_MAP
-//   afkCommand       - Root citty command with 9 subcommands
-//   buildAskMessage  - Format the <=10-line Telegram payload (plain text, no markdown)
+//   afkCommand           - Root citty command with 9 subcommands
+//   buildAskMessage      - Format the Telegram ask payload (plain text, no markdown)
+//   buildAskKeyboard     - Construct inline keyboard: letter row + meta row + optional [Подробнее]
+//   buildDetailsMessage  - Render SWOT breakdown (Преимущества/Недостатки/Возможности/Риски) per option
+//   parseDetailsArg      - Parse the --details CLI string into a Map of OptionDetail
+//   projectNameFromPath  - Convert kebab/snake basename to Title Case
+//   OptionDetail         - Shape: { id, pros, cons, opportunities, risks }
 // END_MODULE_MAP
 
 import { defineCommand } from "citty";
@@ -34,7 +39,15 @@ import {
   resolveSessionPaths,
   updateLastTick,
 } from "./afk/session";
-import { classifyAnswer, fetchUpdates, matchReply, sendMessage } from "./afk/telegram";
+import {
+  answerCallbackQuery,
+  classifyAnswer,
+  editMessageRemoveKeyboard,
+  fetchUpdates,
+  matchReply,
+  sendMessage,
+  type InlineKeyboard,
+} from "./afk/telegram";
 
 const EXIT_BAD_ARGS = 2;
 const EXIT_TELEGRAM_FAILURE = 45;
@@ -170,6 +183,18 @@ export const afkCommand = defineCommand({
         },
         mypick: { type: "string", description: "Letter you currently favor (A/B/...)", default: "" },
         confidence: { type: "string", description: "Confidence percent (0-100)", default: "50" },
+        wait: {
+          type: "string",
+          description:
+            "Block for up to N seconds waiting for a reply; ack inline-button taps immediately (default: 0 = return right after send).",
+          default: "0",
+        },
+        details: {
+          type: "string",
+          description:
+            'SWOT breakdown per option: "A|pros|cons|opportunities|risks;B|...". When present, the keyboard gains a [Подробнее] button that sends a follow-up breakdown message without cancelling the ask.',
+          default: "",
+        },
       },
       async run(context) {
         const projectRoot = toPath(context.args.path);
@@ -208,6 +233,7 @@ export const afkCommand = defineCommand({
         const text = buildAskMessage({
           correlationId,
           sessionId,
+          projectName: projectNameFromPath(projectRoot),
           title: String(context.args.title),
           context: String(context.args.context),
           options: optionsList,
@@ -215,7 +241,10 @@ export const afkCommand = defineCommand({
           confidence: String(context.args.confidence),
         });
 
-        const result = await sendMessage(telegram, text);
+        const detailsMap = parseDetailsArg(String(context.args.details ?? ""));
+        const hasDetails = detailsMap.size > 0;
+        const keyboard = buildAskKeyboard(correlationId, optionsList, hasDetails);
+        const result = await sendMessage(telegram, text, keyboard);
         if (!result.ok) {
           process.stderr.write(
             `grace afk ask: Telegram sendMessage failed (${result.errorDescription ?? "unknown"}).\n`,
@@ -225,8 +254,111 @@ export const afkCommand = defineCommand({
         }
 
         incrementCounter(projectRoot, sessionId, "escalations");
+
+        const waitSeconds = Number(context.args.wait ?? "0");
+        if (!Number.isFinite(waitSeconds) || waitSeconds <= 0) {
+          process.stdout.write(
+            JSON.stringify({ correlationId, messageId: result.messageId, sessionId }, null, 2) + "\n",
+          );
+          return;
+        }
+
+        // Blocking poll: ack any inline-button press as soon as it arrives so the user's Telegram
+        // spinner stops within ~2s. Also ack within the 15-second callback timeout window.
+        // DETAILS button is non-terminal — we send the SWOT breakdown follow-up and keep polling
+        // on the same ask; the user still has to pick A/B/C/PROCEED/DEFER/STOP.
+        const deadline = Date.now() + Math.min(waitSeconds, 600) * 1000; // cap at 10 minutes
+        let offset: number | null = null;
+        while (Date.now() < deadline) {
+          const replies = await fetchUpdates(telegram, offset);
+          let detailsHandled = false;
+          for (const reply of replies) {
+            offset = reply.updateId + 1;
+            if (!matchReply(reply, result.messageId ?? 0, correlationId)) {
+              continue;
+            }
+            const classified = classifyAnswer(reply.text);
+
+            // DETAILS: non-terminal. Send the SWOT breakdown, ack callback, keep polling.
+            if (classified.recognized && classified.verb === "DETAILS") {
+              if (reply.callbackQueryId) {
+                try {
+                  await answerCallbackQuery(telegram, reply.callbackQueryId, "Sending details…");
+                } catch {
+                  /* non-fatal */
+                }
+              }
+              if (hasDetails) {
+                const detailsText = buildDetailsMessage({
+                  projectName: projectNameFromPath(projectRoot),
+                  correlationId,
+                  options: optionsList,
+                  details: detailsMap,
+                });
+                try {
+                  await sendMessage(telegram, detailsText, null);
+                } catch (error) {
+                  process.stderr.write(
+                    `grace afk ask: details follow-up failed: ${error instanceof Error ? error.message : String(error)}\n`,
+                  );
+                }
+              }
+              detailsHandled = true;
+              continue;
+            }
+
+            if (reply.callbackQueryId) {
+              try {
+                await answerCallbackQuery(
+                  telegram,
+                  reply.callbackQueryId,
+                  classified.recognized ? `Received: ${classified.verb}` : undefined,
+                );
+              } catch {
+                /* non-fatal */
+              }
+              if (result.messageId) {
+                try {
+                  await editMessageRemoveKeyboard(telegram, result.messageId);
+                } catch {
+                  /* non-fatal */
+                }
+              }
+            }
+            process.stdout.write(
+              JSON.stringify(
+                {
+                  correlationId,
+                  messageId: result.messageId,
+                  sessionId,
+                  status: classified.recognized ? "answered" : "unrecognized",
+                  verb: classified.verb,
+                  raw: classified.raw,
+                  source: reply.callbackQueryId ? "button" : "text",
+                  nextOffset: offset,
+                },
+                null,
+                2,
+              ) + "\n",
+            );
+            return;
+          }
+          // If only DETAILS taps came through this tick, loop faster on the next poll.
+          await new Promise((resolve) => setTimeout(resolve, detailsHandled ? 1000 : 2000));
+        }
+
         process.stdout.write(
-          JSON.stringify({ correlationId, messageId: result.messageId, sessionId }, null, 2) + "\n",
+          JSON.stringify(
+            {
+              correlationId,
+              messageId: result.messageId,
+              sessionId,
+              status: "pending",
+              waitedSeconds: waitSeconds,
+            },
+            null,
+            2,
+          ) + "\n",
         );
       },
     }),
@@ -272,12 +404,39 @@ export const afkCommand = defineCommand({
             continue;
           }
           const classified = classifyAnswer(reply.text);
+
+          // If the user pressed an inline button, we MUST dismiss the loading spinner in their
+          // Telegram client and (optionally) strip the keyboard so they cannot tap a second answer.
+          // Both calls are best-effort — failures are logged to stderr but do not change the check result.
+          if (reply.callbackQueryId) {
+            try {
+              const ack = await answerCallbackQuery(
+                telegram,
+                reply.callbackQueryId,
+                classified.recognized ? `Received: ${classified.verb}` : undefined,
+              );
+              if (!ack.ok) {
+                process.stderr.write(`grace afk check: answerCallbackQuery failed: ${ack.errorDescription ?? "unknown"}\n`);
+              }
+            } catch (error) {
+              process.stderr.write(`grace afk check: answerCallbackQuery threw: ${error instanceof Error ? error.message : String(error)}\n`);
+            }
+            if (messageId > 0) {
+              try {
+                await editMessageRemoveKeyboard(telegram, messageId);
+              } catch {
+                /* non-fatal */
+              }
+            }
+          }
+
           process.stdout.write(
             JSON.stringify(
               {
                 status: classified.recognized ? "answered" : "unrecognized",
                 verb: classified.verb,
                 raw: classified.raw,
+                source: reply.callbackQueryId ? "button" : "text",
                 nextOffset: reply.updateId + 1,
               },
               null,
@@ -465,9 +624,29 @@ export const afkCommand = defineCommand({
   },
 });
 
+// START_CONTRACT: projectNameFromPath
+//   PURPOSE: Convert the project-root basename into a human-readable project name.
+//     grace-marketplace-2 -> "Grace Marketplace 2"
+//   INPUTS: { projectRoot: string }
+//   OUTPUTS: string (Title Case, single spaces)
+//   SIDE_EFFECTS: none
+// END_CONTRACT: projectNameFromPath
+export function projectNameFromPath(projectRoot: string): string {
+  const base = path.basename(path.resolve(projectRoot));
+  if (!base) {
+    return "project";
+  }
+  return base
+    .split(/[-_]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
 export function buildAskMessage(input: {
   correlationId: string;
   sessionId: string;
+  projectName: string;
   title: string;
   context: string;
   options: string[];
@@ -485,7 +664,8 @@ export function buildAskMessage(input: {
       : input.options.map((option) => `  ${clean(option)}`).join("\n");
   const pick = input.myPick ? `\nMy pick: ${clean(input.myPick)} (${clean(input.confidence)}% confidence)` : "";
   return [
-    `/afk decision ${input.correlationId} (session ${input.sessionId})`,
+    `[${clean(input.projectName)}] /afk decision ${input.correlationId}`,
+    `(session ${input.sessionId})`,
     "",
     clean(input.title),
     `Situation: ${clean(input.context)}`,
@@ -493,9 +673,120 @@ export function buildAskMessage(input: {
     optionsBlock,
     pick,
     "",
-    `Reply with one of: A / B / C / D / E / PROCEED / STOP / EVOLVE / DEFER`,
-    `Or prefix with "${input.correlationId}" so I can match your answer.`,
+    `Tap a button below, or reply with one of: A / B / C / D / E / PROCEED / STOP / DEFER.`,
+    `If replying by text, prefix with "${input.correlationId}" so I can match your answer.`,
   ].join("\n");
+}
+
+export type OptionDetail = {
+  id: string;
+  pros: string;
+  cons: string;
+  opportunities: string;
+  risks: string;
+};
+
+// START_CONTRACT: parseDetailsArg
+//   PURPOSE: Parse the --details CLI string into a Map of OptionDetail keyed by option id.
+//     Syntax: "A|pros|cons|opps|risks;B|...;C|..." — 5 pipe-separated fields per option,
+//     entries split by ';' (safer than '|' on Windows cmd shells).
+//   INPUTS: { raw: string }
+//   OUTPUTS: Map<string, OptionDetail>
+//   SIDE_EFFECTS: none
+// END_CONTRACT: parseDetailsArg
+export function parseDetailsArg(raw: string): Map<string, OptionDetail> {
+  const result = new Map<string, OptionDetail>();
+  if (!raw) {
+    return result;
+  }
+  for (const chunk of raw.split(";")) {
+    const parts = chunk.split("|").map((part) => part.trim());
+    if (parts.length < 2 || !parts[0]) {
+      continue;
+    }
+    const [id, pros = "", cons = "", opportunities = "", risks = ""] = parts;
+    result.set(id.toUpperCase(), { id: id.toUpperCase(), pros, cons, opportunities, risks });
+  }
+  return result;
+}
+
+// START_CONTRACT: buildDetailsMessage
+//   PURPOSE: Render a SWOT-style breakdown (Преимущества / Недостатки / Возможности / Риски)
+//     as a plain-text Telegram message, sized for mobile reading.
+//   INPUTS: { projectName, correlationId, options: string[], details: Map<id, OptionDetail> }
+//   OUTPUTS: string — plain text message, <= ~20 lines for 3-option case
+//   SIDE_EFFECTS: none
+// END_CONTRACT: buildDetailsMessage
+// Strip the structural "A:" / "B:" prefix from an option label. The letter is already the row header,
+// so "A:sequential" renders as just "sequential" to avoid the duplicate "A — A:sequential" artefact.
+function stripOptionLetterPrefix(option: string): string {
+  const match = /^\s*[A-Ea-e]\s*:\s*(.+)$/.exec(option);
+  return match ? match[1]!.trim() : option.trim();
+}
+
+export function buildDetailsMessage(args: {
+  projectName: string;
+  correlationId: string;
+  options: string[];
+  details: Map<string, OptionDetail>;
+}): string {
+  const clean = (value: string) => value.replace(/[\u0000-\u001f\u007f]/g, " ").trim();
+  const letters = ["A", "B", "C", "D", "E"];
+  const lines: string[] = [];
+  lines.push(`[${clean(args.projectName)}] Детали решения ${args.correlationId}`);
+  lines.push("");
+  args.options.slice(0, 5).forEach((option, index) => {
+    const letter = letters[index]!;
+    const detail = args.details.get(letter);
+    const label = clean(stripOptionLetterPrefix(option));
+    lines.push(`${letter} — ${label}`);
+    if (!detail) {
+      lines.push(`  (детали не переданы для ${letter})`);
+      lines.push("");
+      return;
+    }
+    lines.push(`  Преимущества: ${clean(detail.pros) || "—"}`);
+    lines.push(`  Недостатки:   ${clean(detail.cons) || "—"}`);
+    lines.push(`  Возможности:  ${clean(detail.opportunities) || "—"}`);
+    lines.push(`  Риски:        ${clean(detail.risks) || "—"}`);
+    lines.push("");
+  });
+  lines.push("Вернись к предыдущему сообщению и нажми A / B / C / PROCEED / DEFER / STOP.");
+  return lines.join("\n");
+}
+
+// START_CONTRACT: buildAskKeyboard
+//   PURPOSE: Construct the inline keyboard for a `grace afk ask` message. One row of A..E letters
+//     (as many as the spec's options), one row of meta verbs. If hasDetails, a [Подробнее] button
+//     is appended as a third row. Callback data = "<corrId>:<verb>".
+//   INPUTS: { correlationId, options, hasDetails }
+//   OUTPUTS: InlineKeyboard
+//   SIDE_EFFECTS: none
+// END_CONTRACT: buildAskKeyboard
+export function buildAskKeyboard(
+  correlationId: string,
+  options: string[],
+  hasDetails = false,
+): InlineKeyboard {
+  const letters = ["A", "B", "C", "D", "E"];
+  const letterRow = options.slice(0, 5).map((_, index) => ({
+    text: letters[index]!,
+    callbackData: `${correlationId}:${letters[index]!}`,
+  }));
+
+  const rows: InlineKeyboard = [];
+  if (letterRow.length > 0) {
+    rows.push(letterRow);
+  }
+  rows.push([
+    { text: "PROCEED", callbackData: `${correlationId}:PROCEED` },
+    { text: "DEFER", callbackData: `${correlationId}:DEFER` },
+    { text: "STOP", callbackData: `${correlationId}:STOP` },
+  ]);
+  if (hasDetails) {
+    rows.push([{ text: "📖 Подробнее", callbackData: `${correlationId}:DETAILS` }]);
+  }
+  return rows;
 }
 
 // START_CHANGE_SUMMARY
