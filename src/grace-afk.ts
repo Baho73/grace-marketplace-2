@@ -10,10 +10,11 @@
 // END_MODULE_CONTRACT
 //
 // START_MODULE_MAP
-//   afkCommand           - Root citty command with 9 subcommands
+//   afkCommand           - Root citty command; 10 subcommands including `done` (end-of-step notify+ask)
 //   buildAskMessage      - Format the Telegram ask payload (plain text, no markdown)
 //   buildAskKeyboard     - Construct inline keyboard: letter row + meta row + optional [Подробнее]
 //   buildDetailsMessage  - Render SWOT breakdown (Преимущества/Недостатки/Возможности/Риски) per option
+//   buildDoneContext     - Compose the context line for `grace afk done` (elapsed + commits + usage)
 //   parseDetailsArg      - Parse the --details CLI string into a Map of OptionDetail
 //   projectNameFromPath  - Convert kebab/snake basename to Title Case
 //   OptionDetail         - Shape: { id, pros, cons, opportunities, risks }
@@ -29,13 +30,17 @@ import {
   EXIT_BUDGET_EXHAUSTED,
   EXIT_NO_SESSION,
   EXIT_SESSION_STOPPED,
+  addOpenAsk,
   checkActive,
   createSession,
   formatRemaining,
+  getAnswer,
   incrementCounter,
+  listOpenAsks,
   markCompleted,
   markStopped,
   readSession,
+  recordAnswer,
   resolveSessionPaths,
   updateLastTick,
 } from "./afk/session";
@@ -48,10 +53,90 @@ import {
   sendMessage,
   type InlineKeyboard,
 } from "./afk/telegram";
+import { readUsage, renderUsageLine } from "./afk/usage";
 
 const EXIT_BAD_ARGS = 2;
 const EXIT_TELEGRAM_FAILURE = 45;
 const EXIT_CONFIG_MISSING = 46;
+
+// START_CONTRACT: drainPendingCallbacks
+//   PURPOSE: Fetch one batch of Telegram updates, match them against the session's openAsks,
+//     ack any inline-button taps, strip their keyboards, and record the answers into state.json.
+//     Safe to call at any cadence — ticks, check, ask --wait, CI smokes all share this.
+//   INPUTS: { projectRoot, sessionId, telegram }
+//   OUTPUTS: { processed: Array<{ correlationId, answer }> }
+//   SIDE_EFFECTS: HTTPS calls to getUpdates / answerCallbackQuery / editMessageReplyMarkup;
+//     atomic writes to state.json via recordAnswer.
+// END_CONTRACT: drainPendingCallbacks
+async function drainPendingCallbacks(
+  projectRoot: string,
+  sessionId: string,
+  telegram: { botToken: string; chatId: string },
+): Promise<Array<{ correlationId: string; verb: string; recognized: boolean; raw: string; source: "button" | "text" }>> {
+  const asks = listOpenAsks(projectRoot, sessionId);
+  if (asks.length === 0) {
+    return [];
+  }
+
+  let replies: Awaited<ReturnType<typeof fetchUpdates>>;
+  try {
+    replies = await fetchUpdates(telegram, null);
+  } catch (error) {
+    process.stderr.write(`drainPendingCallbacks: fetchUpdates failed — ${error instanceof Error ? error.message : String(error)}\n`);
+    return [];
+  }
+
+  const processed: Array<{ correlationId: string; verb: string; recognized: boolean; raw: string; source: "button" | "text" }> = [];
+  for (const reply of replies) {
+    const match = asks.find((ask) => matchReply(reply, ask.messageId ?? 0, ask.correlationId));
+    if (!match) {
+      continue;
+    }
+    const classified = classifyAnswer(reply.text);
+    if (classified.recognized && classified.verb === "DETAILS") {
+      // DETAILS is non-terminal and carries no spec details at drain-time, so ack only.
+      if (reply.callbackQueryId) {
+        try {
+          await answerCallbackQuery(telegram, reply.callbackQueryId, "Details were sent when the ask was first opened.");
+        } catch {
+          /* non-fatal */
+        }
+      }
+      continue;
+    }
+
+    const source: "button" | "text" = reply.callbackQueryId ? "button" : "text";
+
+    if (reply.callbackQueryId) {
+      try {
+        await answerCallbackQuery(
+          telegram,
+          reply.callbackQueryId,
+          classified.recognized ? `Received: ${classified.verb}` : undefined,
+        );
+      } catch {
+        /* non-fatal */
+      }
+      if (match.messageId) {
+        try {
+          await editMessageRemoveKeyboard(telegram, match.messageId);
+        } catch {
+          /* non-fatal */
+        }
+      }
+    }
+
+    recordAnswer(projectRoot, sessionId, match.correlationId, {
+      verb: classified.verb,
+      raw: classified.raw,
+      source,
+      recognized: classified.recognized,
+      receivedAt: new Date().toISOString(),
+    });
+    processed.push({ correlationId: match.correlationId, verb: classified.verb, recognized: classified.recognized, raw: classified.raw, source });
+  }
+  return processed;
+}
 
 function toPath(value: unknown, fallback = ".") {
   return path.resolve(String(value ?? fallback));
@@ -160,9 +245,26 @@ export const afkCommand = defineCommand({
         const projectRoot = toPath(context.args.path);
         const { sessionId, remainingMs } = enforceActive(projectRoot);
         updateLastTick(projectRoot, sessionId);
-        process.stdout.write(
-          `session=${sessionId} remaining=${formatRemaining(remainingMs)} status=active\n`,
-        );
+
+        // Drain any user taps made since the last tick. This is what makes `ask` non-blocking:
+        // the user can reply at any time, whether 10s or 10h later, and the next tick picks it up.
+        const { config } = loadAfkConfig(projectRoot);
+        const telegram = getTelegram(config);
+        let newAnswers: Array<{ correlationId: string; verb: string; source: "button" | "text" }> = [];
+        if (telegram) {
+          newAnswers = (await drainPendingCallbacks(projectRoot, sessionId, telegram)).map((r) => ({
+            correlationId: r.correlationId,
+            verb: r.verb,
+            source: r.source,
+          }));
+        }
+
+        const openCount = listOpenAsks(projectRoot, sessionId).length;
+        const lines = [`session=${sessionId} remaining=${formatRemaining(remainingMs)} status=active openAsks=${openCount}`];
+        for (const answer of newAnswers) {
+          lines.push(`answered: ${answer.correlationId} = ${answer.verb} (${answer.source})`);
+        }
+        process.stdout.write(lines.join("\n") + "\n");
       },
     }),
 
@@ -255,31 +357,44 @@ export const afkCommand = defineCommand({
 
         incrementCounter(projectRoot, sessionId, "escalations");
 
+        // Fire-and-forget by default: register the ask in state.openAsks, return immediately.
+        // Subsequent `grace afk tick` calls will drain any taps and record answers. The user can
+        // reply whenever (minutes, hours) — the next tick picks it up.
+        addOpenAsk(projectRoot, sessionId, {
+          correlationId,
+          messageId: result.messageId ?? null,
+          sentAt: new Date().toISOString(),
+          title: String(context.args.title),
+        });
+
         const waitSeconds = Number(context.args.wait ?? "0");
         if (!Number.isFinite(waitSeconds) || waitSeconds <= 0) {
           process.stdout.write(
-            JSON.stringify({ correlationId, messageId: result.messageId, sessionId }, null, 2) + "\n",
+            JSON.stringify({ correlationId, messageId: result.messageId, sessionId, status: "sent" }, null, 2) + "\n",
           );
           return;
         }
 
-        // Blocking poll: ack any inline-button press as soon as it arrives so the user's Telegram
-        // spinner stops within ~2s. Also ack within the 15-second callback timeout window.
-        // DETAILS button is non-terminal — we send the SWOT breakdown follow-up and keep polling
-        // on the same ask; the user still has to pick A/B/C/PROCEED/DEFER/STOP.
-        const deadline = Date.now() + Math.min(waitSeconds, 600) * 1000; // cap at 10 minutes
-        let offset: number | null = null;
+        // Optional blocking poll for interactive use (e.g. smoke tests). Still uses the shared
+        // drain helper so button taps are handled identically in either mode. Also sends the
+        // SWOT details follow-up when DETAILS is tapped and keeps polling.
+        const deadline = Date.now() + Math.min(waitSeconds, 86400) * 1000; // hard cap 24h
+        const projectName = projectNameFromPath(projectRoot);
         while (Date.now() < deadline) {
-          const replies = await fetchUpdates(telegram, offset);
-          let detailsHandled = false;
+          // The shared drain path handles ack + keyboard removal + recordAnswer atomically.
+          // DETAILS is non-terminal there (ack only), so we re-send the SWOT follow-up here
+          // when we detect a DETAILS-kind reply during this blocking window.
+          let replies: Awaited<ReturnType<typeof fetchUpdates>>;
+          try {
+            replies = await fetchUpdates(telegram, null);
+          } catch {
+            replies = [];
+          }
           for (const reply of replies) {
-            offset = reply.updateId + 1;
             if (!matchReply(reply, result.messageId ?? 0, correlationId)) {
               continue;
             }
             const classified = classifyAnswer(reply.text);
-
-            // DETAILS: non-terminal. Send the SWOT breakdown, ack callback, keep polling.
             if (classified.recognized && classified.verb === "DETAILS") {
               if (reply.callbackQueryId) {
                 try {
@@ -289,53 +404,54 @@ export const afkCommand = defineCommand({
                 }
               }
               if (hasDetails) {
-                const detailsText = buildDetailsMessage({
-                  projectName: projectNameFromPath(projectRoot),
-                  correlationId,
-                  options: optionsList,
-                  details: detailsMap,
-                });
                 try {
-                  await sendMessage(telegram, detailsText, null);
-                } catch (error) {
-                  process.stderr.write(
-                    `grace afk ask: details follow-up failed: ${error instanceof Error ? error.message : String(error)}\n`,
+                  await sendMessage(
+                    telegram,
+                    buildDetailsMessage({ projectName, correlationId, options: optionsList, details: detailsMap }),
+                    null,
                   );
-                }
-              }
-              detailsHandled = true;
-              continue;
-            }
-
-            if (reply.callbackQueryId) {
-              try {
-                await answerCallbackQuery(
-                  telegram,
-                  reply.callbackQueryId,
-                  classified.recognized ? `Received: ${classified.verb}` : undefined,
-                );
-              } catch {
-                /* non-fatal */
-              }
-              if (result.messageId) {
-                try {
-                  await editMessageRemoveKeyboard(telegram, result.messageId);
                 } catch {
                   /* non-fatal */
                 }
               }
+              continue;
             }
+            // Non-DETAILS → delegate the ack + keyboard strip + recordAnswer to the shared drain.
+            await drainPendingCallbacks(projectRoot, sessionId, telegram);
+            const answer = getAnswer(projectRoot, sessionId, correlationId);
+            if (answer) {
+              process.stdout.write(
+                JSON.stringify(
+                  {
+                    correlationId,
+                    messageId: result.messageId,
+                    sessionId,
+                    status: answer.recognized ? "answered" : "unrecognized",
+                    verb: answer.verb,
+                    raw: answer.raw,
+                    source: answer.source,
+                  },
+                  null,
+                  2,
+                ) + "\n",
+              );
+              return;
+            }
+          }
+
+          // Also poll state.json in case a concurrent `tick` already recorded the answer.
+          const cached = getAnswer(projectRoot, sessionId, correlationId);
+          if (cached) {
             process.stdout.write(
               JSON.stringify(
                 {
                   correlationId,
                   messageId: result.messageId,
                   sessionId,
-                  status: classified.recognized ? "answered" : "unrecognized",
-                  verb: classified.verb,
-                  raw: classified.raw,
-                  source: reply.callbackQueryId ? "button" : "text",
-                  nextOffset: offset,
+                  status: cached.recognized ? "answered" : "unrecognized",
+                  verb: cached.verb,
+                  raw: cached.raw,
+                  source: cached.source,
                 },
                 null,
                 2,
@@ -343,8 +459,8 @@ export const afkCommand = defineCommand({
             );
             return;
           }
-          // If only DETAILS taps came through this tick, loop faster on the next poll.
-          await new Promise((resolve) => setTimeout(resolve, detailsHandled ? 1000 : 2000));
+
+          await new Promise((resolve) => setTimeout(resolve, 2000));
         }
 
         process.stdout.write(
@@ -366,84 +482,65 @@ export const afkCommand = defineCommand({
     check: defineCommand({
       meta: {
         name: "check",
-        description: "Poll Telegram for a reply matching a correlation id. Prints the recognized verb or `pending`.",
+        description:
+          "Report the answer for a correlation id. Reads the cached answer from state.json first (populated by `tick` on each call); falls back to a live Telegram poll only if the session has a config and the answer is still pending.",
       },
       args: {
         path: { type: "string", alias: "p", description: "Project root", default: "." },
         correlation: { type: "string", required: true, description: "Correlation id returned by `ask`" },
         messageid: {
           type: "string",
-          description: "Telegram message id returned by `ask` (for reply_to matching)",
-          default: "0",
-        },
-        offset: {
-          type: "string",
-          description: "getUpdates offset (default 0 = all)",
+          description: "Telegram message id returned by `ask` (only used for live poll fallback)",
           default: "0",
         },
       },
       async run(context) {
         const projectRoot = toPath(context.args.path);
-        enforceActive(projectRoot);
-
-        const { config, error } = loadAfkConfig(projectRoot);
-        const telegram = getTelegram(config);
-        if (!telegram) {
-          process.stderr.write(`grace afk check: Telegram not configured (${error ?? "missing config"}).\n`);
-          process.exitCode = EXIT_CONFIG_MISSING;
-          return;
-        }
-
-        const offset = Number(context.args.offset);
-        const messageId = Number(context.args.messageid);
+        const { sessionId } = enforceActive(projectRoot);
         const correlationId = String(context.args.correlation);
-        const replies = await fetchUpdates(telegram, Number.isFinite(offset) && offset > 0 ? offset : null);
 
-        for (const reply of replies) {
-          if (!matchReply(reply, messageId, correlationId)) {
-            continue;
-          }
-          const classified = classifyAnswer(reply.text);
-
-          // If the user pressed an inline button, we MUST dismiss the loading spinner in their
-          // Telegram client and (optionally) strip the keyboard so they cannot tap a second answer.
-          // Both calls are best-effort — failures are logged to stderr but do not change the check result.
-          if (reply.callbackQueryId) {
-            try {
-              const ack = await answerCallbackQuery(
-                telegram,
-                reply.callbackQueryId,
-                classified.recognized ? `Received: ${classified.verb}` : undefined,
-              );
-              if (!ack.ok) {
-                process.stderr.write(`grace afk check: answerCallbackQuery failed: ${ack.errorDescription ?? "unknown"}\n`);
-              }
-            } catch (error) {
-              process.stderr.write(`grace afk check: answerCallbackQuery threw: ${error instanceof Error ? error.message : String(error)}\n`);
-            }
-            if (messageId > 0) {
-              try {
-                await editMessageRemoveKeyboard(telegram, messageId);
-              } catch {
-                /* non-fatal */
-              }
-            }
-          }
-
+        // Step 1: cached answer — free, no network.
+        const cached = getAnswer(projectRoot, sessionId, correlationId);
+        if (cached) {
           process.stdout.write(
             JSON.stringify(
               {
-                status: classified.recognized ? "answered" : "unrecognized",
-                verb: classified.verb,
-                raw: classified.raw,
-                source: reply.callbackQueryId ? "button" : "text",
-                nextOffset: reply.updateId + 1,
+                status: cached.recognized ? "answered" : "unrecognized",
+                verb: cached.verb,
+                raw: cached.raw,
+                source: cached.source,
+                receivedAt: cached.receivedAt,
               },
               null,
               2,
             ) + "\n",
           );
           return;
+        }
+
+        // Step 2: opportunistically drain new callbacks and re-check the cache. Matches the
+        // semantics of `tick` but scoped to one correlation id.
+        const { config } = loadAfkConfig(projectRoot);
+        const telegram = getTelegram(config);
+        if (telegram) {
+          await drainPendingCallbacks(projectRoot, sessionId, telegram);
+          const fresh = getAnswer(projectRoot, sessionId, correlationId);
+          if (fresh) {
+            process.stdout.write(
+              JSON.stringify(
+                {
+                  status: fresh.recognized ? "answered" : "unrecognized",
+                  verb: fresh.verb,
+                  raw: fresh.raw,
+                  source: fresh.source,
+                  receivedAt: fresh.receivedAt,
+                },
+                null,
+                2,
+              ) + "\n",
+            );
+            return;
+          }
         }
 
         process.stdout.write(JSON.stringify({ status: "pending" }) + "\n");
@@ -562,6 +659,7 @@ export const afkCommand = defineCommand({
         const deferred = readJournal(paths.deferredPath);
         const deferredCount = deferred.split("\n").filter((line) => line.trim().startsWith("- [")).length;
 
+        const usage = readUsage();
         const lines = [
           `/afk session ${session.id} — report`,
           `Status:       ${session.status}`,
@@ -574,12 +672,216 @@ export const afkCommand = defineCommand({
           `Deferred:     ${deferredCount} (see ${path.relative(projectRoot, paths.deferredPath)})`,
           `Stop reason:  ${session.stopReason ?? "-"}`,
           `Journal:      ${path.relative(projectRoot, paths.decisionsPath)}`,
+          `Usage:        ${renderUsageLine(usage)}`,
         ];
         process.stdout.write(lines.join("\n") + "\n");
 
         if (!Boolean(context.args.keepActive) && session.status === "active") {
           markCompleted(projectRoot, session.id);
         }
+      },
+    }),
+
+    done: defineCommand({
+      meta: {
+        name: "done",
+        description:
+          "Notify the user that a logical step finished and ask what to do next. Auto-fills context with elapsed time, commit/escalation/deferred counters, and current usage (5h/7d/$).",
+      },
+      args: {
+        path: { type: "string", alias: "p", description: "Project root", default: "." },
+        title: {
+          type: "string",
+          description: "Short title (default: auto from project name)",
+          default: "",
+        },
+        next: {
+          type: "string",
+          required: true,
+          description:
+            'Next-step candidates as "A:label;B:label;..." (semicolon-separated, same syntax as `ask --options`).',
+        },
+        details: {
+          type: "string",
+          description:
+            'Optional SWOT breakdown per candidate: "A|pros|cons|opportunities|risks;B|..."',
+          default: "",
+        },
+        mypick: {
+          type: "string",
+          description: "Recommended next step (letter)",
+          default: "",
+        },
+        confidence: { type: "string", description: "Confidence percent (0-100)", default: "60" },
+        wait: { type: "string", description: "Block-and-poll for up to N seconds", default: "180" },
+      },
+      async run(ctx) {
+        const projectRoot = toPath(ctx.args.path);
+        const { sessionId } = enforceActive(projectRoot);
+        const session = readSession(projectRoot, sessionId);
+        if (!session) {
+          process.stderr.write("grace afk done: session not found after tick.\n");
+          process.exitCode = EXIT_NO_SESSION;
+          return;
+        }
+
+        const usage = readUsage();
+        const usageLine = renderUsageLine(usage, "usage: unavailable");
+        const context = buildDoneContext({
+          sessionStartIso: session.createdAt,
+          now: new Date(),
+          commits: session.commits,
+          escalations: session.escalations,
+          deferred: session.deferred,
+          usageLine,
+        });
+
+        const projectName = projectNameFromPath(projectRoot);
+        const title = String(ctx.args.title) || `${projectName}: шаг выполнен — что дальше?`;
+
+        // Delegate by re-invoking the same runtime path as `ask`. We inline the minimal flow
+        // instead of calling the `ask` subcommand object so that we can re-use the details/keyboard
+        // helpers and share the same wait-loop behaviour.
+        const { config, error } = loadAfkConfig(projectRoot);
+        const telegram = getTelegram(config);
+        if (!telegram) {
+          process.stderr.write(
+            `grace afk done: Telegram not configured (${error ?? "missing telegram.botToken/chatId"}). ` +
+              "Cannot notify the user. Run `grace afk defer` with the summary instead.\n",
+          );
+          process.exitCode = EXIT_CONFIG_MISSING;
+          return;
+        }
+
+        const maxEscalations = getMaxEscalations(config);
+        if (session.escalations >= maxEscalations) {
+          process.stderr.write(
+            `grace afk done: max ${maxEscalations} escalations already sent this session. Use grace afk defer.\n`,
+          );
+          process.exitCode = EXIT_BAD_ARGS;
+          return;
+        }
+
+        const correlationId = shortCorrelationId();
+        const optionsList = String(ctx.args.next)
+          .split(/[|;]/)
+          .map((entry) => entry.trim())
+          .filter(Boolean);
+
+        const text = buildAskMessage({
+          correlationId,
+          sessionId,
+          projectName,
+          title,
+          context,
+          options: optionsList,
+          myPick: String(ctx.args.mypick),
+          confidence: String(ctx.args.confidence),
+        });
+
+        const detailsMap = parseDetailsArg(String(ctx.args.details ?? ""));
+        const hasDetails = detailsMap.size > 0;
+        const keyboard = buildAskKeyboard(correlationId, optionsList, hasDetails);
+        const result = await sendMessage(telegram, text, keyboard);
+        if (!result.ok) {
+          process.stderr.write(
+            `grace afk done: Telegram sendMessage failed (${result.errorDescription ?? "unknown"}).\n`,
+          );
+          process.exitCode = EXIT_TELEGRAM_FAILURE;
+          return;
+        }
+        incrementCounter(projectRoot, sessionId, "escalations");
+
+        const waitSeconds = Number(ctx.args.wait ?? "180");
+        if (!Number.isFinite(waitSeconds) || waitSeconds <= 0) {
+          process.stdout.write(
+            JSON.stringify({ correlationId, messageId: result.messageId, sessionId, usageLine }, null, 2) + "\n",
+          );
+          return;
+        }
+
+        const deadline = Date.now() + Math.min(waitSeconds, 600) * 1000;
+        let offset: number | null = null;
+        while (Date.now() < deadline) {
+          const replies = await fetchUpdates(telegram, offset);
+          let detailsHandled = false;
+          for (const reply of replies) {
+            offset = reply.updateId + 1;
+            if (!matchReply(reply, result.messageId ?? 0, correlationId)) {
+              continue;
+            }
+            const classified = classifyAnswer(reply.text);
+            if (classified.recognized && classified.verb === "DETAILS") {
+              if (reply.callbackQueryId) {
+                try {
+                  await answerCallbackQuery(telegram, reply.callbackQueryId, "Sending details…");
+                } catch {
+                  /* non-fatal */
+                }
+              }
+              if (hasDetails) {
+                const detailsText = buildDetailsMessage({
+                  projectName,
+                  correlationId,
+                  options: optionsList,
+                  details: detailsMap,
+                });
+                try {
+                  await sendMessage(telegram, detailsText, null);
+                } catch {
+                  /* non-fatal */
+                }
+              }
+              detailsHandled = true;
+              continue;
+            }
+            if (reply.callbackQueryId) {
+              try {
+                await answerCallbackQuery(
+                  telegram,
+                  reply.callbackQueryId,
+                  classified.recognized ? `Received: ${classified.verb}` : undefined,
+                );
+              } catch {
+                /* non-fatal */
+              }
+              if (result.messageId) {
+                try {
+                  await editMessageRemoveKeyboard(telegram, result.messageId);
+                } catch {
+                  /* non-fatal */
+                }
+              }
+            }
+            process.stdout.write(
+              JSON.stringify(
+                {
+                  correlationId,
+                  messageId: result.messageId,
+                  sessionId,
+                  status: classified.recognized ? "answered" : "unrecognized",
+                  verb: classified.verb,
+                  raw: classified.raw,
+                  source: reply.callbackQueryId ? "button" : "text",
+                  usageLine,
+                  nextOffset: offset,
+                },
+                null,
+                2,
+              ) + "\n",
+            );
+            return;
+          }
+          await new Promise((resolve) => setTimeout(resolve, detailsHandled ? 1000 : 2000));
+        }
+
+        process.stdout.write(
+          JSON.stringify(
+            { correlationId, messageId: result.messageId, sessionId, status: "pending", usageLine, waitedSeconds: waitSeconds },
+            null,
+            2,
+          ) + "\n",
+        );
       },
     }),
 
@@ -623,6 +925,36 @@ export const afkCommand = defineCommand({
     }),
   },
 });
+
+// START_CONTRACT: buildDoneContext
+//   PURPOSE: Compose the one-sentence `--context` string for `grace afk done` that reports elapsed
+//     session time, counters from state.json, and a compact usage snapshot from the statusline cache.
+//   INPUTS: { sessionStartIso: string, now: Date, commits, escalations, deferred, usageLine?: string }
+//   OUTPUTS: string
+//   SIDE_EFFECTS: none
+// END_CONTRACT: buildDoneContext
+export function buildDoneContext(args: {
+  sessionStartIso: string;
+  now: Date;
+  commits: number;
+  escalations: number;
+  deferred: number;
+  usageLine?: string | null;
+}): string {
+  const start = Date.parse(args.sessionStartIso);
+  const elapsedMs = Number.isFinite(start) ? Math.max(0, args.now.getTime() - start) : 0;
+  const totalMinutes = Math.floor(elapsedMs / 60_000);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  const elapsed = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+
+  const counters = `${args.commits} commits · ${args.escalations} escalations · ${args.deferred} deferred`;
+  const pieces = [`Session: ${elapsed}, ${counters}`];
+  if (args.usageLine) {
+    pieces.push(args.usageLine);
+  }
+  return pieces.join(". ");
+}
 
 // START_CONTRACT: projectNameFromPath
 //   PURPOSE: Convert the project-root basename into a human-readable project name.

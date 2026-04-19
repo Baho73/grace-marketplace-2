@@ -325,6 +325,15 @@
       <target><source>src/afk/telegram.ts</source><tests>src/afk-telegram.test.ts</tests></target>
       <verification-ref>V-M-AFK-TELEGRAM</verification-ref>
     </M-AFK-TELEGRAM>
+
+    <M-AFK-USAGE NAME="AfkUsage" TYPE="INTEGRATION" LAYER="0" ORDER="11" STATUS="implemented">
+      <contract>
+        <purpose>Read Claude Code's statusline usage cache (five_hour / seven_day / extra_usage) to annotate afk report and done notifications with budget context.</purpose>
+      </contract>
+      <depends>none</depends>
+      <target><source>src/afk/usage.ts</source><tests>src/afk-usage.test.ts</tests></target>
+      <verification-ref>V-M-AFK-USAGE</verification-ref>
+    </M-AFK-USAGE>
   </Modules>
 
   <ImplementationOrder>

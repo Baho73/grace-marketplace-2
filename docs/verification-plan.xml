@@ -439,6 +439,23 @@
       </scenarios>
     </V-M-EVOLVE-ORCHESTRATOR>
 
+    <V-M-AFK-USAGE MODULE="M-AFK-USAGE" PRIORITY="medium">
+      <test-files>
+        <file>src/afk-usage.test.ts</file>
+      </test-files>
+      <module-checks>
+        <check-1>bun test src/afk-usage.test.ts</check-1>
+      </module-checks>
+      <scenarios>
+        <scenario-1 kind="success">readUsage returns null when the cache file is missing.</scenario-1>
+        <scenario-2 kind="failure">readUsage returns null when the cache JSON is malformed.</scenario-2>
+        <scenario-3 kind="success">readUsage parses five_hour / seven_day / extra_usage into UsageSnapshot.</scenario-3>
+        <scenario-4 kind="success">readUsage maps used_credits (cents) to dollars with two-decimal precision.</scenario-4>
+        <scenario-5 kind="success">renderUsageLine formats "5h N% · 7d N% · $used/limit · cache age Xs".</scenario-5>
+        <scenario-6 kind="success">renderUsageLine falls back to a readable message when snapshot is null.</scenario-6>
+      </scenarios>
+    </V-M-AFK-USAGE>
+
     <V-M-AFK-TELEGRAM MODULE="M-AFK-TELEGRAM" PRIORITY="high">
       <test-files>
         <file>src/afk-telegram.test.ts</file>

@@ -246,6 +246,18 @@
       </annotations>
     </M-EVOLVE-ORCHESTRATOR>
 
+    <M-AFK-USAGE NAME="AfkUsage" TYPE="INTEGRATION" STATUS="implemented">
+      <purpose>Read-only consumer of Claude Code's statusline usage cache (five_hour / seven_day / extra_usage). Surfaces budget utilization in `grace afk report` and `grace afk done` notifications.</purpose>
+      <path>src/afk/usage.ts</path>
+      <depends>none</depends>
+      <verification-ref>V-M-AFK-USAGE</verification-ref>
+      <annotations>
+        <fn-readUsage PURPOSE="Read and parse $TMPDIR/claude/statusline-usage-cache.json; returns null when absent or malformed" />
+        <fn-renderUsageLine PURPOSE="One-line summary: 5h% · 7d% · $used/limit · cache age" />
+        <fn-cachePath PURPOSE="Resolve the statusline cache path" />
+      </annotations>
+    </M-AFK-USAGE>
+
     <M-AFK-TELEGRAM NAME="AfkTelegram" TYPE="INTEGRATION" STATUS="implemented">
       <purpose>Minimal Telegram Bot API transport (sendMessage + getUpdates) with dependency-injected fetch for tests. No external dependencies.</purpose>
       <path>src/afk/telegram.ts</path>
@@ -378,6 +390,7 @@
     <CrossLink from="M-CLI-AFK" to="M-AFK-JOURNAL" relation="uses" />
     <CrossLink from="M-CLI-AFK" to="M-AFK-CONFIG" relation="uses" />
     <CrossLink from="M-CLI-AFK" to="M-AFK-TELEGRAM" relation="uses" />
+    <CrossLink from="M-CLI-AFK" to="M-AFK-USAGE" relation="uses" />
     <CrossLink from="M-STATUS-RUNTIME" to="M-QUERY-CORE" relation="uses" />
     <CrossLink from="M-QUERY-CORE" to="M-LINT-CONFIG" relation="reads-ignored-dirs" />
     <CrossLink from="M-QUERY-RENDER" to="M-QUERY-CORE" relation="formats-types-from" />

@@ -177,6 +177,41 @@ describe("buildAskMessage", () => {
   });
 });
 
+describe("buildDoneContext", () => {
+  it("formats elapsed time + counters + usage on one line", async () => {
+    const { buildDoneContext } = await import("./grace-afk");
+    const start = "2026-04-19T04:00:00.000Z";
+    const now = new Date("2026-04-19T05:17:00.000Z"); // +1h17m
+    const line = buildDoneContext({
+      sessionStartIso: start,
+      now,
+      commits: 3,
+      escalations: 1,
+      deferred: 2,
+      usageLine: "5h 7% · 7d 21%",
+    });
+    expect(line).toContain("1h 17m");
+    expect(line).toContain("3 commits");
+    expect(line).toContain("1 escalations");
+    expect(line).toContain("2 deferred");
+    expect(line).toContain("5h 7%");
+  });
+
+  it("omits the usage block when usageLine is null", async () => {
+    const { buildDoneContext } = await import("./grace-afk");
+    const line = buildDoneContext({
+      sessionStartIso: "2026-04-19T04:00:00.000Z",
+      now: new Date("2026-04-19T04:05:00.000Z"),
+      commits: 0,
+      escalations: 0,
+      deferred: 0,
+      usageLine: null,
+    });
+    expect(line).toContain("5m");
+    expect(line).not.toContain("5h");
+  });
+});
+
 describe("parseDetailsArg + buildDetailsMessage + buildAskKeyboard(hasDetails)", () => {
   it("parses the 5-field SWOT details arg", async () => {
     const { parseDetailsArg } = await import("./grace-afk");
@@ -319,7 +354,10 @@ describe("grace afk CLI — argument validation and fallbacks", () => {
     expect(result.stderr).toContain("defer");
   });
 
-  it("check exits with EXIT_CONFIG_MISSING (46) when .grace-afk.json is absent", () => {
+  it("check returns {status:pending} when no answer is cached and Telegram is not configured", () => {
+    // Post-openAsks redesign: check reads state.answers first. Without a cached answer and
+    // without telegram config it simply reports pending (no network, exit 0) — the agent keeps
+    // calling `grace afk tick` to drain future taps whenever they arrive.
     const root = tmpProject();
     runCli(root, ["start", "1", "--path", root]);
 
@@ -333,8 +371,8 @@ describe("grace afk CLI — argument validation and fallbacks", () => {
       "42",
     ]);
 
-    expect(result.code).toBe(46);
-    expect(result.stderr).toContain("Telegram not configured");
+    expect(result.code).toBe(0);
+    expect(result.stdout).toContain('"status":"pending"');
   });
 
   it("ask refuses after max escalations with EXIT_BAD_ARGS", () => {

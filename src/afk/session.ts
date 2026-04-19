@@ -29,6 +29,12 @@
 //   EXIT_BUDGET_EXHAUSTED - Numeric exit code 42
 //   EXIT_NO_SESSION       - Numeric exit code 43
 //   EXIT_SESSION_STOPPED  - Numeric exit code 44
+//   OpenAsk               - Shape: { correlationId, messageId, sentAt, title? }
+//   AnswerRecord          - Shape: { verb, raw, source, recognized, receivedAt }
+//   addOpenAsk            - Register an outstanding ask and clear any stale answer for it
+//   recordAnswer          - Persist an answer and remove its ask from openAsks
+//   getAnswer             - Look up a recorded answer without a network call
+//   listOpenAsks          - Return currently outstanding asks
 // END_MODULE_MAP
 
 import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, statSync, writeFileSync } from "node:fs";
@@ -36,6 +42,21 @@ import { randomBytes } from "node:crypto";
 import path from "node:path";
 
 export type SessionStatus = "active" | "expired" | "stopped" | "completed";
+
+export type OpenAsk = {
+  correlationId: string;
+  messageId: number | null;
+  sentAt: string;
+  title?: string;
+};
+
+export type AnswerRecord = {
+  verb: string;
+  raw: string;
+  source: "button" | "text";
+  recognized: boolean;
+  receivedAt: string;
+};
 
 export type SessionState = {
   version: 1;
@@ -51,6 +72,8 @@ export type SessionState = {
   deferred: number;
   lastTickAt: string | null;
   stopReason: string | null;
+  openAsks?: OpenAsk[];
+  answers?: Record<string, AnswerRecord>;
 };
 
 const STATE_FILENAME = "state.json";
@@ -114,6 +137,8 @@ export function createSession(
     deferred: 0,
     lastTickAt: null,
     stopReason: null,
+    openAsks: [],
+    answers: {},
   };
 
   const dir = sessionDir(projectRoot, id);
@@ -248,6 +273,78 @@ export function updateLastTick(projectRoot: string, sessionId: string, now: Date
   state.lastTickAt = toIso(now);
   writeSession(projectRoot, state);
   return state;
+}
+
+// START_CONTRACT: addOpenAsk
+//   PURPOSE: Register a new outstanding ask on the session. Removes any stale answer for the same correlationId.
+//   INPUTS: { projectRoot, sessionId, ask: OpenAsk }
+//   OUTPUTS: SessionState | null
+//   SIDE_EFFECTS: Atomic write of state.json.
+// END_CONTRACT: addOpenAsk
+export function addOpenAsk(projectRoot: string, sessionId: string, ask: OpenAsk): SessionState | null {
+  const state = readSession(projectRoot, sessionId);
+  if (!state) {
+    return null;
+  }
+  state.openAsks = state.openAsks ?? [];
+  state.answers = state.answers ?? {};
+  state.openAsks = state.openAsks.filter((item) => item.correlationId !== ask.correlationId);
+  state.openAsks.push(ask);
+  delete state.answers[ask.correlationId];
+  writeSession(projectRoot, state);
+  return state;
+}
+
+// START_CONTRACT: recordAnswer
+//   PURPOSE: Persist an answer for an outstanding ask, removing it from openAsks.
+//   INPUTS: { projectRoot, sessionId, correlationId, answer: AnswerRecord }
+//   OUTPUTS: SessionState | null
+//   SIDE_EFFECTS: Atomic write of state.json.
+// END_CONTRACT: recordAnswer
+export function recordAnswer(
+  projectRoot: string,
+  sessionId: string,
+  correlationId: string,
+  answer: AnswerRecord,
+): SessionState | null {
+  const state = readSession(projectRoot, sessionId);
+  if (!state) {
+    return null;
+  }
+  state.openAsks = (state.openAsks ?? []).filter((item) => item.correlationId !== correlationId);
+  state.answers = state.answers ?? {};
+  state.answers[correlationId] = answer;
+  writeSession(projectRoot, state);
+  return state;
+}
+
+// START_CONTRACT: getAnswer
+//   PURPOSE: Look up a previously recorded answer without a network call.
+//   INPUTS: { projectRoot, sessionId, correlationId }
+//   OUTPUTS: AnswerRecord | null
+//   SIDE_EFFECTS: none (single file read)
+// END_CONTRACT: getAnswer
+export function getAnswer(
+  projectRoot: string,
+  sessionId: string,
+  correlationId: string,
+): AnswerRecord | null {
+  const state = readSession(projectRoot, sessionId);
+  if (!state || !state.answers) {
+    return null;
+  }
+  return state.answers[correlationId] ?? null;
+}
+
+// START_CONTRACT: listOpenAsks
+//   PURPOSE: Return the current list of outstanding asks for the session.
+//   INPUTS: { projectRoot, sessionId }
+//   OUTPUTS: OpenAsk[]
+//   SIDE_EFFECTS: none
+// END_CONTRACT: listOpenAsks
+export function listOpenAsks(projectRoot: string, sessionId: string): OpenAsk[] {
+  const state = readSession(projectRoot, sessionId);
+  return state?.openAsks ?? [];
 }
 
 export function formatRemaining(ms: number): string {
