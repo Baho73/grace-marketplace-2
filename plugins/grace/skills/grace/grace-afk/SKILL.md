@@ -124,6 +124,20 @@ Delegated to `$grace-ask-human`. Key rules:
 Hard cap: **3 escalations per session** (enforced by CLI via `--autoStop.maxEscalationsPerSession`).
 Past that, you must defer remaining one-way-door decisions.
 
+## Idle-fill: review while awaiting a reply
+
+While a `grace afk ask` is outstanding and you are polling `grace afk check` (the 10/30/60/120 min
+backoff is long idle time), do NOT sit idle — spend it on a **read-only** `$grace-reviewer` pass over
+the work done so far on the `afk-*` branch (5 axes + `grace lint --path .`). Queue findings in the
+journal (`grace afk journal --class review ...`); do not block on them.
+
+Guardrails:
+- **Read-only by default.** Apply only clearly-reversible fixes that are in-scope AND unrelated to the
+  question under escalation. Anything touching the escalated decision waits for the answer.
+- **Interruptible.** The moment `grace afk check` returns a verb, drop the review immediately and act
+  on the reply. Never make the user wait on a review.
+- Keep running `grace afk tick` between review chunks — the budget clock keeps running during the wait.
+
 ## STOP handling
 
 If you see `grace afk check` return `{verb: "STOP"}`, immediately:
@@ -137,10 +151,16 @@ If you see `grace afk check` return `{verb: "STOP"}`, immediately:
 Triggered by: `tick` non-zero, user STOP, plan exhausted, hard block (e.g. CLI failure).
 
 1. Ensure working tree is committed (or stashed with a descriptive name).
-2. Run `grace afk report --path .` (this marks the session completed).
-3. Announce to the user: branch name, session id, deferred count, commits count, next suggested
-   action (usually: review `deferred.md`, then merge `afk-<ts>` into the target feature branch).
-4. Do not delete the `afk-<ts>` branch — leave it for human review.
+2. **Final review.** Run a `$grace-reviewer` integrity pass over the whole `afk-*` branch (all 5 axes)
+   plus `grace lint --path .`. Fold the findings (with severities) into the return dashboard so the
+   human sees the QUALITY of the work, not just the list of commits. Journal it
+   (`grace afk journal --class review ...`). Read-only — do NOT auto-fix at end of session; let the
+   human decide what to act on.
+3. Run `grace afk report --path .` (this marks the session completed).
+4. Announce to the user: branch name, session id, deferred count, commits count, **review summary**,
+   next suggested action (usually: review `deferred.md` + the review findings, then merge `afk-<ts>`
+   into the target feature branch).
+5. Do not delete the `afk-<ts>` branch — leave it for human review.
 
 ## Common Rationalizations
 
@@ -180,4 +200,5 @@ Before exiting, confirm:
 - [ ] `decisions.md` has at least one entry per iteration that took an action
 - [ ] `deferred.md` is listed in the final report with count matching state.deferred
 - [ ] `bun test` and `grace lint --path .` exit 0 on the final commit (verification: attach exit codes)
+- [ ] A final `$grace-reviewer` pass ran; its findings (with severities) are in the dashboard and journaled (`class=review`)
 - [ ] User has been announced the final dashboard with next-action suggestion
