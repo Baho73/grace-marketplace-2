@@ -5,7 +5,7 @@ Merged upstream `osovv/grace-marketplace` 4.0.2 into the fork.
 - Upstream GRACE 4 engine (`.grace` model, projections, assertions, scopes, `grace status/module/verification/file`, skills incl. `grace-spec`, `grace-migrate`) replaces the fork's GRACE 3-era core.
 - Kept fork features: `grace-bootstrap`, `grace-afk`, `grace-ask-human`, `grace-evolve` (CLI + skills), tiered AFK Telegram config, SKILL.md section lint (ported to the new lint core).
 - Dropped: `grace-multiagent-execute` (upstream folds parallel-safe mode into `grace-execute`), fork's own `grace status` (superseded by upstream), `src/grace-status-runtime.ts`.
-- Known follow-ups: afk skill still reads GRACE 3 `docs/development-plan.xml`; Russian skill translations were based on pre-4.0 texts and need a redo on 4.0.2 skills.
+- Follow-ups landed (same day): `grace-afk`/`grace-bootstrap` migrated to GRACE 4 (`.grace/changes/active/C-*` plan tasks, `grace status --format json`, `grace-spec`/`grace-migrate` routing); skill descriptions re-translated to Russian on the 4.0.2 texts.
 
 ## <small>4.0.2 (2026-07-26)</small>
 

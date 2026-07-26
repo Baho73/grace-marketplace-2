@@ -1,6 +1,6 @@
 ---
 name: grace-init
-description: Bootstrap a Full GRACE 4 project by creating the canonical .grace context, graph, verification, and changes skeleton.
+description: "Инициализирует полный GRACE 4-проект: создаёт канонический скелет `.grace` (context, graph, verification, changes). Использовать для нового проекта."
 ---
 
 <skill>

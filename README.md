@@ -159,7 +159,7 @@ Output modes:
 
 The `grace-afk` skill turns idle time into forward progress. The user types `/afk <hours> [<budget%>]`,
 the CLI creates an isolated branch and a session with a hard expiry timestamp, and the agent works
-through `docs/development-plan.xml` step by step. Between every step the agent polls `grace afk tick` —
+through the active change plan in `.grace/changes/active/C-*/` task by task. Between every task the agent polls `grace afk tick` —
 the CLI (not the LLM) decides when the session ends, so the agent cannot rationalize its way past a
 budget cap.
 
@@ -173,7 +173,7 @@ flowchart TD
     Start([User: /afk 8 20]) --> CreateSess["grace afk start<br/>• tag baseline<br/>• branch afk-TS<br/>• write state.json with expiresAt"]
     CreateSess --> Tick{"grace afk tick<br/>exit code"}
 
-    Tick -->|"0 — active"| NextStep["Pick next pending step<br/>from development-plan.xml"]
+    Tick -->|"0 — active"| NextStep["Pick next pending T-task<br/>from .grace/changes/active plan"]
     Tick -->|"42 — BUDGET_EXHAUSTED"| Report["grace afk report<br/>(dashboard)"]
     Tick -->|"44 — stopped"| Report
 

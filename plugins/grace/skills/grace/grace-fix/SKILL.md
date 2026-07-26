@@ -1,6 +1,6 @@
 ---
 name: grace-fix
-description: Debug and fix issues in a GRACE 4 project using .grace semantic navigation, assertions, and verification evidence.
+description: "Отлаживает и исправляет проблемы в GRACE 4-проекте через семантическую навигацию `.grace`, assertions и свидетельства верификации. Использовать при багах и неожиданном поведении."
 ---
 
 <skill>

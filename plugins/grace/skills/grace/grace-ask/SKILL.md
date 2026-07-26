@@ -1,6 +1,6 @@
 ---
 name: grace-ask
-description: Answer questions about a GRACE 4 project by navigating .grace current-state artifacts and file-local semantic markup.
+description: "Отвечает на вопросы о GRACE 4-проекте, навигируя по артефактам текущего состояния `.grace` и файловой семантической разметке. Использовать для вопросов об архитектуре, модулях и поведении проекта."
 ---
 
 <skill>

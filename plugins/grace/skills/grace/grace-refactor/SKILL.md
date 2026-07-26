@@ -1,6 +1,6 @@
 ---
 name: grace-refactor
-description: Refactor GRACE 4 governed code while keeping .grace graph, verification, change scopes, and file-local anchors synchronized.
+description: "Рефакторит управляемый GRACE 4 код, держа синхронизированными граф `.grace`, верификацию, scopes изменений и файловые якоря. Использовать для rename/move/split/merge модулей."
 ---
 
 <skill>

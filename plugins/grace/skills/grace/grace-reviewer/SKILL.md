@@ -1,6 +1,6 @@
 ---
 name: grace-reviewer
-description: Review GRACE 4 integrity across .grace artifacts, active changes, scopes, assertions, code anchors, and verification evidence.
+description: "Проверяет целостность GRACE 4: артефакты `.grace`, активные изменения, scopes, assertions, кодовые якоря и свидетельства верификации. Использовать для ревью изменений."
 ---
 
 <skill>

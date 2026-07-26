@@ -1,6 +1,6 @@
 ---
 name: grace-execute
-description: Execute an approved GRACE 4 GraceChangePlan in sequential or parallel-safe mode with recovery-aware preflight and centralized durable apply.
+description: "Выполняет одобренный GRACE 4 GraceChangePlan в последовательном или parallel-safe режиме с recovery-aware preflight и централизованным применением durable-изменений. Использовать после утверждения плана."
 ---
 
 <skill>

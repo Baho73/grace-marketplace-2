@@ -7,9 +7,8 @@ description: "Использовать в начале любого разгов
 If you were dispatched as a subagent for a narrowly scoped task, skip the full activation
 protocol below BUT you are still subject to GRACE integrity rules on the files you touch:
 
-1. BEFORE editing any governed file, run `grace file show <path> --contracts --blocks` (or
-   `grace-cli file show`) — this shows you the MODULE_CONTRACT, MODULE_MAP, semantic blocks,
-   and function contracts you must preserve.
+1. BEFORE editing any governed file, run `grace file show <path>` — this shows you the
+   MODULE_CONTRACT, MODULE_MAP, and CHANGE_SUMMARY you must preserve.
 2. NEVER delete or rename a `START_BLOCK_*` / `END_BLOCK_*` marker. If your task requires
    changing the block's shape, flag it in your return packet and stop — the parent agent must
    invoke `grace-refactor`.
@@ -42,11 +41,11 @@ The `grace-*` skills are the ONLY way to modify a GRACE project correctly.
 Invoke this skill at the start of ANY conversation where you might read, edit, or answer questions
 about code. Check for GRACE activation markers:
 
-1. `docs/knowledge-graph.xml` exists
-2. `docs/development-plan.xml` exists
-3. `docs/verification-plan.xml` exists
-4. `AGENTS.md` contains GRACE keywords (knowledge-graph, MODULE_CONTRACT, verification-plan)
-5. Project CLAUDE.md declares GRACE management
+1. `.grace/` exists (the GRACE 4 durable model: `context/`, `graph/`, `verification/`, `changes/`)
+2. Legacy GRACE 3 layout: `docs/knowledge-graph.xml`, `docs/development-plan.xml`,
+   `docs/verification-plan.xml` — still GRACE, but route to `grace-migrate` before any edits
+3. `AGENTS.md` contains GRACE keywords (`.grace`, knowledge-graph, MODULE_CONTRACT, `V-M-*`)
+4. Project CLAUDE.md declares GRACE management
 
 Presence of **any** of these means: **project is under GRACE governance → run protocol**.
 
@@ -86,10 +85,10 @@ Read at minimum:
 
 If the optional `grace` CLI is installed, prefer:
 ```
-grace status --path . --brief --format json
+grace status --path . --format json
 ```
-JSON output gives deterministic fields (moduleCount, coveredModules, pendingSteps, nextAction,
-missingActivation) that are easier for you to parse than prose. The `text` format is for humans.
+JSON output gives machine-readable fields (health, active changes, next recommended action)
+that are easier for you to parse than prose. The `text` format is for humans.
 
 ### Step 2 — Classify user intent
 
@@ -100,7 +99,8 @@ user in one sentence ("Routing to grace-fix because you described a runtime erro
 |---|---|
 | Question about the project, module, architecture, or behavior | `grace-ask` |
 | Bug report, runtime error, unexpected behavior | `grace-fix` |
-| New feature, architectural change, module addition | `grace-plan` (design) → `grace-execute` / `grace-multiagent-execute` (build) |
+| New feature, architectural change, module addition | `grace-spec` (change spec) → `grace-plan` → `grace-execute` (sequential or parallel-safe) |
+| Legacy GRACE 3 `docs/*.xml` layout detected | `grace-migrate` |
 | Rename / move / split / merge existing code | `grace-refactor` |
 | "Something feels stale / out of sync" | `grace-refresh` |
 | Project health check, status, next steps | `grace-status` |
@@ -141,7 +141,7 @@ Stop immediately if any of these appear:
 - You are about to use Edit/Write on a governed file without having read its MODULE_CONTRACT.
 - You are about to delete a block that contains `START_BLOCK_*` markers without updating the graph.
 - You are about to add a new dependency without recording it in MODULE_CONTRACT.DEPENDS.
-- You are about to fix a bug without a regression entry in `docs/verification-plan.xml`.
+- You are about to fix a bug without a regression entry in `.grace/verification/`.
 - You are about to add a module and you have NOT invoked `grace-plan`.
 - You have spent more than 2 minutes exploring files and have NOT yet loaded `AGENTS.md`.
 
@@ -152,7 +152,7 @@ Any of the above → return to Step 1.
 Before you exit this skill and hand off to a concrete `grace-*` skill, confirm:
 
 - [ ] `AGENTS.md` is loaded into your working context (verification: state one concrete convention from it)
-- [ ] `grace status --brief` output OR equivalent manual scan of `docs/*.xml` has been read (verification: state current module count or next recommended action)
+- [ ] `grace status --format json` output OR equivalent manual scan of `.grace/` artifacts has been read (verification: state current active change or next recommended action)
 - [ ] User intent has been classified and announced to the user (verification: one-sentence route decision)
 - [ ] The chosen `grace-*` skill's SKILL.md has been invoked (verification: its prerequisites checklist has started)
 

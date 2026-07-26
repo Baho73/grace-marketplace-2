@@ -1,6 +1,6 @@
 ---
 name: grace-verification
-description: Design and maintain GRACE 4 verification entries, commands, scenarios, markers, and assertion evidence under .grace/verification.
+description: "Проектирует и ведёт записи верификации GRACE 4: команды, сценарии, маркеры и свидетельства assertions в `.grace/verification`."
 ---
 
 <skill>

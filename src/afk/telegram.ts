@@ -70,8 +70,8 @@ export async function sendMessage(
   keyboard?: InlineKeyboard | null,
   transport: TelegramTransport = fetch,
 ): Promise<SendMessageResult> {
-  // Plain text: user-controlled fields (titles, contexts from development-plan.xml) flow into
-  // this transport. Previously parse_mode: "Markdown" permitted injection (clickable links,
+  // Plain text: user-controlled fields (titles, contexts from active .grace change bundles) flow
+  // into this transport. Previously parse_mode: "Markdown" permitted injection (clickable links,
   // broken formatting, weaponized `]` / `[` pairs). We intentionally send plain text and rely
   // on `buildAskMessage` to structure the payload with whitespace, not markdown syntax.
   const payload: Record<string, unknown> = {

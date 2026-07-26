@@ -1,6 +1,6 @@
 ---
 name: grace-status
-description: Show GRACE 4 project health across .grace context, graph, verification, active changes, scopes, and migration boundaries.
+description: "Показывает здоровье GRACE 4-проекта: контекст `.grace`, граф, верификацию, активные изменения, scopes и границы миграции. Использовать для проверки состояния и следующего шага."
 ---
 
 <skill>

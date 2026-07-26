@@ -1,6 +1,6 @@
 ---
 name: grace-migrate
-description: Agent-applied GRACE 3 to GRACE 4 migration workflow. CLI validates the result but does not convert or delete files.
+description: "Миграция GRACE 3 → GRACE 4, выполняемая агентом. CLI валидирует результат, но не конвертирует и не удаляет файлы. Использовать для проектов на старом layout `docs/*.xml`."
 ---
 
 <skill>

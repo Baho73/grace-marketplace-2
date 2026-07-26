@@ -1,6 +1,6 @@
 ---
 name: grace-setup-subagents
-description: Create GRACE 4 worker and reviewer subagent presets that understand .grace artifacts, scopes, assertions, and verification evidence.
+description: "Создаёт пресеты worker- и reviewer-субагентов GRACE 4, понимающих артефакты `.grace`, scopes, assertions и свидетельства верификации."
 ---
 
 <skill>

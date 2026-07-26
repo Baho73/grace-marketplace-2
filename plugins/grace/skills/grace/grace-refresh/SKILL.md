@@ -1,6 +1,6 @@
 ---
 name: grace-refresh
-description: Detect drift between observed repository state and durable GRACE 4 .grace current state, then help create reconciliation changes.
+description: "Находит дрейф между наблюдаемым состоянием репозитория и durable-состоянием `.grace` в GRACE 4, затем помогает создать согласующие изменения. Использовать, когда «что-то разъехалось»."
 ---
 
 <skill>

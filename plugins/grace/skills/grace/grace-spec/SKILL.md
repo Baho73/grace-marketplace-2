@@ -1,6 +1,6 @@
 ---
 name: grace-spec
-description: Interview the user and create an approved GRACE 4 GraceChangeSpec plus optional design-context.xml inside .grace/changes/active/C-*/.
+description: "Интервьюирует пользователя и создаёт одобренную GRACE 4 GraceChangeSpec плюс опциональный design-context.xml в `.grace/changes/active/C-*/`. Использовать в начале любого изменения."
 ---
 
 <skill>

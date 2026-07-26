@@ -1,6 +1,6 @@
 ---
 name: grace-explainer
-description: Explain GRACE 4 methodology, .grace artifacts, semantic anchors, change lifecycle, verification, and migration boundaries.
+description: "Объясняет методологию GRACE 4: артефакты `.grace`, семантические якоря, жизненный цикл изменений, верификацию и границы миграции. Использовать для вопросов «как устроен GRACE»."
 ---
 
 <skill>

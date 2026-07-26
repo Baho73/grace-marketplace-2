@@ -10,7 +10,7 @@ flowchart TD
     Start([User: /afk 8 20]) --> CreateSess["grace afk start<br/>• tag baseline<br/>• branch afk-TS<br/>• write state.json with expiresAt"]
     CreateSess --> Tick{"grace afk tick<br/>exit code"}
 
-    Tick -->|"0 — active"| NextStep["Pick next pending step<br/>from development-plan.xml"]
+    Tick -->|"0 — active"| NextStep["Pick next pending T-task<br/>from .grace/changes/active plan"]
     Tick -->|"42 — BUDGET_EXHAUSTED"| Report["grace afk report<br/>(dashboard)"]
     Tick -->|"44 — stopped"| Report
 

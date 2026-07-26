@@ -1,6 +1,6 @@
 ---
 name: grace-plan
-description: Read an approved GRACE 4 GraceChangeSpec and optional design context, then create a GraceChangePlan with assertions, scopes, tasks, and verification gates.
+description: "Читает одобренную GRACE 4 GraceChangeSpec и опциональный design context, затем создаёт GraceChangePlan с assertions, scopes, задачами и гейтами верификации. Использовать после утверждения спеки."
 ---
 
 <skill>

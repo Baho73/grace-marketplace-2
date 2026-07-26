@@ -1,6 +1,6 @@
 ---
 name: grace-cli
-description: Operate the GRACE 4 CLI for .grace linting, status, module navigation, verification navigation, and file-local semantic markup.
+description: "Управление CLI GRACE 4: линт `.grace`, статус, навигация по модулям и верификации, файловая семантическая разметка. Использовать, когда нужны команды `grace lint`, `grace status`, `grace module/verification/file`."
 ---
 
 <skill>

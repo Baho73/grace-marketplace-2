@@ -3,7 +3,8 @@ name: grace-afk
 description: "Автономный режим работы, когда пользователь AFK. Использовать, когда пользователь вводит `/afk [часы] [бюджет%] [--checkpoint <мин>]` или просит агента продолжать работу самостоятельно. CLI контролирует лимит времени — агент опрашивает `grace afk tick` между шагами и завершает работу, когда CLI это разрешит. Необратимые решения эскалируются в Telegram через `grace afk ask`; всё остальное выполняется, откладывается или откатывается согласно матрице автономии."
 ---
 
-Run the /afk harness: keep working through `docs/development-plan.xml` on an isolated branch,
+Run the /afk harness: keep working through the active GRACE 4 change plan
+(`.grace/changes/active/C-*/plan.xml`) on an isolated branch,
 making decisions from the user on their behalf within declared boundaries, until the CLI-enforced
 budget expires or the user sends STOP via Telegram.
 
@@ -18,7 +19,7 @@ the CLI exit code.
 
 ## Prerequisites
 
-- Project is GRACE-managed (artifacts under `docs/` exist). If not, run `$grace-init` first.
+- Project is GRACE 4-managed (`.grace/` exists). If it is still on the GRACE 3 `docs/*.xml` layout, run `$grace-migrate` first; if it has no GRACE at all, run `$grace-init` first.
 - `@osovv/grace-cli` installed (the binary `grace` is on PATH).
 - Telegram config resolved by lookup priority: `$GRACE_AFK_CONFIG` env var, then `<project>/.grace-afk.json`, then `~/.grace/afk.json` (global user-level fallback). Configure one of these if `grace-ask-human` escalations are expected — otherwise one-way-door decisions fall back to `grace afk defer`.
 
@@ -77,15 +78,17 @@ value first; if it is 1 or 255, read stderr to disambiguate before acting.
 Every iteration:
 
 1. **Tick.** Run `grace afk tick --path .`. Non-zero exit → jump to "End of session" below.
-2. **Pick next step.** Read `docs/development-plan.xml`, find the first pending `step-N` whose
-   dependencies are satisfied. If none, jump to "End of session".
+2. **Pick next task.** Read the active change bundle in `.grace/changes/active/C-*/`: take the
+   approved `plan.xml`, find the first pending `T-NNN` task in `<ImplementationPlan>` whose
+   `<DependsOn>` tasks are all done. If none, jump to "End of session". If several bundles are
+   active, work them one at a time, in `C-*` id order.
 3. **Route via autonomy matrix** (see below). Act / defer / escalate.
-4. **If acting:** execute the step (invoke the appropriate `grace-*` skill — usually
-   `grace-execute` for a single module, or `grace-fix` for a bug). Commit the result with the
-   usual `grace(MODULE_ID): ...` message format. Run `grace afk increment commits`.
+4. **If acting:** execute the task (invoke the appropriate `grace-*` skill — usually
+   `grace-execute` for the next plan task, or `grace-fix` for a bug). Commit the result with the
+   project's usual message convention, referencing the change id and task id. Run `grace afk increment commits`.
 5. **Record decision.** `grace afk journal --class <c> --title ... --rationale ... --outcome ...`.
-6. **Verify gates.** Run `bun test` (or the project's test command) and `grace lint --path .`.
-   Wave thresholds (`grace-multiagent-execute#Wave-Success-Thresholds`) apply even in single-step mode:
+6. **Verify gates.** Run the project's test command and `grace lint --path . --assertions current`.
+   The green/yellow/red gate logic applies even in single-task mode:
    - green → next iteration
    - yellow → rollback the step (`git reset --hard HEAD~1` on your afk branch ONLY), journal the rollback,
      next iteration
@@ -98,7 +101,7 @@ Every iteration:
 | Class | Trigger | Action |
 |---|---|---|
 | `reversible-act` | Obvious implementation step; well-defined contract; single credible approach | **Act** — invoke `grace-execute` or `grace-fix`; journal; continue. |
-| `uncertain-deferred` | Multiple credible approaches with different tradeoffs, no obvious winner | **Defer** to `deferred.md`. (When `grace-evolve` lands, this becomes `delegate to grace-evolve`.) |
+| `uncertain-deferred` | Multiple credible approaches with different tradeoffs, no obvious winner | **Defer** to `deferred.md` — or, when the tradeoff is worth a real search, delegate to `grace-evolve` and journal the outcome. |
 | `one-way-door-escalated` | Irreversible or main-branch-affecting: push to main, force push, drop DB, deploy, external API side-effects, changing a public MODULE_CONTRACT | **`grace afk ask`** via Telegram; poll `grace afk check` with backoff 10 / 30 / 60 / 120 min. |
 | `one-way-door-deferred` | Same as above but Telegram unavailable OR max escalations already sent | **Defer** and move to next step. |
 | `scope-creep-deferred` | The step's description would pull in edits outside the declared write scope | **Always defer**, never act. |
@@ -172,7 +175,7 @@ Triggered by: `tick` non-zero, user STOP, plan exhausted, hard block (e.g. CLI f
 | "The reviewer will catch anything bad" | There is no reviewer. You are alone. The human will see only the final diff + journal. Be conservative. |
 | "I'll skip the journal entry for trivial steps" | The journal is how the human reconstructs what you did. Trivial steps are the ones most likely to be questioned on return. |
 | "I should check budget every minute just in case" | Every tick burns API cost. Call tick between logical steps, not inside tight loops. |
-| "The plan step is too vague, I'll reinterpret it" | Vague plan step = `scope-creep-deferred`. Do not reinterpret; defer and let the human clarify. |
+| "The plan task is too vague, I'll reinterpret it" | Vague plan task = `scope-creep-deferred`. Do not reinterpret; defer and let the human clarify. |
 
 ## Red Flags
 
@@ -187,8 +190,8 @@ Triggered by: `tick` non-zero, user STOP, plan exhausted, hard block (e.g. CLI f
 
 - The user is present and actively iterating. `/afk` is for unattended work.
 - The plan is unclear or missing. Run `$grace-plan` first.
-- There are no pending `step-N` entries. Nothing to do.
-- Verification plan is skeletal. Without V-M-xxx entries, the "verify gates" step has no teeth.
+- There are no pending `T-NNN` tasks in the active change plan. Nothing to do.
+- Verification coverage is skeletal. Without `V-M-*` entries, the "verify gates" step has no teeth.
 - Less than 30 minutes of intended autonomy — just keep working in the foreground instead.
 
 ## Verification
@@ -199,6 +202,6 @@ Before exiting, confirm:
 - [ ] All in-progress code committed on `afk-<ts>` branch (verification: `git status` clean on that branch)
 - [ ] `decisions.md` has at least one entry per iteration that took an action
 - [ ] `deferred.md` is listed in the final report with count matching state.deferred
-- [ ] `bun test` and `grace lint --path .` exit 0 on the final commit (verification: attach exit codes)
+- [ ] The project's test command and `grace lint --path . --assertions current` exit 0 on the final commit (verification: attach exit codes)
 - [ ] A final `$grace-reviewer` pass ran; its findings (with severities) are in the dashboard and journaled (`class=review`)
 - [ ] User has been announced the final dashboard with next-action suggestion
