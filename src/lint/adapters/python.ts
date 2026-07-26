@@ -1,7 +1,7 @@
 import { spawnSync } from "node:child_process";
 import path from "node:path";
 
-import type { LanguageAdapter, LanguageAnalysis } from "../types";
+import { LanguageRuntimeMissingError, type LanguageAdapter, type LanguageAnalysis } from "../types";
 
 const PY_EXTENSIONS = new Set([".py", ".pyi"]);
 const PYTHON_BINARIES = ["python3", "python"];
@@ -12,7 +12,7 @@ import json
 import os
 import sys
 
-source = sys.stdin.read()
+source = sys.stdin.buffer.read().decode("utf-8", errors="replace")
 file_path = sys.argv[1]
 base_name = os.path.basename(file_path)
 
@@ -167,6 +167,7 @@ print(json.dumps({
     "exports": export_names,
     "valueExports": export_names,
     "typeExports": [],
+    "localSymbols": sorted(local_public),
     "exportConfidence": export_confidence,
     "hasDefaultExport": False,
     "hasWildcardReExport": has_wildcard_reexport,
@@ -184,6 +185,7 @@ function createEmptyAnalysis(): LanguageAnalysis {
     exports: new Set<string>(),
     valueExports: new Set<string>(),
     typeExports: new Set<string>(),
+    localSymbols: new Set<string>(),
     exportConfidence: "heuristic",
     hasDefaultExport: false,
     hasWildcardReExport: false,
@@ -200,6 +202,7 @@ function normalizeResult(output: string) {
     exports: string[];
     valueExports: string[];
     typeExports: string[];
+    localSymbols: string[];
     exportConfidence: "exact" | "heuristic";
     hasDefaultExport: boolean;
     hasWildcardReExport: boolean;
@@ -214,6 +217,7 @@ function normalizeResult(output: string) {
   analysis.exports = new Set(parsed.exports ?? []);
   analysis.valueExports = new Set(parsed.valueExports ?? []);
   analysis.typeExports = new Set(parsed.typeExports ?? []);
+  analysis.localSymbols = new Set(parsed.localSymbols ?? []);
   analysis.exportConfidence = parsed.exportConfidence ?? "heuristic";
   analysis.hasDefaultExport = Boolean(parsed.hasDefaultExport);
   analysis.hasWildcardReExport = Boolean(parsed.hasWildcardReExport);
@@ -228,8 +232,9 @@ function normalizeResult(output: string) {
 function runPythonAnalyzer(filePath: string, text: string) {
   for (const binary of PYTHON_BINARIES) {
     const run = spawnSync(binary, ["-c", PYTHON_ANALYZER_SCRIPT, filePath], {
-      input: text,
+      input: Buffer.from(text, "utf8"),
       encoding: "utf8",
+      env: { ...process.env, PYTHONIOENCODING: "utf-8" },
       maxBuffer: 1024 * 1024,
     });
 
@@ -248,7 +253,11 @@ function runPythonAnalyzer(filePath: string, text: string) {
     throw new Error(run.stderr.trim() || run.stdout.trim() || `Python analyzer failed via ${binary}.`);
   }
 
-  throw new Error("Python adapter requires `python3` or `python` on PATH when linting Python files.");
+  throw new LanguageRuntimeMissingError(
+    "python",
+    [...PYTHON_BINARIES],
+    "Python analysis requires `python3` or `python` on PATH. Install Python or exclude the governed Python files until the runtime is available.",
+  );
 }
 
 export function createPythonAdapter(): LanguageAdapter {

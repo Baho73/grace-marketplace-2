@@ -1,12 +1,7 @@
 import path from "node:path";
-
-import type { LanguageAdapter } from "../types";
-import { createPythonAdapter } from "./python";
-import { createTypeScriptAdapter } from "./typescript";
-
-const adapters: LanguageAdapter[] = [createTypeScriptAdapter(), createPythonAdapter()];
+import { LANGUAGE_ADAPTERS } from "../../language-registry";
 
 export function getLanguageAdapter(filePath: string) {
   const normalizedPath = path.normalize(filePath);
-  return adapters.find((adapter) => adapter.supports(normalizedPath)) ?? null;
+  return LANGUAGE_ADAPTERS.find((adapter) => adapter.supports(normalizedPath)) ?? null;
 }

@@ -1,0 +1,17 @@
+<CheckpointReport>
+  <scope>M-AUTH / step-2</scope>
+  <assumptions-kept>
+    <item-1>Session middleware contract matched the execution packet.</item-1>
+    <item-2>Preferred stack remained inside Bun + TypeScript + pino.</item-2>
+  </assumptions-kept>
+  <commands-run>
+    <command-1>bun test src/auth/session.test.ts</command-1>
+    <command-2>bun run ./src/grace.ts lint --path .</command-2>
+  </commands-run>
+  <evidence-captured>
+    <item-1>[AuthDomain][createSession][BLOCK_CREATE_SESSION] emitted once.</item-1>
+    <item-2>Failure path preserved missing-credentials rejection scenario.</item-2>
+  </evidence-captured>
+  <retry-budget-used>1</retry-budget-used>
+  <next-action>Ready for controller graph + verification delta sync.</next-action>
+</CheckpointReport>

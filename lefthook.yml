@@ -1,5 +1,14 @@
 pre-commit:
+  parallel: true
   commands:
+    typecheck:
+      tags: typecheck
+      run: bun run typecheck
     validate-marketplace:
       tags: marketplace
-      run: npx tsx scripts/validate-marketplace.ts
+      run: bun run validate:marketplace
+
+commit-msg:
+  commands:
+    commitlint:
+      run: bunx commitlint --edit "$1"

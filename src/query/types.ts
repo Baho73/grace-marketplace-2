@@ -1,42 +1,13 @@
-export type ModulePlanParam = {
-  name?: string;
-  type?: string;
-  text: string;
-};
+import type { Grace4Issue } from "../grace4/types";
+import type { GraphAnchorRecord, GraphProjection, VerificationProjection } from "../grace4/projections";
+import type { FileMarkupRecord } from "../project-utils";
 
-export type ModulePlanContract = {
-  purpose?: string;
-  inputs: ModulePlanParam[];
-  outputs: ModulePlanParam[];
-  errors: string[];
-};
+export type { FileBlockRecord, FileContractRecord, FileFieldSection, FileListItem, FileMarkupRecord } from "../project-utils";
 
 export type ModuleInterfaceItem = {
   tag: string;
   purpose?: string;
   text?: string;
-};
-
-export type ModulePlanRecord = {
-  id: string;
-  name?: string;
-  type?: string;
-  layer?: string;
-  order?: string;
-  depends: string[];
-  contract: ModulePlanContract;
-  interfaceItems: ModuleInterfaceItem[];
-};
-
-export type ModuleGraphRecord = {
-  id: string;
-  name?: string;
-  type?: string;
-  status?: string;
-  purpose?: string;
-  path?: string;
-  depends: string[];
-  annotations: ModuleInterfaceItem[];
 };
 
 export type VerificationScenario = {
@@ -49,6 +20,7 @@ export type ModuleVerificationRecord = {
   id: string;
   moduleId?: string;
   priority?: string;
+  cwd?: string;
   testFiles: string[];
   moduleChecks: string[];
   scenarios: VerificationScenario[];
@@ -58,67 +30,39 @@ export type ModuleVerificationRecord = {
   phaseFollowUp?: string;
 };
 
-export type PlanStepRecord = {
-  phaseTag: string;
-  phaseName?: string;
-  phaseStatus?: string;
-  stepTag: string;
-  stepStatus?: string;
-  moduleId?: string;
-  verificationId?: string;
-  text: string;
+export type ModuleGraphRecord = GraphAnchorRecord & {
+  name?: string;
+  type?: string;
+  status?: string;
+  purpose?: string;
+  path?: string;
+  depends: string[];
+  annotations: ModuleInterfaceItem[];
 };
 
-export type FileFieldSection = {
-  fields: Record<string, string>;
-  startLine: number;
-  endLine: number;
-};
-
-export type FileListItem = {
-  label: string;
-  line: number;
-};
-
-export type FileContractRecord = {
-  name: string;
-  fields: Record<string, string>;
-  startLine: number;
-  endLine: number;
-};
-
-export type FileBlockRecord = {
-  name: string;
-  startLine: number;
-  endLine: number;
-};
-
-export type FileMarkupRecord = {
-  path: string;
-  moduleContract: FileFieldSection | null;
-  moduleMap: FileListItem[];
-  changeSummary: FileFieldSection | null;
-  contracts: FileContractRecord[];
-  blocks: FileBlockRecord[];
-  linkedModuleIds: string[];
-};
-
-export type ModuleRecord = {
+export type Grace4ModuleRecord = {
   id: string;
   name?: string;
   type?: string;
-  plan: ModulePlanRecord | null;
-  graph: ModuleGraphRecord | null;
+  graph: ModuleGraphRecord;
+  verification: ModuleVerificationRecord | null;
   verifications: ModuleVerificationRecord[];
   localFiles: FileMarkupRecord[];
-  steps: PlanStepRecord[];
+  /** GRACE 4 query layer is projection-backed; development-plan records are intentionally absent. */
+  plan: null;
+  steps: [];
 };
+
+export type ModuleRecord = Grace4ModuleRecord;
 
 export type GraceArtifactIndex = {
   root: string;
-  modules: ModuleRecord[];
+  graph: GraphProjection;
+  verification: VerificationProjection;
+  modules: Grace4ModuleRecord[];
   verifications: ModuleVerificationRecord[];
   files: FileMarkupRecord[];
+  issues: Grace4Issue[];
 };
 
 export type ModuleFindOptions = {
@@ -128,7 +72,49 @@ export type ModuleFindOptions = {
 };
 
 export type ModuleMatch = {
-  module: ModuleRecord;
+  module: Grace4ModuleRecord;
   score: number;
   matchedBy: string[];
+};
+
+export type VerificationFindOptions = {
+  query?: string;
+  module?: string;
+  priority?: string;
+};
+
+export type VerificationMatch = {
+  verification: ModuleVerificationRecord;
+  module: Grace4ModuleRecord | null;
+  score: number;
+  matchedBy: string[];
+};
+
+export type ModuleHealthIssue = {
+  severity: "error" | "warning";
+  code: string;
+  message: string;
+  remediation: string;
+};
+
+export type ModuleHealthRecord = {
+  moduleId: string;
+  name: string;
+  type?: string;
+  path?: string;
+  state: "ready" | "attention" | "blocked";
+  verificationIds: string[];
+  implementationFiles: string[];
+  governedTestFiles: string[];
+  verificationTestFiles: string[];
+  blockers: ModuleHealthIssue[];
+  warnings: ModuleHealthIssue[];
+  summary: {
+    hasGraph: boolean;
+    hasImplementationFiles: boolean;
+    hasVerification: boolean;
+    hasVerificationTests: boolean;
+    autonomyReady: boolean;
+  };
+  nextAction: string;
 };

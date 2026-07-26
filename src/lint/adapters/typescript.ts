@@ -31,6 +31,13 @@ function hasDefaultModifier(node: ts.Node) {
   return (ts.canHaveModifiers(node) ? ts.getModifiers(node) : undefined)?.some((modifier) => modifier.kind === ts.SyntaxKind.DefaultKeyword) ?? false;
 }
 
+function bindingNames(name: ts.BindingName): string[] {
+  if (ts.isIdentifier(name)) {
+    return [name.text];
+  }
+  return name.elements.flatMap((element) => ts.isOmittedExpression(element) ? [] : bindingNames(element.name));
+}
+
 function addExport(
   analysis: LanguageAnalysis,
   name: string,
@@ -73,6 +80,7 @@ export function createTypeScriptAdapter(): LanguageAdapter {
         exports: new Set<string>(),
         valueExports: new Set<string>(),
         typeExports: new Set<string>(),
+        localSymbols: new Set<string>(),
         exportConfidence: "exact",
         hasDefaultExport: false,
         hasWildcardReExport: false,
@@ -84,6 +92,23 @@ export function createTypeScriptAdapter(): LanguageAdapter {
       };
 
       for (const statement of sourceFile.statements) {
+        if (ts.isVariableStatement(statement)) {
+          for (const declaration of statement.declarationList.declarations) {
+            for (const name of bindingNames(declaration.name)) analysis.localSymbols.add(name);
+          }
+        } else if (
+          (ts.isFunctionDeclaration(statement)
+            || ts.isClassDeclaration(statement)
+            || ts.isInterfaceDeclaration(statement)
+            || ts.isTypeAliasDeclaration(statement)
+            || ts.isEnumDeclaration(statement))
+          && statement.name
+        ) {
+          analysis.localSymbols.add(statement.name.text);
+        } else if (ts.isModuleDeclaration(statement)) {
+          analysis.localSymbols.add(statement.name.getText(sourceFile));
+        }
+
         if (ts.isImportDeclaration(statement)) {
           const importSource = ts.isStringLiteral(statement.moduleSpecifier)
             ? statement.moduleSpecifier.text
@@ -124,6 +149,8 @@ export function createTypeScriptAdapter(): LanguageAdapter {
               const isTypeOnly = statement.isTypeOnly || element.isTypeOnly;
               addExport(analysis, exportName, isTypeOnly ? "type" : "value", isReExport ? {} : { local: true });
             }
+          } else if (ts.isNamespaceExport(statement.exportClause)) {
+            addExport(analysis, statement.exportClause.name.text, statement.isTypeOnly ? "type" : "value");
           }
           continue;
         }
@@ -131,9 +158,7 @@ export function createTypeScriptAdapter(): LanguageAdapter {
         if (ts.isVariableStatement(statement) && hasExportModifier(statement)) {
           analysis.localImplementationCount += 1;
           for (const declaration of statement.declarationList.declarations) {
-            if (ts.isIdentifier(declaration.name)) {
-              addExport(analysis, declaration.name.text, "value", { local: true });
-            }
+            for (const name of bindingNames(declaration.name)) addExport(analysis, name, "value", { local: true });
           }
           continue;
         }
@@ -179,6 +204,10 @@ export function createTypeScriptAdapter(): LanguageAdapter {
           addExport(analysis, statement.name.getText(sourceFile), "value", { local: true });
           continue;
         }
+      }
+
+      if (analysis.hasWildcardReExport) {
+        analysis.exportConfidence = "heuristic";
       }
 
       return analysis;

@@ -1,10 +1,10 @@
 # GRACE Marketplace and CLI
 
-**GRACE** means **Graph-RAG Anchored Code Engineering**: a contract-first AI engineering methodology built around semantic markup, shared XML artifacts, verification planning, and knowledge-graph navigation.
+**GRACE** means **Graph-RAG Anchored Code Engineering**: a contract-first AI engineering methodology built around semantic markup, `.grace` XML artifacts, knowledge-graph navigation, assertions, scopes, and log-driven verification.
 
 This repository ships the GRACE skills plus the optional `grace` CLI. It is a packaging and distribution repository, not an end-user application.
 
-Current packaged version: `4.0.0-beta.2` — **Beta**: core stable, edge cases expected on non-Windows platforms. Fork of [`osovv/grace-marketplace`](https://github.com/osovv/grace-marketplace) with additional skills (grace-bootstrap, grace-afk, grace-ask-human, grace-evolve), CLI surfaces (status, afk, evolve), and a global Telegram config at `~/.grace/afk.json` so one AFK setup serves every project on the machine.
+Current packaged version: `4.0.2`. Fork of [`osovv/grace-marketplace`](https://github.com/osovv/grace-marketplace) with additional skills (grace-bootstrap, grace-afk, grace-ask-human, grace-evolve), CLI surfaces (afk, evolve), and a global Telegram config at `~/.grace/afk.json` so one AFK setup serves every project on the machine.
 
 ## What This Repository Ships
 
@@ -15,48 +15,30 @@ Current packaged version: `4.0.0-beta.2` — **Beta**: core stable, edge cases e
 - OpenPackage metadata in `openpackage.yml`
 - Optional Bun-powered CLI package `@osovv/grace-cli`
 
-The published CLI currently gives you:
+## GRACE 4 Model
 
-- `grace lint` for integrity checks
-- `grace module find` for module resolution across shared docs and file-local markup
-- `grace module show` for shared/public module context
-- `grace file show` for file-local/private implementation context
+GRACE 4 uses `.grace` as the durable project model:
 
-## Why GRACE
+| Area | Purpose |
+| --- | --- |
+| `.grace/context/*.xml` | Requirements, technology, principles, deployment, and UX constraints |
+| `.grace/graph/index.xml` + routed graph docs | Current graph projection source for `GD-*`, `M-*`, and `DF-*` anchors |
+| `.grace/verification/index.xml` + routed verification docs | Current verification projection source for deterministic `V-M-*` entries |
+| `.grace/changes/active/C-*` | Active `GraceChangeSpec`, optional design context, and `GraceChangePlan` bundles |
+| `.grace/changes/archive/C-*` | Applied, rejected, cancelled, or superseded change bundles |
+| Source/test files with GRACE markup | File-local contracts, links, and semantic block anchors |
 
-GRACE is designed for AI-assisted engineering where agents need stable navigation, explicit contracts, and reusable verification evidence.
+GRACE 4 does not dual-validate legacy GRACE 3 project docs as current state. Existing GRACE 3 projects use `$grace-migrate`; the CLI validates the generated `.grace` result but does not convert legacy docs itself.
 
-Core ideas:
+Verification commands run from the project root by default. A `V-M-*` entry may declare one contained project-relative `<Cwd>packages/example</Cwd>` while keeping `<TestFiles><File>...</File></TestFiles>` paths project-root-relative. Absolute paths, `..` escapes, and symlink escapes fail closed.
 
-- shared artifacts define the public module boundary
-- file-local markup defines private implementation detail
-- contracts describe expected behavior before code changes spread
-- verification is planned, named, and reused instead of improvised per task
-- semantic blocks give agents precise read and patch targets
-
-This makes it easier to:
-
-- plan modules and execution order
-- hand work across agents without losing context
-- review for drift between code, graph, and verification
-- debug failures from named blocks and planned evidence
-
-GRACE was designed by Vladimir Ivanov ([@turboplanner](https://t.me/turboplanner)).
+TypeScript/JavaScript semantic analysis is bundled and compiler-backed. Governed Python and Dart files require their respective runtimes on `PATH`; Python export analysis is exact when a static `__all__` is present (including Unicode identifiers) and otherwise emits heuristic confidence. A missing runtime fails closed with actionable `analysis.runtime-missing`; an installed adapter that fails emits `analysis.adapter-failed`. Neither failure state is presented as exact `MODULE_MAP` parity.
 
 ## Install
 
-Install **skills** first.
+Install **skills** first. The CLI is optional but recommended once skills are installed.
 
-- Skills are the core GRACE product surface.
-- The CLI is optional, but highly recommended once the skills are installed.
-- Installing only skills is a valid setup.
-- Installing only the CLI is usually not useful without the GRACE skills and workflow.
-
-### Install Skills
-
-Skills and CLI are complementary, but they are distributed differently.
-
-#### OpenPackage
+### OpenPackage
 
 ```bash
 opkg install gh@Baho73/grace-marketplace-2
@@ -64,7 +46,7 @@ opkg install gh@Baho73/grace-marketplace-2 -g
 opkg install gh@Baho73/grace-marketplace-2 --platforms claude-code
 ```
 
-#### Claude Code Marketplace
+### Claude Code Marketplace
 
 ```bash
 /plugin marketplace add Baho73/grace-marketplace-2
@@ -86,92 +68,91 @@ git clone https://github.com/Baho73/grace-marketplace-2
 cp -r grace-marketplace/skills/grace/grace-* /path/to/your/agent/skills/
 ```
 
-### Install CLI
+### CLI
 
-The CLI is a companion to the GRACE skills, not a replacement for them.
-
-Requires `bun` on `PATH`.
+Requires `bun` on `PATH`. GRACE skills invoke the installed stable `grace` binary directly; they do not default to `bunx`, `npx`, or a prerelease dist-tag.
 
 ```bash
+# Install the current stable release from npm `latest`
 bun add -g @osovv/grace-cli
-grace lint --path /path/to/grace-project
+grace --version
+grace lint --path /path/to/grace4-project
 ```
 
-## Quick Start
+## GRACE 4 Quick Start
 
-For a new GRACE project:
+For a new GRACE 4 project:
 
-1. Run `$grace-init`
-2. Design `docs/requirements.xml` and `docs/technology.xml` together with your agent
-3. Run `$grace-plan`
-4. Run `$grace-verification`
-5. Run `$grace-execute` or `$grace-multiagent-execute`
+1. Run `$grace-init` to create `.grace`.
+2. Fill `.grace/context` artifacts with your agent.
+3. Run `$grace-spec` for a change.
+4. Run `$grace-plan` after spec approval.
+5. Run `grace lint --path /path/to/project --assertions current`.
+6. Run `grace lint --path /path/to/project --change C-ID --assertions baseline` before execution; add `--run-commands` when the baseline declares `MustPassCommand`.
+7. Run `grace status --path /path/to/project --json`.
+8. Run `$grace-execute` and choose sequential or parallel-safe mode. Parallel-safe mode additionally requires `grace lint --path /path/to/project --parallel-preflight`.
+9. Before apply/archive, run `grace lint --path /path/to/project --change C-ID --assertions final`; add `--run-commands` when the target declares `MustPassCommand`.
 
-For an existing GRACE project, the CLI is often the fastest way to orient yourself:
+Existing GRACE 3 projects should run `$grace-migrate` and review the migration report before writing `.grace` artifacts.
 
-```bash
-# Integrity gate
-grace lint --path /path/to/project
-
-# Resolve the relevant module
-grace module find auth --path /path/to/project
-grace module find src/provider/config-repo.ts --path /path/to/project --json
-
-# Read shared/public context
-grace module show M-AUTH --path /path/to/project
-grace module show M-AUTH --path /path/to/project --with verification
-
-# Read file-local/private context
-grace file show src/auth/index.ts --path /path/to/project
-grace file show src/auth/index.ts --path /path/to/project --contracts --blocks
-```
+Migration cleanup is separately gated: successful current lint, fresh status proving GRACE 4 with no integrity errors, git/worktree inspection, exact cleanup paths, and explicit cleanup confirmation are mandatory. Dirty or non-git cleanup requires an additional acknowledgement naming that risk; any cleanup failure stops without automatic destructive retry.
 
 ## Skills Overview
 
 | Skill | Purpose |
 | --- | --- |
 | `grace-bootstrap` | Activation protocol — runs first in any GRACE-managed repo, routes intent to the right skill, blocks edits until project context is loaded |
-| `grace-init` | Bootstrap the GRACE docs, templates, and agent guidance (plus optional `CLAUDE.md`, SessionStart hook, and global `~/.grace/afk.json` or project-local `.grace-afk.json`) |
-| `grace-plan` | Design modules, phases with checkpoints, flows, dependencies, and contracts |
-| `grace-verification` | Build and maintain `verification-plan.xml`, tests, traces, and log evidence |
-| `grace-execute` | Execute the plan sequentially with scoped review and commits |
-| `grace-multiagent-execute` | Execute parallel-safe waves with controller-managed synchronization, Wave Success Thresholds, and a Pre-Wave Checklist |
-| `grace-refactor` | Rename, move, split, merge, and extract modules without shared-artifact drift |
-| `grace-fix` | Debug using the Prove-It Pattern: failing test first, then fix, then regression entry |
-| `grace-refresh` | Refresh graph and verification artifacts against the real codebase |
-| `grace-reviewer` | 5-axis integrity review (Completeness / Contractual / Semantic / Verification / Graph) with Critical/Important/Suggestion/FYI labels |
-| `grace-status` | Report overall project health and suggest the next safe action |
-| `grace-ask` | Answer questions with progressive context disclosure (4-level hierarchy) |
-| `grace-cli` | Use the optional `grace` binary as a fast lint and artifact-query layer for GRACE projects |
+| `grace-init` | Bootstrap the `.grace` skeleton, templates, and agent guidance |
+| `grace-spec` | Create an approved GRACE 4 change spec and optional design context |
+| `grace-plan` | Design assertions, scopes, tasks, and verification gates from an approved spec |
+| `grace-execute` | Execute the approved plan in sequential or parallel-safe mode |
+| `grace-refactor` | Rename, move, split, merge, and extract modules without artifact drift |
+| `grace-setup-subagents` | Scaffold GRACE worker and reviewer presets |
+| `grace-fix` | Debug issues from graph, contracts, tests, traces, and semantic blocks |
+| `grace-refresh` | Detect drift and propose reconciliation changes |
+| `grace-status` | Report `.grace` health and suggest the next safe action |
+| `grace-ask` | Answer architecture and implementation questions from `.grace` artifacts |
+| `grace-cli` | Use the optional `grace` binary as a fast lint and artifact-query layer |
 | `grace-explainer` | Explain the GRACE methodology itself |
-| `grace-setup-subagents` | Scaffold shell-specific GRACE worker and reviewer presets |
+| `grace-verification` | Build and maintain `.grace/verification` entries and evidence |
+| `grace-reviewer` | Review semantic integrity, projections, scopes, and verification quality |
+| `grace-migrate` | Agent-applied GRACE 3 to GRACE 4 migration with CLI validation |
 | `grace-afk` | Autonomous harness for unattended work — `/afk [hours] [budget%]` runs the plan on an isolated branch with CLI-enforced budget and Telegram escalation |
 | `grace-ask-human` | Short-form Telegram escalation for one-way-door decisions inside a `grace-afk` session |
+| `grace-evolve` | Evolutionary / comparative search over solution variants with worktree isolation |
 
 ## CLI Overview
 
 | Command | What It Does |
 | --- | --- |
-| `grace lint --path <root>` | Validate current GRACE artifacts, semantic markup, unique XML tags, export/map drift, and SKILL.md discipline sections |
-| `grace module find <query> --path <root>` | Search by module ID, name, path, purpose, annotations, dependency IDs, verification IDs, and `LINKS` |
-| `grace module show <id-or-path> --path <root>` | Show the shared/public module record from plan, graph, steps, and linked files |
-| `grace module show <id> --with verification --path <root>` | Include verification excerpt when a `V-M-*` entry exists |
+| `grace lint --path <root> --assertions current` | Validate current `.grace` grammar, routed coverage, lifecycle locations, and scope overlap |
+| `grace lint --path <root> --change C-ID --assertions baseline [--run-commands]` | Validate the immutable selected baseline before implementation; command assertions run only when explicitly enabled |
+| `grace lint --path <root> --change C-ID --assertions target --run-commands` | Validate selected target assertions and explicitly opt into `MustPassCommand` execution |
+| `grace lint --path <root> --change C-ID --assertions final [--run-commands]` | Run the final full-project gate, evaluate the selected target, and keep unrelated approved baselines active without re-evaluating the selected baseline |
+| `grace lint --path <root> --parallel-preflight` | Run the explicit approved-plan scope coexistence gate required for parallel-safe execution |
+| `grace status --path <root>` | Report durable health, stale plans, scope conflicts, and explained/unexplained observed git drift |
+| `grace module find <query> --path <root>` | Search graph projection modules by id, path, text, dependency, or verification id |
+| `grace module show <id-or-path> --path <root>` | Show graph projection context and linked file-local markup |
+| `grace module show <id> --with verification --path <root>` | Include matching deterministic `V-M-*` verification entries |
+| `grace verification find <query> --path <root>` | Search verification projection entries |
+| `grace verification show <id-or-module> --path <root>` | Show one verification entry and module context |
 | `grace file show <path> --path <root>` | Show file-local `MODULE_CONTRACT`, `MODULE_MAP`, and `CHANGE_SUMMARY` |
-| `grace file show <path> --contracts --blocks --path <root>` | Include scoped contracts and semantic block navigation |
-| `grace status [--brief] [--path <root>]` | Artifact presence, module count, verification coverage, pending steps, next recommended action. `--brief` is `≤30` lines for SessionStart hooks |
 | `grace afk start <hours> [<budget%>] [--checkpoint <min>]` | Start an autonomous session — creates isolated branch + `state.json` with `expiresAt` |
 | `grace afk tick` | CLI-side active-session gate. Exits `42 BUDGET_EXHAUSTED`, `43 NO_SESSION`, `44 SESSION_STOPPED`. The agent polls between every step |
 | `grace afk ask / check` | Send a Telegram escalation (needs Telegram config at `$GRACE_AFK_CONFIG`, `<project>/.grace-afk.json`, or `~/.grace/afk.json`), poll for reply |
 | `grace afk journal / defer / increment` | Append structured entries to `docs/afk-sessions/<id>/{decisions,deferred}.md` and update counters |
 | `grace afk report / stop` | Emit the return dashboard / manually stop a session |
+| `grace evolve init / run <topic>` | Evolutionary search over candidate solutions — scaffolds `docs/experiments/<topic>/spec.json`, runs the loop with worktree isolation |
 
-Current output modes:
+Output modes:
 
 - `grace lint`: `text`, `json`
+- `grace status`: `text`, `json`
 - `grace module find`: `table`, `json`
 - `grace module show`: `text`, `json`
+- `grace verification find`: `table`, `json`
+- `grace verification show`: `text`, `json`
 - `grace file show`: `text`, `json`
-- `grace status`: `text`, `json` (with `--brief` for compact mode)
 - `grace afk ask / check`: `json`
 
 ## Autonomous Workflow (`/afk`)
@@ -226,80 +207,28 @@ bot; use project-local `.grace-afk.json` (gitignored) only for multi-bot setups.
 scaffolding. Full protocol and red-flag list in `skills/grace/grace-afk/SKILL.md`. Diagram sources:
 `docs/diagrams/grace-afk-loop.md`.
 
-## Public Shared Docs vs File-Local Markup
+Lint, status, and projection-backed navigation fail closed: invalid options, invalid grammar, malformed active assertions/scopes, duplicate ownership, missing routed files, or ambiguous targets produce structured results or a nonzero error envelope. JSON command failures emit one stable `{ "schemaVersion": "1.0.0", "ok": false, "error": { ... } }` envelope on stdout; text failures emit one concise actionable line without a stack trace.
 
-GRACE works best when shared docs stay public and stable, while private detail stays close to code.
+## Grep-First Navigation
 
-Use shared XML artifacts for:
+Prefer this order when narrowing scope:
 
-- module IDs and module boundaries
-- public module contracts and public interfaces
-- dependencies and execution order
-- verification entries, commands, scenarios, and required markers
-- project-level flows and phases
+1. Search `.grace/graph/index.xml` for graph document routing.
+2. Open routed graph documents for `M-*` and `DF-*` anchors.
+3. Search `.grace/verification/index.xml` for verification routing.
+4. Open routed verification documents for `V-M-*` entries.
+5. Search `.grace/changes/active/C-*` for in-flight specs and plans.
+6. Search source/test files for `LINKS:`, `START_MODULE_CONTRACT`, `START_CONTRACT:`, and `START_BLOCK_`.
 
-Use file-local markup for:
+Common anchors:
 
-- `MODULE_CONTRACT`
-- `MODULE_MAP`
-- `CHANGE_SUMMARY`
-- function and type contracts
-- semantic block boundaries
-- implementation-only helpers and orchestration details
-
-Rule of thumb:
-
-- `grace module show` is the shared/public truth
-- `grace file show` is the file-local/private truth
-
-## Core GRACE Artifacts
-
-| Artifact | Role |
-| --- | --- |
-| `docs/requirements.xml` | Product intent, scope, use cases, and requirements |
-| `docs/technology.xml` | Stack, tooling, constraints, runtime, and testing choices |
-| `docs/development-plan.xml` | Modules, contracts, implementation order, phases, and flows |
-| `docs/verification-plan.xml` | Verification entries, test commands, scenarios, and required markers |
-| `docs/knowledge-graph.xml` | Module map, dependencies, public annotations, and navigation graph |
-| `docs/operational-packets.xml` | Canonical execution packet, delta, and failure handoff templates |
-| `src/**/*` and `tests/**/*` with GRACE markup | File-local module context, contracts, and semantic block boundaries |
-
-## Typical Workflows
-
-### Bootstrap a New Project
-
-```text
-$grace-init
-design requirements.xml and technology.xml together with your agent
-$grace-plan
-$grace-verification
-$grace-execute or $grace-multiagent-execute
-```
-
-### Inspect One Module Quickly
-
-```text
-grace module find <name-or-path>
-grace module show M-XXX --with verification
-grace file show <governed-file> --contracts --blocks
-```
-
-### Review or Refresh After Code Drift
-
-```text
-grace lint --path <project-root>
-$grace-reviewer
-$grace-refresh
-```
-
-### Debug a Failing Flow
-
-```text
-grace module find <error-or-path>
-grace module show M-XXX --with verification
-grace file show <governed-file> --contracts --blocks
-$grace-fix
-```
+- `GD-*` graph document wrappers
+- `M-*` module IDs
+- `DF-*` data-flow IDs
+- `VD-*` verification document wrappers
+- `V-M-*` verification IDs
+- `C-*` change bundles
+- `T-*` implementation plan tasks
 
 ## Repository Layout
 
@@ -310,62 +239,27 @@ $grace-fix
 | `.claude-plugin/marketplace.json` | Marketplace entry and published skill set |
 | `plugins/grace/.claude-plugin/plugin.json` | Packaged plugin manifest |
 | `src/grace.ts` | CLI entrypoint |
-| `src/grace-lint.ts` | `grace lint` command |
-| `src/grace-module.ts` | `grace module find/show` commands |
-| `src/grace-file.ts` | `grace file show` command |
-| `src/grace-status.ts` + `src/grace-status-runtime.ts` | `grace status` command and its pure-logic computation layer |
-| `src/grace-afk.ts` | `grace afk` subcommand tree (start/tick/ask/check/journal/defer/increment/report/stop) |
-| `src/afk/*` | `grace afk` building blocks — session state, journal, config, Telegram transport |
-| `src/lint/*` | Lint engine, language adapters, config loader, SKILL.md section rule |
-| `src/query/*` | Artifact loader, index, and render layer for CLI queries |
-| `docs/knowledge-graph.xml`, `docs/development-plan.xml`, `docs/verification-plan.xml` | Self-governance — this repo is GRACE-managed |
+| `src/grace4/*` | GRACE 4 project detection, XML parsing, grammar, projections, assertions, and scopes |
+| `src/grace-afk.ts`, `src/afk/*` | `grace afk` subcommand tree (start/tick/ask/check/journal/defer/increment/report/stop) and its building blocks — session state, journal, config, Telegram transport |
+| `src/grace-evolve.ts`, `src/evolve/*` | `grace evolve` subcommand tree (init/run) — spec, orchestrator, scoring, worktree isolation |
+| `src/lint/*` | `grace lint` implementation (+ SKILL.md section rule) |
+| `src/query/*` | Projection-backed query layer for CLI navigation |
+| `docs/knowledge-graph.xml`, `docs/development-plan.xml`, `docs/verification-plan.xml` | Self-governance — this repo is GRACE-managed (GRACE 3 layout, pending `$grace-migrate`) |
 | `docs/diagrams/*` | Mermaid diagrams rendered inline on GitHub |
 | `PLAN.md` | Roadmap, shipped / in-flight / backlog PRs |
 | `REVIEW_PROMPT.md` | Self-contained prompt for cross-model independent code review |
-| `scripts/validate-marketplace.ts` | Packaging and release validation |
+| `scripts/validate-marketplace.ts` | Packaging, version, path, and mirror validation |
+| `RELEASING.md` | Manual release checklist and validation commands |
 
-## For Maintainers
-
-- Treat `skills/grace/*` as the source of truth unless the task is explicitly about packaged output.
-- Keep `plugins/grace/skills/grace/*` synchronized with the canonical skill files.
-- Keep versions synchronized across `README.md`, `package.json`, `openpackage.yml`, `.claude-plugin/marketplace.json`, and `plugins/grace/.claude-plugin/plugin.json`.
-- Validate packaging changes with `bun run ./scripts/validate-marketplace.ts`.
-- Validate CLI changes with `bun run ./src/grace.ts lint --path . --allow-missing-docs` and `bun test`.
-- Do not assume every directory under `skills/grace/` is published; the actual shipped set is declared in `.claude-plugin/marketplace.json`.
-
-## Development and Validation
-
-Install dependencies:
-
-```bash
-bun install
-```
-
-Run the test suite:
+## Development
 
 ```bash
 bun test
-```
-
-Run the CLI against the repository itself:
-
-```bash
-bun run ./src/grace.ts lint --path . --allow-missing-docs
-```
-
-Run marketplace and packaging validation:
-
-```bash
 bun run ./scripts/validate-marketplace.ts
+bun run validate:packed
+bun run validate:release
 ```
 
-Smoke test the query layer against a real GRACE project:
+For CLI changes, keep tests in `src/grace-lint.test.ts`, `src/grace-status.test.ts`, and `src/grace-query.test.ts` aligned with the GRACE 4 `.grace` fixture model.
 
-```bash
-bun run ./src/grace.ts module show M-AUTH --path /path/to/grace-project --with verification
-bun run ./src/grace.ts file show src/auth/index.ts --path /path/to/grace-project --contracts --blocks
-```
-
-## License
-
-MIT
+Stable releases use a protected-main two-stage flow. `release:bump` runs on a clean release branch that contains current `origin/main`, updates and validates the version surfaces, commits them, pushes the branch, and finds or creates the release PR without creating a tag. After its required checks pass and the PR is merged, `release:finalize X.Y.Z` runs from clean synchronized `main`, revalidates the exact stable state, creates the annotated tag, and pushes only that tag. CI independently requires the stable tag commit to equal fetched `origin/main` and gates npm `latest` publication through the reviewer-protected `stable-release` environment, whose explicit deployment policies allow only branch `main` and tags `v*`. Protected `main` requires Linux, Windows, and real-Dart checks without requiring a separate PR approval, while an active ruleset keeps `v*` tags immutable. `bun run release:checklist` verifies those controls and, after publication from the exact release tag commit, verifies `HEAD == tag`, npm/GitHub channel metadata, and that the local `npm pack` shasum matches the immutable published tarball.

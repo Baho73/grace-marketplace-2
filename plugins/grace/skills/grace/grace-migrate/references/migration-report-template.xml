@@ -1,0 +1,49 @@
+<GraceMigrationReport graceVersion="4.0" status="draft">
+  <SourceInventory complete="false">
+    <Source path="$LEGACY_SOURCE_PATH" disposition="$GRACE4_DESTINATION_OR_REASON" />
+  </SourceInventory>
+  <Backup restorable="false">
+    <Path>$BACKUP_PATH_OUTSIDE_CLEANUP_SET</Path>
+    <CreatedAt>$ISO_8601_TIMESTAMP</CreatedAt>
+    <Verification>$BACKUP_VERIFICATION_EVIDENCE</Verification>
+  </Backup>
+  <WriteApproval approved="false">
+    <ConfirmedBy>$CONFIRMER</ConfirmedBy>
+    <ConfirmedAt>$ISO_8601_TIMESTAMP</ConfirmedAt>
+  </WriteApproval>
+  <GeneratedGrace4Layout coverageVerified="false">
+    <Context>.grace/context</Context>
+    <Graph>.grace/graph</Graph>
+    <Verification>.grace/verification</Verification>
+    <Changes>.grace/changes</Changes>
+  </GeneratedGrace4Layout>
+  <Ambiguities>
+    <Ambiguity>$AMBIGUITY</Ambiguity>
+  </Ambiguities>
+  <UnsupportedStructures>
+    <Unsupported source="$LEGACY_SOURCE_PATH">$UNSUPPORTED_STRUCTURE</Unsupported>
+  </UnsupportedStructures>
+  <Validation successful="false">
+    <Check command="grace lint --path $PROJECT_ROOT --assertions current" exitCode="$EXIT_CODE">$RESULT</Check>
+    <Check command="grace status --path $PROJECT_ROOT --json" exitCode="$EXIT_CODE" projectKind="$PROJECT_KIND" integrityErrors="$COUNT">$RESULT</Check>
+  </Validation>
+  <GitPreflight available="false" inWorktree="false" dirty="false">
+    <WorktreeRoot>$WORKTREE_ROOT_OR_NOT_APPLICABLE</WorktreeRoot>
+    <PorcelainCommand>git status --porcelain --untracked-files=all</PorcelainCommand>
+    <PorcelainOutput>$EXACT_OUTPUT_OR_NOT_APPLICABLE</PorcelainOutput>
+  </GitPreflight>
+  <CleanupProposal approved="false">
+    <Item path="$EXACT_INVENTORIED_LEGACY_PATH" action="$ARCHIVE_OR_DELETE" />
+    <ConfirmedBy>$CONFIRMER</ConfirmedBy>
+    <ConfirmedAt>$ISO_8601_TIMESTAMP</ConfirmedAt>
+  </CleanupProposal>
+  <DirtyOrNonGitRiskAcknowledgement required="false" approved="false">
+    <Risk>$DIRTY_OR_NON_GIT_RISK</Risk>
+    <ConfirmedBy>$CONFIRMER</ConfirmedBy>
+    <ConfirmedAt>$ISO_8601_TIMESTAMP</ConfirmedAt>
+  </DirtyOrNonGitRiskAcknowledgement>
+  <CleanupResults performed="false">
+    <Item path="$EXACT_INVENTORIED_LEGACY_PATH" action="$ARCHIVE_OR_DELETE" result="$RESULT" />
+    <FailurePreservationStatement>Legacy GRACE 3 artifacts remain untouched unless the failure output explicitly lists a completed move.</FailurePreservationStatement>
+  </CleanupResults>
+</GraceMigrationReport>
