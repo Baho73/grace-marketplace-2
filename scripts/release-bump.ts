@@ -7,21 +7,56 @@
 //   DEPENDS: [node:fs, node:child_process, scripts/release-summary.ts]
 //   LINKS: [M-RELEASE-AUTOMATION, VF-RELEASE-AUTOMATION]
 //   ROLE: SCRIPT
-//   MAP_MODE: EXPORTS
+//   MAP_MODE: LOCALS
 // END_MODULE_CONTRACT
 //
 // START_MODULE_MAP
+//   __dirname - Directory of this script resolved from import.meta.url.
+//   REPO_ROOT - Repository root resolved one level above this script.
+//   PACKAGE_NAME - Required npm package name.
+//   CAPTURE_MAX_BUFFER - Output cap for captured subprocess commands.
+//   RELEASE_TYPES - Supported npm version release types.
+//   SEMVER_PATTERN - Parses strict semver with optional prerelease and build metadata.
+//   PREID_PATTERN - Validates a single prerelease identifier.
+//   REQUIRED_RELEASE_TOOLS - Tools that must be on PATH before any mutation.
+//   RELEASE_FILES - Version-surface files updated by every release.
+//   ALLOWED_RELEASE_FILES - Files the release commit is allowed to touch.
+//   PackageJson - Minimal package.json shape read by the bump.
+//   ParsedSemver - Decomposed semver parts used for target calculation.
+//   ReleasePreflightDependencies - Injected IO surface for the release preflight.
+//   ReleasePreflightResult - Resolved versions, branch, tag, and stability returned by preflight.
+//   StableReleaseGitState - Branch, ancestry, and worktree state checked for stable targets.
+//   run - Runs a command to success or throws with the failure message.
+//   runCapture - Runs a command and returns stdout or throws with the failure message.
+//   parseSemver - Splits a version string into major, minor, patch, and prerelease parts.
+//   extractPreid - Reads the optional prerelease identifier from npm version args.
+//   incrementPrerelease - Advances the numeric suffix of prerelease parts.
 //   parseNpmVersionArgs - Validates the supported version target and optional prerelease identifier.
 //   calculateTargetVersion - Resolves the target semver before any repository mutation.
 //   isStableReleaseTarget - Classifies the resolved target as stable or prerelease.
 //   collectStableReleasePreconditionErrors - Enforces a clean release branch based on current origin/main for stable targets.
+//   changelogHasVersion - Checks whether the changelog already contains the target version block.
 //   runReleasePreflight - Verifies tools, worktree, branch, target tag/changelog uniqueness, and current release validation.
+//   readRequired - Reads a required file or throws.
+//   replaceRequired - Applies one required regex substitution or throws.
 //   updateVersionSurfaceFiles - Updates every required version surface or fails closed.
+//   normalizeChangelogHeader - Rewrites the generated changelog header to the target version.
 //   prependChangelogEntry - Prepends exactly one target-version changelog block.
+//   generateChangelog - Generates one conventional-changelog entry for the release.
+//   runOpencodeSummary - Runs the restricted OpenCode release-summary agent on the prepared input.
+//   sleepMs - Blocks for one retry backoff interval.
+//   changedReleaseFiles - Lists release files with pending changes.
+//   assertOnlyReleaseFilesChanged - Fails when non-release files carry modifications.
+//   localTagExists - Checks for a local git tag.
+//   remoteTagExists - Checks for a tag on origin.
+//   tagExists - Checks local and remote tag existence.
 //   assertTagDoesNotExist - Rejects an existing local target tag.
 //   assertTagTargetsCommit - Verifies a created tag resolves to the release commit.
 //   createReleaseCommit - Creates the local release commit without tagging.
 //   createReleaseCommitAndTag - Creates the local prerelease commit and annotated tag without network access.
+//   ensureStableReleasePullRequest - Finds or creates the stable release PR and returns its URL.
+//   readPackageVersion - Reads and validates the current package version.
+//   productionPreflightDependencies - Builds the real git/npm/bun-backed preflight dependencies.
 //   main - Publishes prereleases directly or prepares a stable release PR for post-merge finalization.
 // END_MODULE_MAP
 

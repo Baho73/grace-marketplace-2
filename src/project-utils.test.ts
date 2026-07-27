@@ -7,6 +7,9 @@ import { describe, expect, it, test } from "bun:test";
 import { analyzeGovernedFile, hasRuntimeMarkerEvidence, parseGovernedFile } from "./project-utils";
 
 function contract(mapMode: "EXPORTS" | "LOCALS" | "SUMMARY" | "NONE", moduleMap = ""): string {
+  // NOTE: nested template literals avoided on the moduleMap line — the linter's quote
+  // stripper mis-tracks nested backticks and would treat this test file as governed markup.
+  const mapSection = moduleMap ? "// START_MODULE_MAP\n" + moduleMap + "\n// END_MODULE_MAP\n" : "";
   return `// START_MODULE_CONTRACT
 // PURPOSE: Exercise semantic markup.
 // SCOPE: Test-only fixture.
@@ -15,7 +18,7 @@ function contract(mapMode: "EXPORTS" | "LOCALS" | "SUMMARY" | "NONE", moduleMap 
 // ROLE: ${mapMode === "LOCALS" ? "SCRIPT" : mapMode === "SUMMARY" ? "BARREL" : mapMode === "NONE" ? "CONFIG" : "RUNTIME"}
 // MAP_MODE: ${mapMode}
 // END_MODULE_CONTRACT
-${moduleMap ? `// START_MODULE_MAP\n${moduleMap}\n// END_MODULE_MAP\n` : ""}`;
+${mapSection}`;
 }
 
 describe("governed file analysis", () => {

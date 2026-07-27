@@ -6,11 +6,15 @@
 //   DEPENDS: [node:fs, node:child_process, scripts/release-check.ts]
 //   LINKS: [M-RELEASE-AUTOMATION, VF-RELEASE-AUTOMATION]
 //   ROLE: SCRIPT
-//   MAP_MODE: EXPORTS
+//   MAP_MODE: LOCALS
 // END_MODULE_CONTRACT
 //
 // START_MODULE_MAP
+//   ChecklistItem - One reported checklist result with label, status, and detail.
+//   runCapture - Runs a command and returns stdout or throws with context.
+//   escapeRegExp - Escapes literal text for safe regex construction.
 //   collectCurrentReleaseState - Executes authoritative read-only release-state collectors.
+//   collectCurrentReleaseProtectionState - Collects the protected environment, branch, and ruleset state.
 //   main - Prints checklist results and exits nonzero on any missing or inconsistent state.
 // END_MODULE_MAP
 

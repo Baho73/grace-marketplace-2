@@ -7,13 +7,23 @@
 //   DEPENDS: [node:fs, node:child_process]
 //   LINKS: [M-RELEASE-AUTOMATION, VF-RELEASE-AUTOMATION]
 //   ROLE: SCRIPT
-//   MAP_MODE: EXPORTS
+//   MAP_MODE: LOCALS
 // END_MODULE_CONTRACT
 //
 // START_MODULE_MAP
+//   __dirname - Directory of this script resolved from import.meta.url.
+//   REPO_ROOT - Repository root resolved one level above this script.
+//   PACKAGE_NAME - Required npm package name.
+//   STABLE_SEMVER - Strict stable semver shape accepted for finalization.
+//   StableFinalizeState - Post-merge main, version, changelog, and tag state snapshot.
+//   ReleaseFinalizeDependencies - Injected IO surface for the finalization flow.
 //   parseStableVersion - Requires one stable semantic version argument.
+//   changelogLatestVersion - Extracts the latest version heading from the changelog.
 //   collectStableFinalizePreconditionErrors - Validates clean synchronized main, version surfaces, changelog, and tag absence/recovery.
 //   runStableReleaseFinalization - Runs validation, creates or reuses the local tag, verifies it, and pushes it.
+//   run - Runs a command to success or throws with the failure message.
+//   runCapture - Runs a command and returns stdout or throws with the failure message.
+//   productionDependencies - Builds the real git-backed finalization dependencies.
 //   main - Executes the production stable-finalization dependencies.
 // END_MODULE_MAP
 

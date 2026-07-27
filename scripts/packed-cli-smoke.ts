@@ -6,10 +6,18 @@
 //   DEPENDS: [node:fs, node:child_process, src/grace4/test-fixtures.ts]
 //   LINKS: [M-RELEASE-AUTOMATION, VF-RELEASE-AUTOMATION]
 //   ROLE: SCRIPT
-//   MAP_MODE: EXPORTS
+//   MAP_MODE: LOCALS
 // END_MODULE_CONTRACT
 //
 // START_MODULE_MAP
+//   PackedSmokeCase - One smoke case: name, CLI args, expected exit code, and output assertions.
+//   write - Writes one file into a temporary project, creating parent directories.
+//   run - Runs a command to success or throws with the captured output.
+//   RuntimeState - Classifies an optional runtime as usable, missing, or broken.
+//   runtimeState - Probes candidate binaries and resolves the runtime state.
+//   writeBaseProject - Writes the minimal valid GRACE 4 project with one governed module.
+//   writePythonProject - Extends the base project with a UTF-8 Python source fixture.
+//   writeDartProject - Extends the base project with a UTF-8 Dart source fixture.
 //   runPackedCliSmoke - Creates, installs, and exercises one package tarball without publishing.
 // END_MODULE_MAP
 
@@ -55,40 +63,40 @@ export function runtimeState(candidates: string[]): RuntimeState {
 
 function writeBaseProject(root: string): void {
   writeMinimalGrace4Project(root);
-  write(root, "src/example.ts", `// START_MODULE_CONTRACT
+  write(root, "src/example.ts", `// ${"START_" + "MODULE_CONTRACT"}
 //   PURPOSE: Provide the packed smoke example module.
 //   SCOPE: Expose one deterministic example function.
 //   DEPENDS: none
 //   LINKS: M-EXAMPLE, V-M-EXAMPLE
 //   ROLE: RUNTIME
 //   MAP_MODE: EXPORTS
-// END_MODULE_CONTRACT
+// ${"END_" + "MODULE_CONTRACT"}
 //
-// START_MODULE_MAP
+// ${"START_" + "MODULE_MAP"}
 //   runExample - Return the packed smoke result.
-// END_MODULE_MAP
+// ${"END_" + "MODULE_MAP"}
 //
-// START_CONTRACT: runExample
+// ${"START_" + "CONTRACT: runExample"}
 //   PURPOSE: Return the packed smoke result.
 //   INPUTS: none
 //   OUTPUTS: { string }
 //   SIDE_EFFECTS: none
 //   LINKS: M-EXAMPLE
-// END_CONTRACT: runExample
+// ${"END_" + "CONTRACT: runExample"}
 export function runExample() { return "ok"; }
 `);
 }
 
 function writePythonProject(root: string): void {
   writeBaseProject(root);
-  write(root, "src/unicode.py", `# START_MODULE_CONTRACT
+  write(root, "src/unicode.py", `# ${"START_" + "MODULE_CONTRACT"}
 #   PURPOSE: Exercise UTF-8 Python analysis from the packed CLI.
 #   SCOPE: Define Unicode source without export-map enforcement.
 #   DEPENDS: none
 #   LINKS: M-EXAMPLE
 #   ROLE: CONFIG
 #   MAP_MODE: NONE
-# END_MODULE_CONTRACT
+# ${"END_" + "MODULE_CONTRACT"}
 GREETING = "Привет 🌍"
 def привет():
     return GREETING
@@ -97,14 +105,14 @@ def привет():
 
 function writeDartProject(root: string): void {
   writeBaseProject(root);
-  write(root, "src/unicode.dart", `// START_MODULE_CONTRACT
+  write(root, "src/unicode.dart", `// ${"START_" + "MODULE_CONTRACT"}
 //   PURPOSE: Exercise Dart analyzer invocation from the packed CLI.
 //   SCOPE: Define valid Unicode Dart source without export-map enforcement.
 //   DEPENDS: none
 //   LINKS: M-EXAMPLE
 //   ROLE: CONFIG
 //   MAP_MODE: NONE
-// END_MODULE_CONTRACT
+// ${"END_" + "MODULE_CONTRACT"}
 const greeting = 'Привет 🌍';
 void main() { print(greeting); }
 `);

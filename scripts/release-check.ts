@@ -11,11 +11,37 @@
 // END_MODULE_CONTRACT
 //
 // START_MODULE_MAP
-//   collectReleaseConsistencyErrors - Returns all version and changelog consistency errors for tests and main.
+//   __dirname - Directory of this script resolved from import.meta.url.
+//   REPO_ROOT - Repository root resolved one level above this script.
+//   PKG_PATH - Absolute path to package.json.
+//   README_PATH - Absolute path to README.md.
+//   OPENPACKAGE_PATH - Absolute path to openpackage.yml.
+//   MARKETPLACE_PATH - Absolute path to the marketplace manifest.
+//   PLUGIN_MANIFEST_PATH - Absolute path to the packaged plugin manifest.
+//   CLI_ENTRY_PATH - Absolute path to the CLI entry point.
+//   CHANGELOG_PATH - Absolute path to CHANGELOG.md.
+//   EXPECTED_PACKAGE_NAME - Required npm package name.
+//   PACKAGE_VERSION_PATTERN - Semver shape required in package.json.
+//   CHANGELOG_VERSION_HEADER - Matches any changelog release heading.
+//   README_VERSION_MARKER - Extracts the packaged version recorded in README.
+//   OPENPACKAGE_VERSION - Extracts the version field from openpackage.yml.
+//   LATEST_HEADER_VERSION - Extracts the version from the latest changelog heading.
+//   ALL_HEADER_VERSIONS - Iterates every changelog heading version.
+//   CLI_META_VERSION - Extracts the version embedded in the CLI entry meta block.
+//   PackageJson - Minimal package.json shape read by the checks.
+//   ReleaseState - Read-only tag, ancestry, packed-files, npm dist-tag, and GitHub Release state snapshot.
+//   ReleaseProtectionState - Protected environment, main branch, and release-tag ruleset state snapshot.
+//   PACK_ALLOWED_EXACT - Exact file paths permitted in the npm tarball.
+//   PACK_ALLOWED_PREFIXES - Directory prefixes permitted in the npm tarball.
+//   PACK_FORBIDDEN - Path patterns rejected from the npm tarball.
 //   expectedNpmDistTag - Resolves latest for stable or the first prerelease identifier.
+//   collectPackedFileErrors - Rejects packed files outside the allowed exact and prefix sets.
 //   collectPackedContentErrors - Rejects test, fixture, temporary, and unrelated files from npm pack JSON.
 //   collectReleaseStateErrors - Validates tag, ancestry, packed files, npm dist-tag, and GitHub Release state.
 //   collectReleaseProtectionErrors - Validates the protected stable environment, main branch, and release-tag ruleset.
+//   collectReleaseConsistencyErrors - Returns all version and changelog consistency errors for tests and main.
+//   readTextOrNull - Reads a file as UTF-8 text or returns null when unreadable.
+//   exitWithErrors - Prints consistency errors and exits nonzero.
 //   main - Reads release files, prints consistency errors, and exits nonzero on failure.
 // END_MODULE_MAP
 

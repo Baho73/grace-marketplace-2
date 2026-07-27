@@ -6,23 +6,13 @@
 //   DEPENDS: [node:child_process]
 //   LINKS: [M-RELEASE-AUTOMATION, VF-RELEASE-AUTOMATION]
 //   ROLE: SCRIPT
-//   MAP_MODE: EXPORTS
+//   MAP_MODE: LOCALS
 // END_MODULE_CONTRACT
 //
 // START_MODULE_MAP
 //   DEFAULT_RELEASE_SUMMARY_MODEL - Default provider/model for release summary generation.
 //   DEFAULT_RELEASE_SUMMARY_TIMEOUT_MS - Default per-attempt OpenCode timeout.
 //   RELEASE_SUMMARY_MAX_ATTEMPTS - Total attempts before release:bump aborts.
-//   resolveReleaseSummaryOptions - Parses env overrides and returns validated model/timeout settings.
-//   collectReleaseCommitMetadata - Reads git metadata and full per-commit diffs from latest reachable tag to HEAD through an injected runner.
-//   buildReleaseSummaryPrompt - Builds the stdin prompt payload for the restricted release-summary agent.
-//   buildReleaseSummaryAgentConfig - Builds OPENCODE_CONFIG_CONTENT for the restricted primary release-summary agent.
-//   parseOpencodeRunJsonOutput - Parses OpenCode JSONL stdout into accumulated model text or a failure.
-//   extractSummaryEnvelope - Extracts a single XML-like summary envelope.
-//   validateReleaseSummary - Validates the paragraph summary content contract.
-//   injectSummaryIntoChangelogEntry - Inserts ### Summary after the release heading.
-//   validateLatestChangelogSummary - Validates only the top changelog release block.
-//   generateReleaseSummaryWithRetries - Runs the injected OpenCode runner with retry/backoff and returns a valid summary.
 //   RELEASE_SUMMARY_AGENT_NAME - Canonical release-summary agent name.
 //   ReleaseCommitMetadata - Commit metadata type including full per-commit diff.
 //   ReleaseSummaryOptions - Validated runtime options for summary generation.
@@ -33,6 +23,22 @@
 //   OpencodeRunner - Function used to invoke OpenCode.
 //   ReleaseSummaryAttempt - Failure or success for one summary generation attempt.
 //   SummaryValidationResult - Parsed latest changelog block validation result.
+//   resolveReleaseSummaryOptions - Parses env overrides and returns validated model/timeout settings.
+//   collectReleaseCommitMetadata - Reads git metadata and full per-commit diffs from latest reachable tag to HEAD through an injected runner.
+//   buildReleaseSummaryAgentConfig - Builds OPENCODE_CONFIG_CONTENT for the restricted primary release-summary agent.
+//   buildReleaseSummaryPrompt - Builds the stdin prompt payload for the restricted release-summary agent.
+//   OpencodeJsonEvent - One parsed JSONL event from OpenCode output.
+//   parseOpencodeRunJsonOutput - Parses OpenCode JSONL stdout into accumulated model text or a failure.
+//   SUMMARY_ENVELOPE_RE - Matches a single complete summary envelope.
+//   extractSummaryEnvelope - Extracts a single XML-like summary envelope.
+//   AI_GENERATION_PATTERN - Rejects summaries that disclose AI generation.
+//   FENCED_CODE_PATTERN - Rejects summaries containing fenced code blocks.
+//   MARKDOWN_HEADING_PATTERN - Rejects summaries containing markdown headings.
+//   MAX_SUMMARY_LENGTH - Maximum accepted summary length in characters.
+//   validateReleaseSummary - Validates the paragraph summary content contract.
+//   injectSummaryIntoChangelogEntry - Inserts ### Summary after the release heading.
+//   validateLatestChangelogSummary - Validates only the top changelog release block.
+//   generateReleaseSummaryWithRetries - Runs the injected OpenCode runner with retry/backoff and returns a valid summary.
 // END_MODULE_MAP
 
 export const DEFAULT_RELEASE_SUMMARY_MODEL = "deepseek/deepseek-v4-flash";
