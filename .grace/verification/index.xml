@@ -1,0 +1,65 @@
+<GraceVerificationIndex graceVersion="4.0">
+  <VerificationDocuments>
+    <VD-CLI>
+      <Path>verification/cli.xml</Path>
+      <Owns>
+        <V-M-CLI-ENTRY />
+        <V-M-CLI-LINT />
+        <V-M-CLI-MODULE />
+        <V-M-CLI-FILE />
+        <V-M-CLI-STATUS />
+        <V-M-CLI-AFK />
+        <V-M-CLI-EVOLVE />
+      </Owns>
+    </VD-CLI>
+    <VD-LINT>
+      <Path>verification/lint.xml</Path>
+      <Owns>
+        <V-M-LINT-CORE />
+        <V-M-LINT-SKILL-SECTIONS />
+        <V-M-LINT-ADAPTERS />
+        <V-M-LINT-CONFIG />
+      </Owns>
+    </VD-LINT>
+    <VD-QUERY>
+      <Path>verification/query.xml</Path>
+      <Owns>
+        <V-M-QUERY-CORE />
+        <V-M-QUERY-RENDER />
+        <V-M-STATUS-RUNTIME />
+      </Owns>
+    </VD-QUERY>
+    <VD-AFK>
+      <Path>verification/afk.xml</Path>
+      <Owns>
+        <V-M-AFK-SESSION />
+        <V-M-AFK-JOURNAL />
+        <V-M-AFK-CONFIG />
+        <V-M-AFK-USAGE />
+        <V-M-AFK-TELEGRAM />
+      </Owns>
+    </VD-AFK>
+    <VD-EVOLVE>
+      <Path>verification/evolve.xml</Path>
+      <Owns>
+        <V-M-EVOLVE-TYPES />
+        <V-M-EVOLVE-SPEC />
+        <V-M-EVOLVE-METRIC />
+        <V-M-EVOLVE-SCORE />
+        <V-M-EVOLVE-RUNNER />
+        <V-M-EVOLVE-WORKTREE />
+        <V-M-EVOLVE-ARCHIVE />
+        <V-M-EVOLVE-ORCHESTRATOR />
+      </Owns>
+    </VD-EVOLVE>
+    <VD-SKILLS>
+      <Path>verification/skills.xml</Path>
+      <Owns>
+        <V-M-SKILLS-CANONICAL />
+        <V-M-SKILLS-PACKAGED />
+        <V-M-MARKETPLACE-MANIFEST />
+        <V-M-VALIDATE-MARKETPLACE />
+      </Owns>
+    </VD-SKILLS>
+  </VerificationDocuments>
+</GraceVerificationIndex>

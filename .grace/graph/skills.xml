@@ -1,0 +1,25 @@
+<GraceGraphDocument graceVersion="4.0">
+  <GD-SKILLS>
+    <M-SKILLS-CANONICAL>
+      <Summary>Canonical source of truth for all shipped skills. Mirrored byte-for-byte into plugins/grace/skills/grace by scripts/validate-marketplace.ts.</Summary>
+      <Path>skills/grace</Path>
+    </M-SKILLS-CANONICAL>
+    <M-SKILLS-PACKAGED>
+      <Summary>Packaged mirror of canonical skills under plugins/grace/ for Claude Code marketplace distribution.</Summary>
+      <Path>plugins/grace/skills/grace</Path>
+      <M-SKILLS-CANONICAL />
+    </M-SKILLS-PACKAGED>
+    <M-MARKETPLACE-MANIFEST>
+      <Summary>Claude Code marketplace manifest declaring the grace plugin and its shipped skills.</Summary>
+      <Path>.claude-plugin/marketplace.json</Path>
+      <M-SKILLS-PACKAGED />
+    </M-MARKETPLACE-MANIFEST>
+    <M-VALIDATE-MARKETPLACE>
+      <Summary>Script that validates marketplace packaging: canonical/packaged sync, version consistency, structure, path safety.</Summary>
+      <Path>scripts/validate-marketplace.ts</Path>
+      <M-MARKETPLACE-MANIFEST />
+      <M-SKILLS-CANONICAL />
+      <M-SKILLS-PACKAGED />
+    </M-VALIDATE-MARKETPLACE>
+  </GD-SKILLS>
+</GraceGraphDocument>

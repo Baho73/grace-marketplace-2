@@ -1,0 +1,44 @@
+<GraceVerificationDocument graceVersion="4.0">
+  <VD-LINT>
+    <V-M-LINT-CORE>
+      <Priority>high</Priority>
+      <Command>bun test src/grace-lint.test.ts</Command>
+      <Scenario>success: Unique-tag XML passes.</Scenario>
+      <Scenario>failure: A generic Module tag with an ID attribute is flagged.</Scenario>
+      <Scenario>failure: A graph reference to a V-M-* missing from the verification documents is an error.</Scenario>
+      <TestFiles>
+        <File>src/grace-lint.test.ts</File>
+      </TestFiles>
+    </V-M-LINT-CORE>
+    <V-M-LINT-SKILL-SECTIONS>
+      <Priority>high</Priority>
+      <Command>bun test src/lint-skill-sections.test.ts</Command>
+      <Scenario>success: A complete skill emits no issues.</Scenario>
+      <Scenario>failure: A skill with no sections yields three warnings (rationalizations, when-not, verification).</Scenario>
+      <Scenario>success: A partial skill yields only warnings for the missing sections.</Scenario>
+      <Scenario>success: The plugins/ mirror is scanned in addition to skills/.</Scenario>
+      <Scenario>success: A project without a skills/ directory returns no issues (no crash).</Scenario>
+      <TestFiles>
+        <File>src/lint-skill-sections.test.ts</File>
+      </TestFiles>
+    </V-M-LINT-SKILL-SECTIONS>
+    <V-M-LINT-ADAPTERS>
+      <Priority>medium</Priority>
+      <Command>bun test src/grace-lint.test.ts</Command>
+      <Scenario>success: The TypeScript adapter resolves exports via AST.</Scenario>
+      <Scenario>success: The Python adapter detects exports via regex.</Scenario>
+      <TestFiles>
+        <File>src/grace-lint.test.ts</File>
+      </TestFiles>
+    </V-M-LINT-ADAPTERS>
+    <V-M-LINT-CONFIG>
+      <Priority>low</Priority>
+      <Command>bun test src/grace-lint.test.ts</Command>
+      <Scenario>success: A valid .grace-lint.json parses.</Scenario>
+      <Scenario>failure: Unknown keys produce a schema-level error.</Scenario>
+      <TestFiles>
+        <File>src/grace-lint.test.ts</File>
+      </TestFiles>
+    </V-M-LINT-CONFIG>
+  </VD-LINT>
+</GraceVerificationDocument>

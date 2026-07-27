@@ -1,0 +1,8 @@
+<GraceUXGuidelines graceVersion="4.0">
+  <Applicability>applicable</Applicability>
+  <Audience>Engineers and agents driving the grace CLI and reading the shipped skill documentation.</Audience>
+  <Guideline>Every CLI subcommand offers human-readable text output and machine-readable JSON via --format json or --json.</Guideline>
+  <Guideline>Status and lint output stays compact and scannable; integrity problems point at a concrete next action.</Guideline>
+  <Guideline>Exit codes are stable and documented so harnesses and agents can branch on them (for example grace afk budget/session codes).</Guideline>
+  <Guideline>Skill documentation follows the three-section discipline (Common Rationalizations, When NOT to Use, Verification) so agent-facing guidance stays predictable.</Guideline>
+</GraceUXGuidelines>

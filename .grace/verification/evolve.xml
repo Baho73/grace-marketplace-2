@@ -1,0 +1,91 @@
+<GraceVerificationDocument graceVersion="4.0">
+  <VD-EVOLVE>
+    <V-M-EVOLVE-TYPES>
+      <Priority>low</Priority>
+      <Command>bun x tsc --noEmit</Command>
+      <Scenario>success: The type surface compiles under strict mode.</Scenario>
+    </V-M-EVOLVE-TYPES>
+    <V-M-EVOLVE-SPEC>
+      <Priority>high</Priority>
+      <Command>bun test src/evolve-spec.test.ts</Command>
+      <Scenario>success: validateSpec rejects non-object input.</Scenario>
+      <Scenario>failure: validateSpec collects multiple errors for a spec missing version / topic / goal / metrics / candidates.</Scenario>
+      <Scenario>failure: validateSpec rejects duplicate metric ids.</Scenario>
+      <Scenario>failure: validateSpec rejects candidates with more than one or zero sources.</Scenario>
+      <Scenario>success: validateSpec accepts a valid minimal spec.</Scenario>
+      <Scenario>failure: loadSpec reports spec.missing for a non-existent file.</Scenario>
+      <Scenario>failure: loadSpec reports spec.parse-error for broken JSON.</Scenario>
+      <Scenario>success: loadSpec returns ok for a valid JSON file on disk.</Scenario>
+      <TestFiles>
+        <File>src/evolve-spec.test.ts</File>
+      </TestFiles>
+    </V-M-EVOLVE-SPEC>
+    <V-M-EVOLVE-METRIC>
+      <Priority>high</Priority>
+      <Command>bun test src/evolve-metric.test.ts</Command>
+      <Scenario>success: The default parser picks the last numeric-only line.</Scenario>
+      <Scenario>failure: The default parser returns null plus error when no numeric line is present.</Scenario>
+      <Scenario>success: A custom parser regex extracts the capture group.</Scenario>
+      <Scenario>failure: A custom parser returns null plus error when the regex does not match.</Scenario>
+      <Scenario>failure: An invalid parser regex returns a descriptive error.</Scenario>
+      <TestFiles>
+        <File>src/evolve-metric.test.ts</File>
+      </TestFiles>
+    </V-M-EVOLVE-METRIC>
+    <V-M-EVOLVE-SCORE>
+      <Priority>high</Priority>
+      <Command>bun test src/evolve-score.test.ts</Command>
+      <Scenario>success: normalizeMetric maps higher-is-better values correctly.</Scenario>
+      <Scenario>success: normalizeMetric inverts for lower-is-better.</Scenario>
+      <Scenario>success: normalizeMetric returns 1 when cohort min equals max.</Scenario>
+      <Scenario>success: hasVeto returns false when no veto is set.</Scenario>
+      <Scenario>failure: hasVeto catches a value below a higher-is-better veto.</Scenario>
+      <Scenario>success: scoreTrials returns a per-candidate weighted score.</Scenario>
+      <Scenario>failure: scoreTrials returns null for trials with any null metric value.</Scenario>
+      <TestFiles>
+        <File>src/evolve-score.test.ts</File>
+      </TestFiles>
+    </V-M-EVOLVE-SCORE>
+    <V-M-EVOLVE-RUNNER>
+      <Priority>high</Priority>
+      <Command>bun test src/evolve-runner.test.ts</Command>
+      <Scenario>success: runCandidate returns verdict=advance when all metric commands succeed and parse.</Scenario>
+      <Scenario>failure: runCandidate returns verdict=failed when any metric command exits non-zero.</Scenario>
+      <Scenario>failure: runCandidate returns verdict=failed with a "setup failed" reason when setup exits non-zero.</Scenario>
+      <Scenario>failure: runCandidate returns verdict=failed when the worktree path does not exist.</Scenario>
+      <Scenario>success: runCandidate runs teardown after metrics in order (journal-based check).</Scenario>
+      <TestFiles>
+        <File>src/evolve-runner.test.ts</File>
+      </TestFiles>
+    </V-M-EVOLVE-RUNNER>
+    <V-M-EVOLVE-WORKTREE>
+      <Priority>high</Priority>
+      <Command>bun run ./src/grace.ts evolve run example</Command>
+      <Scenario>success: prepareWorktree creates an isolated tree for a baseline candidate at HEAD.</Scenario>
+      <Scenario>success: prepareWorktree creates a temp branch and applies a patch for patch candidates.</Scenario>
+      <Scenario>success: cleanupWorktree removes the worktree and the temp branch.</Scenario>
+    </V-M-EVOLVE-WORKTREE>
+    <V-M-EVOLVE-ARCHIVE>
+      <Priority>high</Priority>
+      <Command>bun test src/evolve-archive.test.ts</Command>
+      <Scenario>success: archivePath sanitizes unsafe characters in the topic.</Scenario>
+      <Scenario>success: renderArchive emits envelope, goal, metrics, and trials.</Scenario>
+      <Scenario>success: renderArchive omits the optional top-level Winner / StoppedBy / FinishedAt when absent.</Scenario>
+      <Scenario>success: renderArchive XML-escapes special characters in topic, goal, and reason.</Scenario>
+      <Scenario>success: writeArchive creates the target directory and atomically writes the file.</Scenario>
+      <TestFiles>
+        <File>src/evolve-archive.test.ts</File>
+      </TestFiles>
+    </V-M-EVOLVE-ARCHIVE>
+    <V-M-EVOLVE-ORCHESTRATOR>
+      <Priority>medium</Priority>
+      <Command>bun run ./src/grace.ts evolve run example --path &lt;scratch-repo&gt;</Command>
+      <Scenario>success: runEvolve walks all candidates when none of the stopping criteria trigger.</Scenario>
+      <Scenario>success: runEvolve stops by maxCandidates.</Scenario>
+      <Scenario>success: runEvolve stops by maxSeconds.</Scenario>
+      <Scenario>success: runEvolve stops by targetScore.</Scenario>
+      <Scenario>success: runEvolve stops by earlyStopAfterNoImprovement.</Scenario>
+      <Scenario>success: The winner is the trial with the highest non-null score; null when every trial failed or was vetoed.</Scenario>
+    </V-M-EVOLVE-ORCHESTRATOR>
+  </VD-EVOLVE>
+</GraceVerificationDocument>

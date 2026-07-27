@@ -1,0 +1,46 @@
+<GraceGraphDocument graceVersion="4.0">
+  <GD-EVOLVE>
+    <M-EVOLVE-TYPES>
+      <Summary>Type surface for grace evolve — ProblemSpec, Candidate, MetricResult, TrialResult, EvolveArchive.</Summary>
+      <Path>src/evolve/types.ts</Path>
+    </M-EVOLVE-TYPES>
+    <M-EVOLVE-SPEC>
+      <Summary>Read and validate a ProblemSpec from disk. Collects structured errors; never throws.</Summary>
+      <Path>src/evolve/spec.ts</Path>
+      <M-EVOLVE-TYPES />
+    </M-EVOLVE-SPEC>
+    <M-EVOLVE-METRIC>
+      <Summary>Parse numeric values out of command stdout; default picks the last numeric-only line.</Summary>
+      <Path>src/evolve/metric.ts</Path>
+    </M-EVOLVE-METRIC>
+    <M-EVOLVE-SCORE>
+      <Summary>Weighted min-max scoring across a cohort of trials, with per-metric direction and veto.</Summary>
+      <Path>src/evolve/score.ts</Path>
+      <M-EVOLVE-TYPES />
+    </M-EVOLVE-SCORE>
+    <M-EVOLVE-RUNNER>
+      <Summary>Execute a single candidate inside a worktree — setup, metric commands, teardown — producing a TrialResult.</Summary>
+      <Path>src/evolve/runner.ts</Path>
+      <M-EVOLVE-TYPES />
+      <M-EVOLVE-METRIC />
+    </M-EVOLVE-RUNNER>
+    <M-EVOLVE-WORKTREE>
+      <Summary>Create and tear down git worktrees per candidate. Isolation mandatory; a bad patch must never corrupt the base repo.</Summary>
+      <Path>src/evolve/worktree.ts</Path>
+      <M-EVOLVE-TYPES />
+    </M-EVOLVE-WORKTREE>
+    <M-EVOLVE-ARCHIVE>
+      <Summary>Serialize EvolveArchive to XML at docs/experiments/&lt;topic&gt;/results.xml using GRACE unique-tag conventions. Atomic write via .tmp + rename.</Summary>
+      <Path>src/evolve/archive.ts</Path>
+      <M-EVOLVE-TYPES />
+    </M-EVOLVE-ARCHIVE>
+    <M-EVOLVE-ORCHESTRATOR>
+      <Summary>Drive the full evolve loop: for each candidate, prepare worktree, run metrics, rescore cohort, apply stopping, emit archive.</Summary>
+      <Path>src/evolve/orchestrator.ts</Path>
+      <M-EVOLVE-RUNNER />
+      <M-EVOLVE-WORKTREE />
+      <M-EVOLVE-SCORE />
+      <M-EVOLVE-ARCHIVE />
+    </M-EVOLVE-ORCHESTRATOR>
+  </GD-EVOLVE>
+</GraceGraphDocument>

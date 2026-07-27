@@ -1,0 +1,32 @@
+<GraceVerificationDocument graceVersion="4.0">
+  <VD-QUERY>
+    <V-M-QUERY-CORE>
+      <Priority>high</Priority>
+      <Command>bun test src/grace-query.test.ts</Command>
+      <Scenario>success: loadGraceArtifactIndex returns the correct modules and verifications.</Scenario>
+      <Scenario>success: findModules with a type filter narrows results.</Scenario>
+      <TestFiles>
+        <File>src/grace-query.test.ts</File>
+      </TestFiles>
+    </V-M-QUERY-CORE>
+    <V-M-QUERY-RENDER>
+      <Priority>medium</Priority>
+      <Command>bun test src/grace-query.test.ts</Command>
+      <Scenario>success: formatModuleText produces readable output.</Scenario>
+      <TestFiles>
+        <File>src/grace-query.test.ts</File>
+      </TestFiles>
+    </V-M-QUERY-RENDER>
+    <V-M-STATUS-RUNTIME>
+      <Priority>high</Priority>
+      <Command>bun test src/grace-status.test.ts</Command>
+      <Scenario>success: Status computation on an initialized project returns correct context-artifact, graph-module, and verification-entry counts with a healthy next action.</Scenario>
+      <Scenario>failure: Integrity errors reported by lint promote the fix-integrity-errors action into nextAction.</Scenario>
+      <Scenario>success: Active and archived change bundles surface with derived states (draft-spec, needs-plan, ready-to-execute, stale-plan).</Scenario>
+      <Scenario>success: Unexplained observed git drift promotes a grace-refresh next action.</Scenario>
+      <TestFiles>
+        <File>src/grace-status.test.ts</File>
+      </TestFiles>
+    </V-M-STATUS-RUNTIME>
+  </VD-QUERY>
+</GraceVerificationDocument>

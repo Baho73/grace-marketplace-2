@@ -1,0 +1,19 @@
+<GraceRequirements graceVersion="4.0">
+  <ProjectName>grace-marketplace</ProjectName>
+  <Annotation>Distribution package for the GRACE methodology: canonical skills, packaged mirror, Claude Code marketplace manifest, OpenPackage manifest, and the @osovv/grace-cli Bun-based CLI (grace lint, grace module, grace file, grace status, grace verification, grace afk, grace evolve).</Annotation>
+  <Keywords>grace, methodology, skills-marketplace, cli, lint, knowledge-graph, contracts, verification</Keywords>
+  <Goals>
+    <Goal>Ship and maintain the GRACE methodology as a Claude Code marketplace plugin plus an npm-published CLI, with a self-dogfooded reference project so agents cannot forget the framework they ship.</Goal>
+    <Goal>Keep the canonical skills under skills/grace and the packaged mirror under plugins/grace/skills/grace byte-for-byte synchronized.</Goal>
+    <Goal>Keep grace-marketplace itself a GRACE-managed project as the reference example for the .grace artifact model.</Goal>
+  </Goals>
+  <Users>
+    <User>Engineers and agents working in GRACE-managed repositories via the Claude Code plugin or the grace CLI.</User>
+  </Users>
+  <Constraints>
+    <Constraint>GRACE is domain-specific (contract-first, graph-anchored, verification-first); it is not a generic engineering-advice framework and the skills are not interchangeable with plain prompting rules.</Constraint>
+    <Constraint>Drift between canonical skills/grace/* and packaged plugins/grace/skills/grace/* is prevented by scripts/validate-marketplace.ts and must hold on every change.</Constraint>
+    <Constraint>Agents must not forget GRACE activation; mitigated by the grace-bootstrap meta-skill, the SessionStart hook, and the CLAUDE.md preamble.</Constraint>
+    <Constraint>Every SKILL.md keeps the three hardening sections (Common Rationalizations, When NOT to Use, Verification); grace lint warns on drift.</Constraint>
+  </Constraints>
+</GraceRequirements>

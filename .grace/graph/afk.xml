@@ -1,0 +1,24 @@
+<GraceGraphDocument graceVersion="4.0">
+  <GD-AFK>
+    <M-AFK-SESSION>
+      <Summary>State store for /afk sessions under docs/afk-sessions/&lt;id&gt;/state.json; enforces expiresAt and exit codes (BUDGET_EXHAUSTED / NO_SESSION / SESSION_STOPPED).</Summary>
+      <Path>src/afk/session.ts</Path>
+    </M-AFK-SESSION>
+    <M-AFK-JOURNAL>
+      <Summary>Append-only writers for decisions.md and deferred.md inside each /afk session directory.</Summary>
+      <Path>src/afk/journal.ts</Path>
+    </M-AFK-JOURNAL>
+    <M-AFK-CONFIG>
+      <Summary>Resolve and parse grace-afk config by priority ($GRACE_AFK_CONFIG env var, then project-local .grace-afk.json, then ~/.grace/afk.json). Holds Telegram credentials + autoStop caps. Project-local file gitignored.</Summary>
+      <Path>src/afk/config.ts</Path>
+    </M-AFK-CONFIG>
+    <M-AFK-USAGE>
+      <Summary>Read-only consumer of Claude Code's statusline usage cache (five_hour / seven_day / extra_usage). Surfaces budget utilization in grace afk report and grace afk done notifications.</Summary>
+      <Path>src/afk/usage.ts</Path>
+    </M-AFK-USAGE>
+    <M-AFK-TELEGRAM>
+      <Summary>Minimal Telegram Bot API transport (sendMessage + getUpdates) with dependency-injected fetch for tests. No external dependencies.</Summary>
+      <Path>src/afk/telegram.ts</Path>
+    </M-AFK-TELEGRAM>
+  </GD-AFK>
+</GraceGraphDocument>

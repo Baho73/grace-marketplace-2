@@ -1,0 +1,70 @@
+<GraceVerificationDocument graceVersion="4.0">
+  <VD-CLI>
+    <V-M-CLI-ENTRY>
+      <Priority>medium</Priority>
+      <Command>bun run ./src/grace.ts --help</Command>
+      <Scenario>success: Root --help lists the grace subcommands (lint, module, file, status, verification, afk, evolve).</Scenario>
+    </V-M-CLI-ENTRY>
+    <V-M-CLI-LINT>
+      <Priority>high</Priority>
+      <Command>bun test src/grace-lint.test.ts</Command>
+      <Command>bun run grace lint --path .</Command>
+      <Scenario>success: grace lint produces zero errors on a clean GRACE project.</Scenario>
+      <Scenario>failure: A missing verification entry referenced by the graph is reported as an error.</Scenario>
+      <TestFiles>
+        <File>src/grace-lint.test.ts</File>
+      </TestFiles>
+    </V-M-CLI-LINT>
+    <V-M-CLI-MODULE>
+      <Priority>high</Priority>
+      <Command>bun test src/grace-query.test.ts</Command>
+      <Scenario>success: find resolves modules by name, path, dependency, or verification ref.</Scenario>
+      <Scenario>success: show returns a module record with verification excerpt when requested.</Scenario>
+      <TestFiles>
+        <File>src/grace-query.test.ts</File>
+      </TestFiles>
+    </V-M-CLI-MODULE>
+    <V-M-CLI-FILE>
+      <Priority>high</Priority>
+      <Command>bun test src/grace-query.test.ts</Command>
+      <Scenario>success: file show returns MODULE_CONTRACT, MODULE_MAP, and semantic blocks.</Scenario>
+      <TestFiles>
+        <File>src/grace-query.test.ts</File>
+      </TestFiles>
+    </V-M-CLI-FILE>
+    <V-M-CLI-STATUS>
+      <Priority>high</Priority>
+      <Command>bun test src/grace-status.test.ts</Command>
+      <Command>bun run ./src/grace.ts status --path .</Command>
+      <Scenario>success: status on a fully-initialized project prints a compact summary with context artifacts, graph modules, verification entries, and a suggested next action.</Scenario>
+      <Scenario>failure: A project missing .grace artifacts reports projectKind none with a next action pointing to grace-init.</Scenario>
+      <Scenario>success: --format json emits the machine-readable StatusResult.</Scenario>
+      <TestFiles>
+        <File>src/grace-status.test.ts</File>
+      </TestFiles>
+    </V-M-CLI-STATUS>
+    <V-M-CLI-AFK>
+      <Priority>high</Priority>
+      <Command>bun test src/afk-cli.test.ts</Command>
+      <Scenario>success: grace afk start 1 writes state.json under docs/afk-sessions/&lt;id&gt;/.</Scenario>
+      <Scenario>success: grace afk tick returns remaining time while the session is fresh.</Scenario>
+      <Scenario>failure: grace afk tick exits 42 (BUDGET_EXHAUSTED) once expiresAt passes.</Scenario>
+      <Scenario>failure: grace afk tick exits 43 (NO_SESSION) when no session exists.</Scenario>
+      <Scenario>failure: grace afk tick exits 44 (SESSION_STOPPED) after grace afk stop.</Scenario>
+      <Scenario>success: grace afk journal and grace afk defer append to the session markdown files.</Scenario>
+      <Scenario>success: grace afk report prints a summary and marks the session completed.</Scenario>
+      <TestFiles>
+        <File>src/afk-cli.test.ts</File>
+      </TestFiles>
+    </V-M-CLI-AFK>
+    <V-M-CLI-EVOLVE>
+      <Priority>high</Priority>
+      <Command>bun run ./src/grace.ts evolve --help</Command>
+      <Command>bun test src/evolve-spec.test.ts src/evolve-metric.test.ts src/evolve-score.test.ts src/evolve-archive.test.ts src/evolve-runner.test.ts</Command>
+      <Scenario>success: grace evolve --help lists init / run / show subcommands.</Scenario>
+      <Scenario>success: grace evolve init &lt;topic&gt; writes a starter spec.json and refuses to overwrite.</Scenario>
+      <Scenario>failure: grace evolve run exits 47 with per-error stderr when the spec fails validation.</Scenario>
+      <Scenario>success: grace evolve run produces docs/experiments/&lt;topic&gt;/results.xml after a successful loop.</Scenario>
+    </V-M-CLI-EVOLVE>
+  </VD-CLI>
+</GraceVerificationDocument>

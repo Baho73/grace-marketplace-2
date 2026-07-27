@@ -1,0 +1,13 @@
+<GraceTechnology graceVersion="4.0">
+  <Language>TypeScript</Language>
+  <Runtime>Bun</Runtime>
+  <Framework>citty CLI command framework; Claude Code plugin skills (SKILL.md) distributed through a marketplace manifest and an OpenPackage manifest</Framework>
+  <TestingStack>bun test (module-level suites per CLI area; wave-level bun test across all test files; scripts/validate-marketplace.ts for packaging)</TestingStack>
+  <Observability>Stdout/stderr contracts and stable exit codes per CLI subcommand; no external telemetry.</Observability>
+  <OperationalConstraints>
+    <Constraint>Prefer existing project libraries and established repository patterns.</Constraint>
+    <Constraint>No new external runtime dependencies for integrations (for example the Telegram transport uses dependency-injected fetch).</Constraint>
+    <Constraint>The CLI must execute through the Bun shebang as the published grace binary.</Constraint>
+    <Constraint>Every change under skills/grace/* is mirrored to plugins/grace/skills/grace/* in the same commit; validate-marketplace enforces the mirror.</Constraint>
+  </OperationalConstraints>
+</GraceTechnology>

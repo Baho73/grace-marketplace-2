@@ -1,0 +1,49 @@
+<GraceGraphDocument graceVersion="4.0">
+  <GD-CLI>
+    <M-CLI-ENTRY>
+      <Summary>Top-level CLI entry point; wires subcommands and handles Bun shebang execution.</Summary>
+      <Path>src/grace.ts</Path>
+      <M-CLI-LINT />
+      <M-CLI-MODULE />
+      <M-CLI-FILE />
+      <M-CLI-STATUS />
+      <M-CLI-AFK />
+      <M-CLI-EVOLVE />
+    </M-CLI-ENTRY>
+    <M-CLI-LINT>
+      <Summary>Implements grace lint — validates GRACE artifacts, semantic markup, unique tags, and skill-section discipline.</Summary>
+      <Path>src/grace-lint.ts</Path>
+      <M-LINT-CORE />
+    </M-CLI-LINT>
+    <M-CLI-MODULE>
+      <Summary>Implements grace module find and grace module show.</Summary>
+      <Path>src/grace-module.ts</Path>
+      <M-QUERY-CORE />
+    </M-CLI-MODULE>
+    <M-CLI-FILE>
+      <Summary>Implements grace file show — file-local MODULE_CONTRACT, MODULE_MAP, and semantic blocks.</Summary>
+      <Path>src/grace-file.ts</Path>
+      <M-QUERY-CORE />
+    </M-CLI-FILE>
+    <M-CLI-STATUS>
+      <Summary>Implements grace status with text/json output — artifact health, module/verification counts, change-bundle states, and next action. Primary consumer: SessionStart hook injected by grace-init.</Summary>
+      <Path>src/grace-status.ts</Path>
+      <M-STATUS-RUNTIME />
+    </M-CLI-STATUS>
+    <M-CLI-AFK>
+      <Summary>Implements grace afk — autonomous-harness subcommands (start/tick/ask/check/journal/defer/increment/report/stop). CLI enforces session time budget; agents cannot rationalize past it.</Summary>
+      <Path>src/grace-afk.ts</Path>
+      <M-AFK-SESSION />
+      <M-AFK-JOURNAL />
+      <M-AFK-CONFIG />
+      <M-AFK-TELEGRAM />
+    </M-CLI-AFK>
+    <M-CLI-EVOLVE>
+      <Summary>Implements grace evolve — init / run / show subcommands for evolutionary search over candidate solutions. MVP without LLM-critic loop.</Summary>
+      <Path>src/grace-evolve.ts</Path>
+      <M-EVOLVE-ORCHESTRATOR />
+      <M-EVOLVE-SPEC />
+      <M-EVOLVE-ARCHIVE />
+    </M-CLI-EVOLVE>
+  </GD-CLI>
+</GraceGraphDocument>

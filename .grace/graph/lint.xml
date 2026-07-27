@@ -1,0 +1,23 @@
+<GraceGraphDocument graceVersion="4.0">
+  <GD-LINT>
+    <M-LINT-CORE>
+      <Summary>Core linting engine: artifact presence, unique-tag XML, semantic markup, governed file checks, skill-section discipline.</Summary>
+      <Path>src/lint/core.ts</Path>
+      <M-LINT-ADAPTERS />
+      <M-LINT-CONFIG />
+      <M-LINT-SKILL-SECTIONS />
+    </M-LINT-CORE>
+    <M-LINT-SKILL-SECTIONS>
+      <Summary>Warns when SKILL.md files miss the three required hardening sections (Common Rationalizations, When NOT to Use, Verification).</Summary>
+      <Path>src/lint/skill-sections.ts</Path>
+    </M-LINT-SKILL-SECTIONS>
+    <M-LINT-ADAPTERS>
+      <Summary>Language adapters for role-aware lint (TypeScript AST, Python regex).</Summary>
+      <Path>src/lint/adapters</Path>
+    </M-LINT-ADAPTERS>
+    <M-LINT-CONFIG>
+      <Summary>Load and validate .grace-lint.json project-level config.</Summary>
+      <Path>src/lint/config.ts</Path>
+    </M-LINT-CONFIG>
+  </GD-LINT>
+</GraceGraphDocument>

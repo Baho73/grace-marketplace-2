@@ -1,0 +1,28 @@
+<GraceVerificationDocument graceVersion="4.0">
+  <VD-SKILLS>
+    <V-M-SKILLS-CANONICAL>
+      <Priority>high</Priority>
+      <Command>bun run grace lint --path .</Command>
+      <Scenario>success: Every SKILL.md contains the three required sections (Common Rationalizations, When NOT to Use, Verification).</Scenario>
+      <Scenario>success: Every SKILL.md has valid YAML frontmatter.</Scenario>
+    </V-M-SKILLS-CANONICAL>
+    <V-M-SKILLS-PACKAGED>
+      <Priority>high</Priority>
+      <Command>bun run ./scripts/validate-marketplace.ts</Command>
+      <Scenario>success: plugins/grace/skills/grace/* matches skills/grace/* byte-for-byte.</Scenario>
+    </V-M-SKILLS-PACKAGED>
+    <V-M-MARKETPLACE-MANIFEST>
+      <Priority>high</Priority>
+      <Command>bun run ./scripts/validate-marketplace.ts</Command>
+      <Scenario>success: marketplace.json version matches README, package.json, openpackage.yml, and plugin.json.</Scenario>
+      <Scenario>success: Each declared skill path exists in plugins/grace/skills/grace/.</Scenario>
+      <Scenario>success: grace-bootstrap is declared in the shipped skill list.</Scenario>
+    </V-M-MARKETPLACE-MANIFEST>
+    <V-M-VALIDATE-MARKETPLACE>
+      <Priority>high</Priority>
+      <Command>bun run ./scripts/validate-marketplace.ts</Command>
+      <Scenario>success: Reports PASS for a clean repo.</Scenario>
+      <Scenario>failure: Reports FAIL when canonical and packaged drift apart.</Scenario>
+    </V-M-VALIDATE-MARKETPLACE>
+  </VD-SKILLS>
+</GraceVerificationDocument>

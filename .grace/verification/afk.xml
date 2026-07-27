@@ -1,0 +1,68 @@
+<GraceVerificationDocument graceVersion="4.0">
+  <VD-AFK>
+    <V-M-AFK-SESSION>
+      <Priority>high</Priority>
+      <Command>bun test src/afk-session.test.ts</Command>
+      <Scenario>success: createSession writes docs/afk-sessions/&lt;id&gt;/state.json with a correct expiresAt.</Scenario>
+      <Scenario>failure: Invalid hours or checkpoint values throw.</Scenario>
+      <Scenario>success: checkActive returns ok=true while fresh and expired after expiresAt.</Scenario>
+      <Scenario>success: markStopped sets status=stopped; findActiveSession returns null.</Scenario>
+      <Scenario>success: incrementCounter updates commits/escalations/deferred independently.</Scenario>
+      <Scenario>success: markCompleted makes the session not-active.</Scenario>
+      <TestFiles>
+        <File>src/afk-session.test.ts</File>
+      </TestFiles>
+    </V-M-AFK-SESSION>
+    <V-M-AFK-JOURNAL>
+      <Priority>medium</Priority>
+      <Command>bun test src/afk-session.test.ts</Command>
+      <Scenario>success: appendDecision writes a header and entry fields (class, title, context, rationale, outcome).</Scenario>
+      <Scenario>success: appendDeferred adds a single-line entry with timestamp and optional suggestion.</Scenario>
+      <TestFiles>
+        <File>src/afk-session.test.ts</File>
+      </TestFiles>
+    </V-M-AFK-JOURNAL>
+    <V-M-AFK-CONFIG>
+      <Priority>medium</Priority>
+      <Command>bun test src/afk-config.test.ts</Command>
+      <Scenario>success: loadAfkConfig returns null plus a descriptive error when no candidate exists at env, project, or global.</Scenario>
+      <Scenario>failure: loadAfkConfig returns null plus error on invalid JSON at the resolved path.</Scenario>
+      <Scenario>success: loadAfkConfig parses a valid project-local file and reports source=project.</Scenario>
+      <Scenario>success: loadAfkConfig falls back to ~/.grace/afk.json when no project-local override exists and reports source=global.</Scenario>
+      <Scenario>success: resolveAfkConfigPath picks $GRACE_AFK_CONFIG when it exists, overriding both project and global.</Scenario>
+      <Scenario>success: resolveAfkConfigPath ignores $GRACE_AFK_CONFIG when the referenced file is missing and falls through to the next candidate.</Scenario>
+      <Scenario>success: resolveAfkConfigPath prefers project-local over global when both exist.</Scenario>
+      <Scenario>success: getTelegram returns null if the config lacks either botToken or chatId; returns credentials when both are present.</Scenario>
+      <Scenario>success: getMaxEscalations defaults to 3, honors a configured value, and falls back on negative/non-finite values.</Scenario>
+      <TestFiles>
+        <File>src/afk-config.test.ts</File>
+      </TestFiles>
+    </V-M-AFK-CONFIG>
+    <V-M-AFK-USAGE>
+      <Priority>medium</Priority>
+      <Command>bun test src/afk-usage.test.ts</Command>
+      <Scenario>success: readUsage returns null when the cache file is missing.</Scenario>
+      <Scenario>failure: readUsage returns null when the cache JSON is malformed.</Scenario>
+      <Scenario>success: readUsage parses five_hour / seven_day / extra_usage into a UsageSnapshot.</Scenario>
+      <Scenario>success: readUsage maps used_credits (cents) to dollars with two-decimal precision.</Scenario>
+      <Scenario>success: renderUsageLine formats "5h N% · 7d N% · $used/limit · cache age Xs".</Scenario>
+      <Scenario>success: renderUsageLine falls back to a readable message when the snapshot is null.</Scenario>
+      <TestFiles>
+        <File>src/afk-usage.test.ts</File>
+      </TestFiles>
+    </V-M-AFK-USAGE>
+    <V-M-AFK-TELEGRAM>
+      <Priority>high</Priority>
+      <Command>bun test src/afk-telegram.test.ts</Command>
+      <Scenario>success: sendMessage posts to /sendMessage and returns a messageId.</Scenario>
+      <Scenario>failure: sendMessage returns ok=false with the error description from the API.</Scenario>
+      <Scenario>success: fetchUpdates filters replies by chatId.</Scenario>
+      <Scenario>success: matchReply matches by reply_to_message_id or correlation id prefix.</Scenario>
+      <Scenario>success: classifyAnswer recognizes A-E, PROCEED, STOP, EVOLVE, DEFER in any token position.</Scenario>
+      <Scenario>success: classifyAnswer returns UNKNOWN with recognized=false for free-form text.</Scenario>
+      <TestFiles>
+        <File>src/afk-telegram.test.ts</File>
+      </TestFiles>
+    </V-M-AFK-TELEGRAM>
+  </VD-AFK>
+</GraceVerificationDocument>

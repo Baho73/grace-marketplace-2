@@ -1,0 +1,19 @@
+<GraceGraphDocument graceVersion="4.0">
+  <GD-QUERY>
+    <M-QUERY-CORE>
+      <Summary>Loads and indexes GRACE artifacts (graph, verification, governed files) and exposes find/resolve helpers.</Summary>
+      <Path>src/query/core.ts</Path>
+      <M-LINT-CONFIG />
+    </M-QUERY-CORE>
+    <M-QUERY-RENDER>
+      <Summary>Text formatters for module/file query results.</Summary>
+      <Path>src/query/render.ts</Path>
+      <M-QUERY-CORE />
+    </M-QUERY-RENDER>
+    <M-STATUS-RUNTIME>
+      <Summary>Pure logic for status computation: artifact presence, counts, change-bundle derived states, next-action heuristic, brief/full rendering. GRACE 4 note: the computation now lives inside src/grace-status.ts; the legacy src/grace-status-runtime.ts file no longer exists.</Summary>
+      <Path>src/grace-status.ts</Path>
+      <M-QUERY-CORE />
+    </M-STATUS-RUNTIME>
+  </GD-QUERY>
+</GraceGraphDocument>

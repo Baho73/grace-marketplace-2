@@ -1,0 +1,69 @@
+<GraceGraphDocument graceVersion="4.0">
+  <GD-FLOWS>
+    <DF-CLI-DISPATCH>
+      <Summary>M-CLI-ENTRY dispatches-subcommand to each grace subcommand CLI (lint, module, file, status, afk, evolve).</Summary>
+      <M-CLI-ENTRY />
+      <M-CLI-LINT />
+      <M-CLI-MODULE />
+      <M-CLI-FILE />
+      <M-CLI-STATUS />
+      <M-CLI-AFK />
+      <M-CLI-EVOLVE />
+    </DF-CLI-DISPATCH>
+    <DF-LINT-PIPELINE>
+      <Summary>M-CLI-LINT invokes M-LINT-CORE, which uses the language adapters, the lint config, and the skill-section checks.</Summary>
+      <M-CLI-LINT />
+      <M-LINT-CORE />
+      <M-LINT-ADAPTERS />
+      <M-LINT-CONFIG />
+      <M-LINT-SKILL-SECTIONS />
+    </DF-LINT-PIPELINE>
+    <DF-QUERY-PIPELINE>
+      <Summary>M-CLI-MODULE and M-CLI-FILE use M-QUERY-CORE for artifact queries; M-QUERY-RENDER formats-types-from M-QUERY-CORE; M-QUERY-CORE reads-ignored-dirs from M-LINT-CONFIG.</Summary>
+      <M-CLI-MODULE />
+      <M-CLI-FILE />
+      <M-QUERY-CORE />
+      <M-QUERY-RENDER />
+      <M-LINT-CONFIG />
+    </DF-QUERY-PIPELINE>
+    <DF-STATUS-PIPELINE>
+      <Summary>M-CLI-STATUS delegates-to M-STATUS-RUNTIME, which uses M-QUERY-CORE for artifact counts.</Summary>
+      <M-CLI-STATUS />
+      <M-STATUS-RUNTIME />
+      <M-QUERY-CORE />
+    </DF-STATUS-PIPELINE>
+    <DF-AFK-SESSION-FLOW>
+      <Summary>M-CLI-AFK uses the afk session store, journal writers, config resolution, Telegram transport, and the usage-cache reader.</Summary>
+      <M-CLI-AFK />
+      <M-AFK-SESSION />
+      <M-AFK-JOURNAL />
+      <M-AFK-CONFIG />
+      <M-AFK-TELEGRAM />
+      <M-AFK-USAGE />
+    </DF-AFK-SESSION-FLOW>
+    <DF-EVOLVE-PIPELINE>
+      <Summary>M-CLI-EVOLVE invokes M-EVOLVE-ORCHESTRATOR and uses M-EVOLVE-SPEC and M-EVOLVE-ARCHIVE; the orchestrator uses runner, worktree, score, and archive; the runner uses the metric parser.</Summary>
+      <M-CLI-EVOLVE />
+      <M-EVOLVE-ORCHESTRATOR />
+      <M-EVOLVE-SPEC />
+      <M-EVOLVE-ARCHIVE />
+      <M-EVOLVE-RUNNER />
+      <M-EVOLVE-WORKTREE />
+      <M-EVOLVE-SCORE />
+      <M-EVOLVE-METRIC />
+    </DF-EVOLVE-PIPELINE>
+    <DF-SKILLS-MIRROR>
+      <Summary>M-SKILLS-PACKAGED is a mirror-of M-SKILLS-CANONICAL; M-MARKETPLACE-MANIFEST declares-skills from the packaged mirror.</Summary>
+      <M-SKILLS-CANONICAL />
+      <M-SKILLS-PACKAGED />
+      <M-MARKETPLACE-MANIFEST />
+    </DF-SKILLS-MIRROR>
+    <DF-MARKETPLACE-VALIDATION>
+      <Summary>M-VALIDATE-MARKETPLACE validates the marketplace manifest and validates-sync-with both the canonical and the packaged skill trees.</Summary>
+      <M-VALIDATE-MARKETPLACE />
+      <M-MARKETPLACE-MANIFEST />
+      <M-SKILLS-CANONICAL />
+      <M-SKILLS-PACKAGED />
+    </DF-MARKETPLACE-VALIDATION>
+  </GD-FLOWS>
+</GraceGraphDocument>

@@ -1,0 +1,78 @@
+<GraceGraphIndex graceVersion="4.0">
+  <GraphDocuments>
+    <GD-CLI>
+      <Path>graph/cli.xml</Path>
+      <Owns>
+        <M-CLI-ENTRY />
+        <M-CLI-LINT />
+        <M-CLI-MODULE />
+        <M-CLI-FILE />
+        <M-CLI-STATUS />
+        <M-CLI-AFK />
+        <M-CLI-EVOLVE />
+      </Owns>
+    </GD-CLI>
+    <GD-LINT>
+      <Path>graph/lint.xml</Path>
+      <Owns>
+        <M-LINT-CORE />
+        <M-LINT-SKILL-SECTIONS />
+        <M-LINT-ADAPTERS />
+        <M-LINT-CONFIG />
+      </Owns>
+    </GD-LINT>
+    <GD-QUERY>
+      <Path>graph/query.xml</Path>
+      <Owns>
+        <M-QUERY-CORE />
+        <M-QUERY-RENDER />
+        <M-STATUS-RUNTIME />
+      </Owns>
+    </GD-QUERY>
+    <GD-AFK>
+      <Path>graph/afk.xml</Path>
+      <Owns>
+        <M-AFK-SESSION />
+        <M-AFK-JOURNAL />
+        <M-AFK-CONFIG />
+        <M-AFK-USAGE />
+        <M-AFK-TELEGRAM />
+      </Owns>
+    </GD-AFK>
+    <GD-EVOLVE>
+      <Path>graph/evolve.xml</Path>
+      <Owns>
+        <M-EVOLVE-TYPES />
+        <M-EVOLVE-SPEC />
+        <M-EVOLVE-METRIC />
+        <M-EVOLVE-SCORE />
+        <M-EVOLVE-RUNNER />
+        <M-EVOLVE-WORKTREE />
+        <M-EVOLVE-ARCHIVE />
+        <M-EVOLVE-ORCHESTRATOR />
+      </Owns>
+    </GD-EVOLVE>
+    <GD-SKILLS>
+      <Path>graph/skills.xml</Path>
+      <Owns>
+        <M-SKILLS-CANONICAL />
+        <M-SKILLS-PACKAGED />
+        <M-MARKETPLACE-MANIFEST />
+        <M-VALIDATE-MARKETPLACE />
+      </Owns>
+    </GD-SKILLS>
+    <GD-FLOWS>
+      <Path>graph/flows.xml</Path>
+      <Owns>
+        <DF-CLI-DISPATCH />
+        <DF-LINT-PIPELINE />
+        <DF-QUERY-PIPELINE />
+        <DF-STATUS-PIPELINE />
+        <DF-AFK-SESSION-FLOW />
+        <DF-EVOLVE-PIPELINE />
+        <DF-SKILLS-MIRROR />
+        <DF-MARKETPLACE-VALIDATION />
+      </Owns>
+    </GD-FLOWS>
+  </GraphDocuments>
+</GraceGraphIndex>

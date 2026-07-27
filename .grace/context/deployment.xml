@@ -1,0 +1,5 @@
+<GraceDeployment graceVersion="4.0">
+  <Applicability>applicable</Applicability>
+  <Target>Package distribution, not a deployed service: the @osovv/grace-cli npm package (Bun-powered grace binary) and the Claude Code marketplace plugin packaged under plugins/grace with an OpenPackage manifest.</Target>
+  <Notes>Release gates run through bun run validate:release (typecheck, full bun test, CLI validation, release:check, validate-marketplace, packed-CLI smoke) before publish; see RELEASING.md. There are no running environments or rollback surface beyond npm/marketplace versioning.</Notes>
+</GraceDeployment>
