@@ -83,7 +83,19 @@ function writeBaseProject(root: string): void {
 //   SIDE_EFFECTS: none
 //   LINKS: M-EXAMPLE
 // ${"END_" + "CONTRACT: runExample"}
-export function runExample() { return "ok"; }
+export function runExample() {
+  console.info("[Example][run][${"BLOCK" + "_RUN"}] packed smoke");
+  // ${"START_" + "BLOCK_RUN"}
+  return "ok";
+  // ${"END_" + "BLOCK_RUN"}
+}
+`);
+  write(root, "src/example.test.ts", `import { expect, test } from "bun:test";
+import { runExample } from "./example";
+
+test("packed smoke example", () => {
+  expect(runExample()).toBe("ok");
+});
 `);
 }
 

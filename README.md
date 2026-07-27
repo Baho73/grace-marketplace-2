@@ -4,7 +4,7 @@
 
 This repository ships the GRACE skills plus the optional `grace` CLI. It is a packaging and distribution repository, not an end-user application.
 
-Current packaged version: `4.0.2`. Fork of [`osovv/grace-marketplace`](https://github.com/osovv/grace-marketplace) with additional skills (grace-bootstrap, grace-afk, grace-ask-human, grace-evolve), CLI surfaces (afk, evolve), and a global Telegram config at `~/.grace/afk.json` so one AFK setup serves every project on the machine.
+Current packaged version: `4.0.4`. Fork of [`osovv/grace-marketplace`](https://github.com/osovv/grace-marketplace) with additional skills (grace-bootstrap, grace-afk, grace-ask-human, grace-evolve), CLI surfaces (afk, evolve), and a global Telegram config at `~/.grace/afk.json` so one AFK setup serves every project on the machine.
 
 ## What This Repository Ships
 
@@ -87,7 +87,7 @@ For a new GRACE 4 project:
 2. Fill `.grace/context` artifacts with your agent.
 3. Run `$grace-spec` for a change.
 4. Run `$grace-plan` after spec approval.
-5. Run `grace lint --path /path/to/project --assertions current`.
+5. Before observed writes begin, run the active-baseline preflight: `grace lint --path /path/to/project --assertions current`.
 6. Run `grace lint --path /path/to/project --change C-ID --assertions baseline` before execution; add `--run-commands` when the baseline declares `MustPassCommand`.
 7. Run `grace status --path /path/to/project --json`.
 8. Run `$grace-execute` and choose sequential or parallel-safe mode. Parallel-safe mode additionally requires `grace lint --path /path/to/project --parallel-preflight`.
@@ -125,7 +125,7 @@ Migration cleanup is separately gated: successful current lint, fresh status pro
 
 | Command | What It Does |
 | --- | --- |
-| `grace lint --path <root> --assertions current` | Validate current `.grace` grammar, routed coverage, lifecycle locations, and scope overlap |
+| `grace lint --path <root> --assertions current` | Run the pre-implementation full-project check, including baselines of active approved changes; do not use it as post-edit target/final evidence |
 | `grace lint --path <root> --change C-ID --assertions baseline [--run-commands]` | Validate the immutable selected baseline before implementation; command assertions run only when explicitly enabled |
 | `grace lint --path <root> --change C-ID --assertions target --run-commands` | Validate selected target assertions and explicitly opt into `MustPassCommand` execution |
 | `grace lint --path <root> --change C-ID --assertions final [--run-commands]` | Run the final full-project gate, evaluate the selected target, and keep unrelated approved baselines active without re-evaluating the selected baseline |
@@ -143,6 +143,8 @@ Migration cleanup is separately gated: successful current lint, fresh status pro
 | `grace afk journal / defer / increment` | Append structured entries to `docs/afk-sessions/<id>/{decisions,deferred}.md` and update counters |
 | `grace afk report / stop` | Emit the return dashboard / manually stop a session |
 | `grace evolve init / run <topic>` | Evolutionary search over candidate solutions — scaffolds `docs/experiments/<topic>/spec.json`, runs the loop with worktree isolation |
+
+`MustPassCommand` entries are leaf project evidence such as tests, typecheck, build, format, or package checks. Do not nest `grace lint`, `grace status`, or another GRACE lifecycle command inside plan assertions; selected target/final lint is the external orchestration gate.
 
 Output modes:
 

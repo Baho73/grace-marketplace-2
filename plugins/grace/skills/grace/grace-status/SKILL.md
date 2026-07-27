@@ -4,7 +4,7 @@ description: "Показывает здоровье GRACE 4-проекта: ко
 ---
 
 <skill>
-<task>Run `grace status --path PROJECT --json` (add `--with modules` when module health is needed) and report current GRACE 4 state without mutating artifacts.</task>
+<task>Run `grace status --path PROJECT --json` and report current GRACE 4 state without mutating artifacts. Module-health summary counts are always evaluated; add `--with modules` only when detailed module records are needed.</task>
 
 <must_report>
 - Project kind: GRACE 4, legacy GRACE 3 migration candidate, or missing GRACE; plus context completeness.
@@ -17,7 +17,7 @@ description: "Показывает здоровье GRACE 4-проекта: ко
 </must_report>
 
 <commands>
-- Current integrity: `grace lint --path PROJECT --assertions current`
+- Pre-implementation active-baseline integrity: `grace lint --path PROJECT --assertions current`
 - Parallel decision: `grace lint --path PROJECT --parallel-preflight`
 - Status snapshot: `grace status --path PROJECT --with modules --json --fail-on errors`
 </commands>
