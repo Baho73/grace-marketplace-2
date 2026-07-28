@@ -101,7 +101,7 @@ Every iteration:
 | Class | Trigger | Action |
 |---|---|---|
 | `reversible-act` | Obvious implementation step; well-defined contract; single credible approach | **Act** — invoke `grace-execute` or `grace-fix`; journal; continue. |
-| `uncertain-deferred` | Multiple credible approaches with different tradeoffs, no obvious winner | **Defer** to `deferred.md` — or, when the tradeoff is worth a real search, delegate to `grace-evolve` and journal the outcome. |
+| `uncertain-deferred` | Multiple credible approaches with different tradeoffs, no obvious winner | First try a TRIZ pass (local `triz` skill): formulate the contradiction between the approaches and look for a resolving injection; if it yields a reversible in-scope action — act and journal. Else **defer** to `deferred.md` — or, when the tradeoff is measurable and worth a real search, delegate to `grace-evolve` and journal the outcome. |
 | `one-way-door-escalated` | Irreversible or main-branch-affecting: push to main, force push, drop DB, deploy, external API side-effects, changing a public MODULE_CONTRACT | **`grace afk ask`** via Telegram; poll `grace afk check` with backoff 10 / 30 / 60 / 120 min. |
 | `one-way-door-deferred` | Same as above but Telegram unavailable OR max escalations already sent | **Defer** and move to next step. |
 | `scope-creep-deferred` | The step's description would pull in edits outside the declared write scope | **Always defer**, never act. |

@@ -36,6 +36,10 @@ Produce `plan.xml` from `references/change-plan-template.xml` as draft unless th
 - Never put `--assertions current` in `TargetAssertions` or in task verification that runs after writes. Use selected target/final lint externally instead.
 </command_phase_rules>
 
+<contradiction_routing>
+If two candidate approaches — or two assertions / scope demands — are mutually exclusive (satisfying one degrades the other), run the local `triz` skill (MCP tools `triz_conflictoring` / `triz_resolve`) on the contradiction before finalizing the task breakdown. Prefer a plan built on the resolving injection over a compromise plan; note the outcome in the plan intent or `design-context.xml`. If the triz toolset is unavailable in this session, record the contradiction as an open question instead of silently compromising.
+</contradiction_routing>
+
 <validation>
 - Active-baseline preflight: `grace lint --path PROJECT --assertions current`
 - Parallel safety: `grace lint --path PROJECT --parallel-preflight`

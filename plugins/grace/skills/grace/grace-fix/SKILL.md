@@ -12,6 +12,10 @@ description: "Отлаживает и исправляет проблемы в G
 5. Identify root cause, present findings, then make the smallest safe fix.
 </investigation_path>
 
+<contradiction_resolution>
+When the root cause is a genuine contradiction — fixing X breaks Y, two requirements or contracts pull in opposite directions — do not pick a side by taste. Invoke the local `triz` skill (MCP tools `triz_conflictoring` / `triz_resolve`) to formulate the contradiction and search for an injection that removes it instead of a compromise. Record the contradiction and the chosen injection in the fix's CHANGE_SUMMARY. If the triz toolset is unavailable in this session, state the contradiction explicitly and present both sides to the user instead of silently choosing.
+</contradiction_resolution>
+
 <verification>
 Run the specific `V-M-*` commands or closest deterministic tests. If verification expectations are stale, update or propose changes through the GRACE 4 change lifecycle.
 </verification>
