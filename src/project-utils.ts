@@ -1,6 +1,7 @@
-import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { type Dirent, existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { ADAPTER_BACKED_EXTENSIONS, CODE_EXTENSIONS, LANGUAGE_ADAPTERS } from "./language-registry";
+import { readCachedAnalysis, writeCachedAnalysis } from "./lint/analysis-cache";
 import { LanguageRuntimeMissingError, type LanguageAnalysis, type LintIssue, type MapMode, type ModuleRole } from "./lint/types";
 
 export type TextSection = {
@@ -51,15 +52,87 @@ export type GovernedFileAnalysis = {
   issues: LintIssue[];
 };
 
+/**
+ * Directory names pruned from every project walk, matched at any depth.
+ * Covers VCS metadata, build output, dependency caches, vendored code,
+ * and tool scratch space across the ecosystems GRACE analyzes.
+ */
 const DEFAULT_IGNORED_DIRS = new Set([
+  // VCS metadata
   ".git",
+  ".svn",
+  ".hg",
+  // JavaScript/TypeScript output and caches
   "node_modules",
   "dist",
   "build",
   "coverage",
   ".next",
+  ".nuxt",
+  ".output",
+  "out",
   ".turbo",
+  ".vite",
+  ".parcel-cache",
+  ".svelte-kit",
+  ".astro",
+  "storybook-static",
   ".cache",
+  ".yarn",
+  ".nyc_output",
+  "bower_components",
+  "jspm_packages",
+  ".stryker-tmp",
+  ".serverless",
+  ".docusaurus",
+  // Python bytecode, virtualenvs, tool caches, and coverage reports
+  "__pycache__",
+  "venv",
+  ".venv",
+  ".tox",
+  ".nox",
+  ".pytest_cache",
+  ".mypy_cache",
+  ".ruff_cache",
+  ".pyre",
+  ".pytype",
+  "htmlcov",
+  ".eggs",
+  ".hypothesis",
+  ".ipynb_checkpoints",
+  "__pypackages__",
+  ".pixi",
+  "cover",
+  // Test reports and artifacts (Playwright, Allure, TestNG, Newman, Cucumber,
+  // common CI layout)
+  "test-results",
+  "test-reports",
+  "playwright-report",
+  "blob-report",
+  "allure-results",
+  "allure-report",
+  "test-output",
+  "newman",
+  "cucumber-report",
+  "cucumber-reports",
+  // JVM and Rust build output, Gradle cache, IDE metadata
+  "target",
+  ".gradle",
+  ".idea",
+  // Vendored dependencies (Go modules, Ruby bundler, PHP Composer)
+  "vendor",
+  // Swift/Apple toolchain output and dependencies
+  ".build",
+  "Pods",
+  "Carthage",
+  "DerivedData",
+  // Dart/Flutter tooling cache
+  ".dart_tool",
+  // Ruby/general scratch space and bundler config
+  "tmp",
+  ".bundle",
+  // Editor metadata
+  ".vscode",
 ]);
 
 
@@ -131,8 +204,19 @@ function isCommentOnlyLine(line: string) {
   return /^\s*(\/\/|#|--|;+|\*)/.test(line);
 }
 
+/**
+ * Case-insensitive, with the printf/context suffixes those ecosystems use,
+ * because Go, Java, and C# capitalise logger methods: `.Info(`, `.InfoContext(`,
+ * `.Errorf(`. A lowercase-only pattern recognises no emission there at all.
+ *
+ * `severe` is java.util.logging's error level, and the `log*` names are C#
+ * ILogger's (`LogWarning`, `LogInformation`). Without them those two only match
+ * when the receiver happens to be called `logger`, which is not a guarantee.
+ */
 function looksLikeEvidenceEmission(line: string) {
-  return /(console\.|logger\.|tracer\.|trace\s*\(|emit\s*\(|\.(info|warn|error|debug|trace)\s*\()/.test(line);
+  return /(console\.|logger\.|tracer\.|trace\s*\(|emit\s*\(|\.(?:info|warn(?:ing)?|error|debug|trace|severe|log(?:information|warning|error|debug|trace|critical))(?:f|w|ln)?(?:context)?\s*\()/i.test(
+    line,
+  );
 }
 
 /** Extracts the semantic block name encoded at the end of a required log marker. */
@@ -142,9 +226,10 @@ export function parseMarkerBlockName(marker: string) {
 }
 
 /**
- * Returns true when a required marker is emitted directly or through a same-file
- * identifier assigned to that exact marker. Identifier-aware boundaries keep
- * names such as marker$ distinct from marker$Other.
+ * Returns true when a required marker is emitted directly, through a same-file
+ * identifier assigned to that exact marker, or assembled from an identifier
+ * holding a PREFIX of it concatenated with the remainder. Identifier-aware
+ * boundaries keep names such as marker$ distinct from marker$Other.
  */
 export function hasRuntimeMarkerEvidence(text: string, marker: string) {
   const lines = text.split("\n");
@@ -168,16 +253,112 @@ export function hasRuntimeMarkerEvidence(text: string, marker: string) {
     }
   }
 
-  return [...identifiers].some((identifier) => {
-    const identifierUse = new RegExp(`(?<![A-Za-z0-9_$])${escapeRegExp(identifier)}(?![A-Za-z0-9_$])`);
-    return lines.some((line) => !isCommentOnlyLine(line) && looksLikeEvidenceEmission(line) && identifierUse.test(line));
-  });
+  if (
+    [...identifiers].some((identifier) => {
+      // `.` is in the lookbehind so `obj.logger` is not read as a use of a
+      // constant named `logger`. Broadening the emission match to capitalised
+      // methods makes that reachable: `const logger = "<marker>"` plus an
+      // unrelated `obj.logger.Info(...)` would otherwise credit the marker.
+      const identifierUse = new RegExp(`(?<![A-Za-z0-9_$.])${escapeRegExp(identifier)}(?![A-Za-z0-9_$])`);
+      return lines.some((line) => !isCommentOnlyLine(line) && looksLikeEvidenceEmission(line) && identifierUse.test(line));
+    })
+  ) {
+    return true;
+  }
+
+  return hasConcatenatedMarkerEvidence(lines, marker);
 }
 
-export function collectCodeFiles(root: string, ignoredDirs: string[], currentDir = root): string[] {
+/**
+ * Credits `logModule+"[fn][BLOCK_X]"`, where the whole marker is neither on the
+ * line nor bound to an identifier. Each binding gives one way the marker could
+ * split: its value must prefix the marker, the remainder must be on the line.
+ */
+function hasConcatenatedMarkerEvidence(lines: string[], marker: string) {
+  const constants = new Map<string, Set<string>>();
+  // The name must open the line, follow a declaration keyword, or follow `( , ;`.
+  // Allowing any whitespace before it let Go's `var prefix string = "..."` bind
+  // the TYPE token: `:?=` fails at `string`, the engine re-scans, and `string`
+  // becomes the name. A line using that token for anything else - `string(body)` -
+  // then credits a marker nothing emitted.
+  const binding =
+    /(?:^\s*|[(,;]\s*|\b(?:const|let|var|final|static)\s+)([A-Za-z_$][A-Za-z0-9_$]*)\s*(?::[^=\n]+?)?:?=\s*(["'`])((?:\\.|(?!\2)[^\\])*)\2/g;
+
+  for (const line of lines) {
+    if (isCommentOnlyLine(line)) {
+      continue;
+    }
+    for (const match of line.matchAll(binding)) {
+      const name = match[1]!;
+      if (!constants.has(name)) {
+        constants.set(name, new Set());
+      }
+      constants.get(name)!.add(match[3]!);
+    }
+  }
+
+  // The lookbehind on `.` keeps `d.log` from counting as a use of `log`.
+  const boundary = (name: string) => `(?<![A-Za-z0-9_$.])${escapeRegExp(name)}(?![A-Za-z0-9_$])`;
+
+  const splits: RegExp[] = [];
+  for (const [name, values] of constants) {
+    for (const value of values) {
+      if (!marker.startsWith(value)) {
+        continue;
+      }
+      const remainder = marker.slice(value.length);
+      if (remainder === "") {
+        // The binding already holds the whole marker; using it is the emission.
+        splits.push(new RegExp(boundary(name)));
+        continue;
+      }
+      // The remainder must ADJOIN the identifier, not merely share the line with
+      // it. Checking both appear anywhere credits `log("… " + p + " … <tail>")`,
+      // where nothing ever assembles the marker - a false pass on a gate whose
+      // whole job is to prove the marker is emitted.
+      splits.push(
+        new RegExp(`(?:${boundary(name)}\\s*\\+\\s*["'\`]|\\$\\{\\s*${escapeRegExp(name)}\\s*\\})${escapeRegExp(remainder)}`),
+      );
+    }
+  }
+
+  if (splits.length === 0) {
+    return false;
+  }
+
+  return lines.some(
+    (line) => !isCommentOnlyLine(line) && looksLikeEvidenceEmission(line) && splits.some((split) => split.test(line)),
+  );
+}
+
+/** Notified when a directory cannot be listed during a project walk. */
+export type UnreadableDirectoryHandler = (directory: string, error: unknown) => void;
+
+/** Stable, diagnosable message for a directory that could not be listed. */
+export function describeUnreadableDirectory(directory: string, error: unknown): string {
+  const code = error !== null && typeof error === "object" && "code" in error && typeof (error as { code?: unknown }).code === "string"
+    ? (error as { code: string }).code
+    : "unknown";
+  return `Directory '${directory}' could not be listed (${code}); its contents were not checked.`;
+}
+
+export function collectCodeFiles(
+  root: string,
+  ignoredDirs: string[],
+  currentDir = root,
+  onUnreadableDirectory?: UnreadableDirectoryHandler,
+): string[] {
   const files: string[] = [];
   const ignoredDirSet = new Set([...DEFAULT_IGNORED_DIRS, ...ignoredDirs]);
-  const entries = readdirSync(currentDir, { withFileTypes: true });
+  let entries: Dirent[];
+  try {
+    entries = readdirSync(currentDir, { withFileTypes: true });
+  } catch (error) {
+    // An unreadable directory (EACCES/EPERM, sandbox leftovers, chmod 000) must
+    // not abort the whole walk: skip it and let the caller surface a warning.
+    onUnreadableDirectory?.(currentDir, error);
+    return files;
+  }
 
   for (const entry of entries) {
     if (entry.isDirectory()) {
@@ -185,7 +366,7 @@ export function collectCodeFiles(root: string, ignoredDirs: string[], currentDir
         continue;
       }
 
-      files.push(...collectCodeFiles(root, ignoredDirs, path.join(currentDir, entry.name)));
+      files.push(...collectCodeFiles(root, ignoredDirs, path.join(currentDir, entry.name), onUnreadableDirectory));
       continue;
     }
 
@@ -277,7 +458,15 @@ export function analyzeGovernedFile(root: string, filePath: string, text: string
   let language: LanguageAnalysis | null = null;
   if (adapter) {
     try {
-      language = adapter.analyze(filePath, text);
+      // Successful analyses are content-cached across runs; failures stay
+      // uncached so environment fixes take effect immediately.
+      const cached = readCachedAnalysis(adapter.id, filePath, text);
+      if (cached) {
+        language = cached;
+      } else {
+        language = adapter.analyze(filePath, text);
+        writeCachedAnalysis(adapter.id, filePath, text, language);
+      }
     } catch (error) {
       issues.push(markupIssue(
         "error",

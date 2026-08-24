@@ -1,10 +1,10 @@
 import { spawnSync } from "node:child_process";
-import { chmodSync, mkdtempSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, readdirSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, it, test } from "bun:test";
 
-import { analyzeGovernedFile, hasRuntimeMarkerEvidence, parseGovernedFile } from "./project-utils";
+import { analyzeGovernedFile, collectCodeFiles, describeUnreadableDirectory, hasRuntimeMarkerEvidence, parseGovernedFile } from "./project-utils";
 
 function contract(mapMode: "EXPORTS" | "LOCALS" | "SUMMARY" | "NONE", moduleMap = ""): string {
   // NOTE: nested template literals avoided on the moduleMap line — the linter's quote
@@ -115,6 +115,109 @@ export const value = true;
     expect(hasRuntimeMarkerEvidence(`// const marker$ = "${marker}";\nconsole.info(marker$ + " ok");`, marker)).toBe(false);
   });
 
+  it("credits capitalised logger methods used by Go, Java, and C#", () => {
+    const marker = "[Example][run][BLOCK_RUN]";
+    // Go stdlib log
+    expect(hasRuntimeMarkerEvidence(`log.Info("${marker} ok")`, marker)).toBe(true);
+    expect(hasRuntimeMarkerEvidence(`log.Warn("${marker} ok")`, marker)).toBe(true);
+    // Go slog, context-taking variants
+    expect(hasRuntimeMarkerEvidence(`d.log.InfoContext(ctx, "${marker} ok")`, marker)).toBe(true);
+    expect(hasRuntimeMarkerEvidence(`slog.Error("${marker} failed")`, marker)).toBe(true);
+    // Go logrus/zap, printf form
+    expect(hasRuntimeMarkerEvidence(`logger.Errorf("${marker} failed: %v", err)`, marker)).toBe(true);
+    // java.util.logging - note `severe` is its error level, not a Go/SLF4J name
+    expect(hasRuntimeMarkerEvidence(`LOG.info("${marker} ok")`, marker)).toBe(true);
+    expect(hasRuntimeMarkerEvidence(`LOG.severe("${marker} failed")`, marker)).toBe(true);
+    // Java SLF4J / Log4j, on a receiver not called `logger`
+    expect(hasRuntimeMarkerEvidence(`LOG.debug("${marker} ok")`, marker)).toBe(true);
+    // C# ILogger. The receiver here is NOT `logger`, so this passes only because
+    // the `Log*` method names are matched - not by the bare `logger.` prefix.
+    expect(hasRuntimeMarkerEvidence(`_log.LogInformation("${marker} ok")`, marker)).toBe(true);
+    expect(hasRuntimeMarkerEvidence(`_log.LogWarning("${marker} ok")`, marker)).toBe(true);
+  });
+
+  it("credits the level spellings and suffixes the alternation exists for", () => {
+    const marker = "[Example][run][BLOCK_RUN]";
+    // java.util.logging: `warn` cannot cover this - the required `(` makes the
+    // engine backtrack on "ing(", and `LOG.` is not the bare `logger.` prefix.
+    expect(hasRuntimeMarkerEvidence(`LOG.warning("${marker} ok")`, marker)).toBe(true);
+    // C# ILogger, same spelling capitalised
+    expect(hasRuntimeMarkerEvidence(`LOG.Warning("${marker} ok")`, marker)).toBe(true);
+    // Go zap, sugared key/value form
+    expect(hasRuntimeMarkerEvidence(`zap.Infow("${marker} ok", "k", v)`, marker)).toBe(true);
+    // Go glog, println form
+    expect(hasRuntimeMarkerEvidence(`glog.Infoln("${marker} ok")`, marker)).toBe(true);
+  });
+
+  it("credits the declaration forms the targeted languages actually use", () => {
+    const marker = "[Example][run][BLOCK_RUN]";
+    const emit = `\nlog.Info(prefix + "[run][BLOCK_RUN] ok")`;
+    // Go short declaration - its primary form, matched only by the `:?=` clause
+    expect(hasRuntimeMarkerEvidence(`prefix := "[Example]"${emit}`, marker)).toBe(true);
+    // Go const, the idiomatic form for a log prefix
+    expect(hasRuntimeMarkerEvidence(`const prefix = "[Example]"${emit}`, marker)).toBe(true);
+    // Go untyped var
+    expect(hasRuntimeMarkerEvidence(`var prefix = "[Example]"${emit}`, marker)).toBe(true);
+    // TypeScript with a type annotation, which `:?=` was written for
+    expect(hasRuntimeMarkerEvidence(`const prefix: string = "[Example]";${emit}`, marker)).toBe(true);
+    // Go `:=` holding the WHOLE marker. Credited only by the empty-remainder
+    // branch of the concatenation path: the identifier path's assignment pattern
+    // ends in a bare `=` and rejects `:=`. Restricting concatenation to proper
+    // prefixes, on the view that whole markers "belong" to the identifier check,
+    // would silently drop Go's primary full-marker form.
+    expect(hasRuntimeMarkerEvidence(`marker := "${marker}"\nlog.Info(marker)`, marker)).toBe(true);
+
+    // Go TYPED var - still unsupported, but it must now bind NOTHING rather than
+    // bind the type token `string`. The second case is the one that mattered: a
+    // line using that token for anything else would otherwise credit the marker.
+    expect(hasRuntimeMarkerEvidence(`var prefix string = "[Example]"${emit}`, marker)).toBe(false);
+    expect(
+      hasRuntimeMarkerEvidence(`var modulePrefix string = "[Example]"\nlog.Info("[run][BLOCK_RUN] " + string(body))`, marker),
+    ).toBe(false);
+  });
+
+  it("requires the remainder to adjoin the constant, not merely share its line", () => {
+    const marker = "[Example][run][BLOCK_RUN]";
+    const decl = `const logModule = "[Example]"\n`;
+    // Genuine assembly, in the forms real code uses.
+    expect(hasRuntimeMarkerEvidence(`${decl}log.Info(logModule+"[run][BLOCK_RUN] ok")`, marker)).toBe(true);
+    expect(hasRuntimeMarkerEvidence(`${decl}log.Info(logModule + "[run][BLOCK_RUN] ok")`, marker)).toBe(true);
+    expect(hasRuntimeMarkerEvidence(`${decl}logger.info(\`\${logModule}[run][BLOCK_RUN] ok\`)`, marker)).toBe(true);
+
+    // Both halves present, never concatenated: the marker is not emitted here.
+    expect(
+      hasRuntimeMarkerEvidence(`${decl}logger.Warn("unrelated " + logModule + " text [run][BLOCK_RUN] not the marker")`, marker),
+    ).toBe(false);
+    expect(hasRuntimeMarkerEvidence(`${decl}log.Info(logModule + "[deploy] then [run][BLOCK_RUN] later")`, marker)).toBe(false);
+  });
+
+  it("does not read obj.name as a use of a constant called name", () => {
+    const marker = "[Example][run][BLOCK_RUN]";
+    // The marker is bound to `logger` but never emitted; `obj.logger.Info(...)`
+    // is an unrelated call. Without `.` in the identifier lookbehind this is
+    // credited, and a module passes its required-marker check without emitting.
+    expect(hasRuntimeMarkerEvidence(`const logger = "${marker}";\nobj.logger.Info("unrelated")`, marker)).toBe(false);
+    expect(hasRuntimeMarkerEvidence(`const log = "${marker}";\nobj.log.Warning("unrelated")`, marker)).toBe(false);
+  });
+
+  it("credits a marker assembled from a module-prefix constant", () => {
+    const marker = "[Example][run][BLOCK_RUN]";
+    const emitted = [`const logModule = "[Example]"`, `log.Info(logModule+"[run][BLOCK_RUN] ok")`].join("\n");
+    expect(hasRuntimeMarkerEvidence(emitted, marker)).toBe(true);
+
+    // A different block in the same family must not be credited.
+    const other = [`const logModule = "[Example]"`, `log.Info(logModule+"[run][BLOCK_OTHER] ok")`].join("\n");
+    expect(hasRuntimeMarkerEvidence(other, marker)).toBe(false);
+
+    // An unknown prefix identifier resolves to nothing.
+    const unknown = [`const logModule = "[Example]"`, `log.Info(otherModule+"[run][BLOCK_RUN] ok")`].join("\n");
+    expect(hasRuntimeMarkerEvidence(unknown, marker)).toBe(false);
+
+    // A property access must not resolve a constant of the same name.
+    const shadowed = [`const log = "[Example]"`, `d.log.Info("unrelated")`].join("\n");
+    expect(hasRuntimeMarkerEvidence(shadowed, marker)).toBe(false);
+  });
+
   it("emits bounded-confidence diagnostics for heuristic Python analysis", () => {
     const hasPython = ["python3", "python"].some((binary) => {
       const result = spawnSync(binary, ["--version"], { stdio: "ignore" });
@@ -213,5 +316,96 @@ console.log(JSON.stringify(result.issues));`;
     const issues = JSON.parse(Buffer.from(run.stdout).toString("utf8")) as Array<{ code: string }>;
     expect(issues.map((issue) => issue.code)).toContain("analysis.adapter-failed");
     expect(issues.map((issue) => issue.code)).not.toContain("analysis.runtime-missing");
+  });
+});
+
+describe("unreadable directory walking", () => {
+  const permissionsUnsupported = process.platform === "win32" || process.getuid?.() === 0;
+
+  it("describes walk failures with the directory and errno code", () => {
+    const errno = Object.assign(new Error("EPERM: operation not permitted"), { code: "EACCES" });
+    expect(describeUnreadableDirectory("/project/blocked", errno)).toBe(
+      "Directory '/project/blocked' could not be listed (EACCES); its contents were not checked.",
+    );
+    expect(describeUnreadableDirectory("/project/blocked", new Error("boom"))).toBe(
+      "Directory '/project/blocked' could not be listed (unknown); its contents were not checked.",
+    );
+  });
+
+  it.skipIf(permissionsUnsupported)("skips unreadable directories instead of throwing", () => {
+    const root = mkdtempSync(path.join(os.tmpdir(), "grace-walk-"));
+    writeFileSync(path.join(root, "visible.ts"), "export const visible = true;\n");
+    mkdirSync(path.join(root, "readable"));
+    writeFileSync(path.join(root, "readable", "other.ts"), "export const other = true;\n");
+    mkdirSync(path.join(root, "blocked"));
+    writeFileSync(path.join(root, "blocked", "hidden.ts"), "export const hidden = true;\n");
+    chmodSync(path.join(root, "blocked"), 0o000);
+
+    try {
+      const reported: Array<{ directory: string; error: unknown }> = [];
+      const files = collectCodeFiles(root, [], root, (directory, error) => reported.push({ directory, error }));
+
+      expect(files.sort()).toEqual([path.join(root, "readable", "other.ts"), path.join(root, "visible.ts")].sort());
+      expect(reported).toHaveLength(1);
+      expect(reported[0]?.directory).toBe(path.join(root, "blocked"));
+
+      // Without a handler the walk still must not abort.
+      expect(collectCodeFiles(root, []).sort()).toEqual([path.join(root, "readable", "other.ts"), path.join(root, "visible.ts")].sort());
+    } finally {
+      chmodSync(path.join(root, "blocked"), 0o755);
+    }
+  });
+
+  it.skipIf(permissionsUnsupported)("still throws nothing for readable roots when a handler is attached", () => {
+    const root = mkdtempSync(path.join(os.tmpdir(), "grace-walk-ok-"));
+    mkdirSync(path.join(root, "src"));
+    writeFileSync(path.join(root, "src", "example.ts"), "export const example = true;\n");
+
+    const reported: string[] = [];
+    const files = collectCodeFiles(root, [], root, (directory) => reported.push(directory));
+
+    expect(files).toEqual([path.join(root, "src", "example.ts")]);
+    expect(reported).toEqual([]);
+  });
+});
+
+describe("default ignored directories", () => {
+  const defaultIgnored = [
+    ".git", ".svn", ".hg",
+    "node_modules", "dist", "build", "coverage", ".next", ".nuxt", ".output", "out", ".turbo",
+    ".vite", ".parcel-cache", ".svelte-kit", ".astro", "storybook-static", ".cache", ".yarn",
+    ".nyc_output", "bower_components", "jspm_packages", ".stryker-tmp", ".serverless",
+    ".docusaurus",
+    "__pycache__", "venv", ".venv", ".tox", ".nox", ".pytest_cache", ".mypy_cache", ".ruff_cache",
+    ".pyre", ".pytype", "htmlcov", ".eggs", ".hypothesis", ".ipynb_checkpoints", "__pypackages__",
+    ".pixi", "cover",
+    "test-results", "test-reports", "playwright-report", "blob-report", "allure-results",
+    "allure-report", "test-output", "newman", "cucumber-report", "cucumber-reports",
+    "target", ".gradle", ".idea",
+    "vendor",
+    ".build", "Pods", "Carthage", "DerivedData",
+    ".dart_tool",
+    "tmp", ".bundle",
+    ".vscode",
+  ];
+
+  it("prunes well-known ecosystem directories by default", () => {
+    const root = mkdtempSync(path.join(os.tmpdir(), "grace-ignore-"));
+    for (const dir of defaultIgnored) {
+      mkdirSync(path.join(root, dir));
+      writeFileSync(path.join(root, dir, "generated.ts"), "export const generated = true;\n");
+    }
+    writeFileSync(path.join(root, "source.ts"), "export const source = true;\n");
+
+    expect(collectCodeFiles(root, [])).toEqual([path.join(root, "source.ts")]);
+  });
+
+  it("prunes default-ignored names at any depth", () => {
+    const root = mkdtempSync(path.join(os.tmpdir(), "grace-ignore-depth-"));
+    mkdirSync(path.join(root, "src", "__pycache__"), { recursive: true });
+    writeFileSync(path.join(root, "src", "__pycache__", "cached.ts"), "export const cached = true;\n");
+    writeFileSync(path.join(root, "src", "main.ts"), "export const main = true;\n");
+
+    expect(collectCodeFiles(root, [])).toEqual([path.join(root, "src", "main.ts")]);
   });
 });

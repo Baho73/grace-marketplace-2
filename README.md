@@ -4,7 +4,7 @@
 
 This repository ships the GRACE skills plus the optional `grace` CLI. It is a packaging and distribution repository, not an end-user application.
 
-Current packaged version: `4.0.4`. Fork of [`osovv/grace-marketplace`](https://github.com/osovv/grace-marketplace) with additional skills (grace-bootstrap, grace-afk, grace-ask-human, grace-evolve), CLI surfaces (afk, evolve), and a global Telegram config at `~/.grace/afk.json` so one AFK setup serves every project on the machine.
+Current packaged version: `4.0.5`. Fork of [`osovv/grace-marketplace`](https://github.com/osovv/grace-marketplace) with additional skills (grace-bootstrap, grace-afk, grace-ask-human, grace-evolve), CLI surfaces (afk, evolve), and a global Telegram config at `~/.grace/afk.json` so one AFK setup serves every project on the machine.
 
 ## What This Repository Ships
 
@@ -210,6 +210,41 @@ scaffolding. Full protocol and red-flag list in `skills/grace/grace-afk/SKILL.md
 `docs/diagrams/grace-afk-loop.md`.
 
 Lint, status, and projection-backed navigation fail closed: invalid options, invalid grammar, malformed active assertions/scopes, duplicate ownership, missing routed files, or ambiguous targets produce structured results or a nonzero error envelope. JSON command failures emit one stable `{ "schemaVersion": "1.0.0", "ok": false, "error": { ... } }` envelope on stdout; text failures emit one concise actionable line without a stack trace.
+
+### Lint Configuration
+
+An optional `.grace-lint.json` file at the project root (next to `.grace`) controls how `grace lint` and the query commands collect code files:
+
+```json
+{
+  "ignoredDirs": ["generated", "fixtures-output"]
+}
+```
+
+- `ignoredDirs` lists directory names to prune from file collection, on top of the built-in set below. Names match at any depth; globs and paths are not supported.
+- The file must be a JSON object with supported keys only. Broken JSON, a non-object shape, an unknown key, or a non-array `ignoredDirs` is a `config.*` lint error, and query commands refuse to run until the file is fixed.
+- A directory that cannot be listed (restrictive permissions, sandbox leftovers) is skipped with a `walk.unreadable-directory` warning instead of aborting the run; add its name to `ignoredDirs` to prune it silently. Explain any of these codes with `grace lint --explain <code>`.
+
+Built-in ignored directories:
+
+- VCS metadata: `.git`, `.svn`, `.hg`
+- JavaScript/TypeScript output and caches: `node_modules`, `dist`, `build`, `coverage`, `.next`, `.nuxt`, `.output`, `out`, `.turbo`, `.vite`, `.parcel-cache`, `.svelte-kit`, `.astro`, `storybook-static`, `.cache`, `.yarn`, `.nyc_output`, `bower_components`, `jspm_packages`, `.stryker-tmp`, `.serverless`, `.docusaurus`
+- Python bytecode, virtualenvs, and tool caches: `__pycache__`, `venv`, `.venv`, `.tox`, `.nox`, `.pytest_cache`, `.mypy_cache`, `.ruff_cache`, `.pyre`, `.pytype`, `htmlcov`, `.eggs`, `.hypothesis`, `.ipynb_checkpoints`, `__pypackages__`, `.pixi`, `cover`
+- Test reports and artifacts: `test-results`, `test-reports`, `playwright-report`, `blob-report`, `allure-results`, `allure-report`, `test-output`, `newman`, `cucumber-report`, `cucumber-reports`
+- JVM and Rust build output: `target`, `.gradle`, `.idea`
+- Vendored dependencies (Go modules, Ruby bundler, PHP Composer): `vendor`
+- Swift/Apple toolchain output and dependencies: `.build`, `Pods`, `Carthage`, `DerivedData`
+- Dart/Flutter tooling cache: `.dart_tool`
+- Ruby/general scratch space: `tmp`, `.bundle`
+- Editor metadata: `.vscode`
+
+### Analysis Cache
+
+Successful per-file language analyses are cached across runs, so unchanged governed files are not re-analyzed. Entries are keyed by file content and extension plus a schema version: any file edit or analyzer logic change invalidates the entry automatically, and failed analyses are never cached, so fixing a missing runtime takes effect immediately.
+
+- Location: `$XDG_CACHE_HOME/grace-cli/analysis`, falling back to `~/.cache/grace-cli/analysis`. Override the base directory with `GRACE_CACHE_DIR`.
+- Disable caching with `GRACE_NO_CACHE=1`.
+- The cache lives outside the project: it never touches `.grace` and produces no drift noise.
 
 ## Grep-First Navigation
 
