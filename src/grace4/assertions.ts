@@ -1,10 +1,11 @@
 import { existsSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 
+import type { CommandRunResult } from "./command-runner";
 import type { Grace4Issue } from "./types";
 import { ProjectPathError, resolveContainedProjectPath } from "./paths";
 import type { GraphAnchorRecord, GraphProjection, VerificationProjection } from "./projections";
-import { readGraceXmlArtifact, walkNodes, type GraceXmlNode } from "./xml";
+import { hasForbiddenAttributes, readGraceXmlArtifact, walkNodes, type GraceXmlNode } from "./xml";
 
 /** Supported machine-checkable GRACE 4 assertion kinds. */
 export type AssertionKind =
@@ -22,6 +23,13 @@ export type GraceAssertion = {
   kind: AssertionKind;
   file: string;
   values: string[];
+  /** Stamped at extraction: `${planFile}::${section}::${assertionIndex}` — links command results. */
+  slotKey?: string;
+  /**
+   * MustPassCommand only: declared `budgetSeconds` per Command, index-aligned with `values`.
+   * `null` means no declared budget, so the global `--command-timeout` applies; `0` disables it.
+   */
+  commandBudgetsSeconds?: (number | null)[];
 };
 
 /** Context required to evaluate a GRACE 4 assertion. */
@@ -31,6 +39,8 @@ export type AssertionContext = {
   verification: VerificationProjection;
   /** Commands run only when an explicit target-verification path opts in. */
   runCommands?: boolean;
+  /** Pre-computed MustPassCommand results keyed by assertion slotKey, one entry per Command value. */
+  commandResults?: Map<string, CommandRunResult[]>;
 };
 
 export type AssertionExtractionResult = {
@@ -56,6 +66,11 @@ export const ASSERTION_SCHEMAS: Record<AssertionKind, AssertionSchema> = {
   MustContain: { fields: ["File", "Text"], fileField: "File" },
   MustNotContain: { fields: ["File", "Text"], fileField: "File" },
 };
+
+/** Optional per-command timeout attribute allowed on MustPassCommand/Command. */
+const COMMAND_BUDGET_ATTRIBUTE = "budgetSeconds";
+const COMMAND_FIELD_ATTRIBUTES = new Set([COMMAND_BUDGET_ATTRIBUTE]);
+const NO_FIELD_ATTRIBUTES = new Set<string>();
 
 export const ASSERTION_KINDS = new Set<AssertionKind>([
   "MustExist",
@@ -109,6 +124,7 @@ export function extractAssertionsWithIssues(
 
   const sections = [...walkNodes(artifact.root)].filter((node) => node.tag === section);
   for (const sectionNode of sections) {
+    const sectionStart = assertions.length;
     let validAssertions = 0;
     if (sectionNode.text.trim() || Object.keys(sectionNode.attributes).length > 0) {
       issues.push(issue("error", "assertion.invalid-section-shape", planFile, `${section} must contain only approved assertion child elements.`));
@@ -132,15 +148,114 @@ export function extractAssertionsWithIssues(
       assertions.push({
         ...extraction.assertion,
         file: planFile,
+        slotKey: `${planFile}::${section}::${assertions.length}`,
       });
       validAssertions += 1;
     }
     if (validAssertions === 0) {
       issues.push(issue("error", "assertion.empty-section", planFile, `${section} must contain at least one valid machine-checkable assertion.`));
     }
+    issues.push(...detectSubsumedCommands(planFile, assertions.slice(sectionStart)));
   }
 
   return { assertions, issues };
+}
+
+/** One declared command split into its non-path head and its path arguments. */
+type CommandProfile = {
+  command: string;
+  /** Leading positional tokens that are not path arguments, joined by single spaces. */
+  head: string;
+  /** Path arguments, each split into normalized path components. */
+  paths: string[][];
+};
+
+/**
+ * Warns when one declared command in a section already runs everything another one runs, which is
+ * how a gate silently doubles its own wall-clock cost. Comparison is deliberately conservative:
+ * only commands with an identical head are compared, and path arguments are matched component-wise,
+ * so `bun test src` covers `bun test src/grace4` but not `bun test srcfoo`.
+ */
+function detectSubsumedCommands(planFile: string, assertions: GraceAssertion[]): Grace4Issue[] {
+  const root = inferProjectRoot(planFile);
+  const profiles = assertions
+    .filter((assertion) => assertion.kind === "MustPassCommand")
+    .flatMap((assertion) => assertion.values)
+    .map((command) => profileCommand(command, root));
+
+  const issues: Grace4Issue[] = [];
+  for (let left = 0; left < profiles.length; left++) {
+    for (let right = left + 1; right < profiles.length; right++) {
+      const first = profiles[left]!;
+      const second = profiles[right]!;
+      const wider = subsumesCommand(first, second) ? first : subsumesCommand(second, first) ? second : null;
+      if (!wider) {
+        continue;
+      }
+      const narrower = wider === first ? second : first;
+      issues.push(issue(
+        "warning",
+        "assertion.command-subsumed",
+        planFile,
+        `MustPassCommand ${JSON.stringify(narrower.command)} is already covered by ${JSON.stringify(wider.command)} in the same assertion section; the gate runs that work twice.`,
+      ));
+    }
+  }
+  return issues;
+}
+
+function profileCommand(command: string, root: string): CommandProfile {
+  const headTokens: string[] = [];
+  const paths: string[][] = [];
+  for (const token of command.split(/\s+/).filter((part) => part.length > 0 && !part.startsWith("-"))) {
+    if (paths.length === 0 && !isPathArgument(token, root)) {
+      headTokens.push(token);
+      continue;
+    }
+    paths.push(pathComponents(token));
+  }
+  return { command, head: headTokens.join(" "), paths };
+}
+
+/**
+ * A bare token counts as a path argument only when it carries a separator or actually exists under
+ * the project root, so `bun run check` keeps `check` in its head while `bun test src` does not.
+ */
+function isPathArgument(token: string, root: string): boolean {
+  if (/[\\/]/.test(token)) {
+    return true;
+  }
+  try {
+    return existsSync(path.join(root, token));
+  } catch {
+    return false;
+  }
+}
+
+function pathComponents(token: string): string[] {
+  return token.split(/[\\/]+/).filter((part) => part.length > 0 && part !== ".");
+}
+
+function subsumesCommand(wider: CommandProfile, narrower: CommandProfile): boolean {
+  if (wider.head !== narrower.head || narrower.paths.length === 0) {
+    return false;
+  }
+  if (samePathArguments(wider.paths, narrower.paths)) {
+    return false;
+  }
+  if (wider.paths.length === 0) {
+    return true;
+  }
+  return narrower.paths.every((narrowPath) => wider.paths.some((widePath) => isComponentPrefix(widePath, narrowPath)));
+}
+
+function samePathArguments(left: string[][], right: string[][]): boolean {
+  const key = (paths: string[][]) => paths.map((parts) => parts.join("/")).sort().join("|");
+  return key(left) === key(right);
+}
+
+function isComponentPrefix(prefix: string[], candidate: string[]): boolean {
+  return prefix.length <= candidate.length && prefix.every((part, index) => part === candidate[index]);
 }
 
 function validateAssertionPhase(
@@ -160,6 +275,26 @@ function validateAssertionPhase(
       planFile,
       `TargetAssertions MustPassCommand must not invoke --assertions current: ${command}. Current mode evaluates active approved baselines and becomes stale after target writes; keep MustPassCommand as leaf project evidence and run selected target/final lint as the outer gate.`,
     ));
+}
+
+/** Plan lifecycle: `active` plans follow current execution policy; `archive` plans are immutable history. */
+export type AssertionLifecycle = "active" | "archive";
+
+/** Current-phase error diagnostics that never apply retroactively to archived plans. */
+const ACTIVE_PHASE_ISSUE_CODES: ReadonlySet<string> = new Set(["assertion.phase-incompatible-command"]);
+
+/** Advisory diagnostics that are unactionable noise for immutable archived plans. */
+const ARCHIVE_ADVISORY_ISSUE_CODES: ReadonlySet<string> = new Set(["assertion.command-subsumed"]);
+
+/**
+ * Shared lifecycle policy for assertion extraction diagnostics: lint and query navigation both
+ * consume this so their active/archived handling cannot drift apart again. Archived plans keep
+ * structural errors but drop active-phase errors and advisory noise, and archived commands are
+ * never executed because extraction itself never runs commands.
+ */
+export function filterAssertionIssuesForLifecycle(issues: Grace4Issue[], lifecycle: AssertionLifecycle): Grace4Issue[] {
+  if (lifecycle === "active") return issues;
+  return issues.filter((item) => !ACTIVE_PHASE_ISSUE_CODES.has(item.code) && !ARCHIVE_ADVISORY_ISSUE_CODES.has(item.code));
 }
 
 function evaluateMustOwn(assertion: GraceAssertion, context: AssertionContext): Grace4Issue[] {
@@ -214,24 +349,29 @@ function evaluateMustPassCommand(assertion: GraceAssertion, context: AssertionCo
     return [issue("error", "assertion.command-not-evaluated", assertion.file, "MustPassCommand requires explicit command execution opt-in.")];
   }
 
-  return assertion.values.flatMap((command) => {
-    const shellCommand = process.platform === "win32"
-      ? ["cmd.exe", "/d", "/s", "/c", command]
-      : [process.env.SHELL || "sh", "-lc", command];
-    const result = Bun.spawnSync({
-      cmd: shellCommand,
-      cwd: context.root,
-      stdout: "pipe",
-      stderr: "pipe",
-    });
+  const results = assertion.slotKey ? context.commandResults?.get(assertion.slotKey) : undefined;
+  if (!results) {
+    return [assertionIssue(assertion, "Command results unavailable for assertion.")];
+  }
 
-    if (result.exitCode === 0) {
+  return results
+    .filter((result) => !result.skipped)
+    .flatMap((result) => {
+      const detail = result.outputTail ? `\n${result.outputTail}` : "";
+      if (result.timedOut) {
+        return [assertionIssue(
+          assertion,
+          `Command timed out after ${Math.round(result.durationMs / 1000)}s: ${result.command}${detail}`,
+        )];
+      }
+      if (result.exitCode !== 0) {
+        return [assertionIssue(
+          assertion,
+          `Command failed (${result.exitCode}): ${result.command}${detail}`,
+        )];
+      }
       return [];
-    }
-
-    const stderr = new TextDecoder().decode(result.stderr).trim();
-    return [assertionIssue(assertion, `Command failed (${result.exitCode}): ${command}${stderr ? `: ${stderr}` : ""}`)];
-  });
+    });
 }
 
 function evaluateTextContainment(assertion: GraceAssertion, context: AssertionContext, shouldContain: boolean): Grace4Issue[] {
@@ -305,12 +445,14 @@ function extractAssertionNode(
     if (!allowedFields.has(child.tag)) {
       issues.push(issue("error", "assertion.invalid-shape", planFile, `${kind} does not allow child <${child.tag}>.`));
     }
-    if (child.children.length > 0 || Object.keys(child.attributes).length > 0) {
+    const allowedAttributes = isCommandField(kind, child.tag) ? COMMAND_FIELD_ATTRIBUTES : NO_FIELD_ATTRIBUTES;
+    if (child.children.length > 0 || hasForbiddenAttributes(child, allowedAttributes)) {
       issues.push(issue("error", "assertion.invalid-shape", planFile, `${kind}/${child.tag} must be a plain text field.`));
     }
   }
 
   const values: string[] = [];
+  const budgets: (number | null)[] = [];
   if (schema.allowManyValues) {
     const field = schema.fields[0]!;
     const matches = node.children.filter((child) => child.tag === field);
@@ -323,6 +465,9 @@ function extractAssertionNode(
         issues.push(issue("error", "assertion.invalid-shape", planFile, `${kind}/${field} must not be empty.`));
       } else {
         values.push(value);
+        if (isCommandField(kind, field)) {
+          budgets.push(parseCommandBudgetSeconds(planFile, match, issues));
+        }
       }
     }
   } else {
@@ -353,7 +498,41 @@ function extractAssertionNode(
     }
   }
 
-  return issues.length > 0 ? { issues } : { assertion: { kind, values }, issues };
+  if (issues.length > 0) {
+    return { issues };
+  }
+  return {
+    assertion: kind === "MustPassCommand" ? { kind, values, commandBudgetsSeconds: budgets } : { kind, values },
+    issues,
+  };
+}
+
+function isCommandField(kind: AssertionKind, tag: string): boolean {
+  return kind === "MustPassCommand" && tag === "Command";
+}
+
+/**
+ * Parses the optional `budgetSeconds` attribute of one MustPassCommand/Command. The accepted
+ * grammar mirrors `--command-timeout`: a non-negative integer number of seconds, where `0`
+ * disables the timeout for that command. Returns null when the attribute is absent or invalid;
+ * an invalid value also records an error, which suppresses the whole assertion.
+ */
+function parseCommandBudgetSeconds(planFile: string, node: GraceXmlNode, issues: Grace4Issue[]): number | null {
+  const raw = node.attributes[COMMAND_BUDGET_ATTRIBUTE];
+  if (raw === undefined) {
+    return null;
+  }
+  const trimmed = raw.trim();
+  if (!/^\d+$/.test(trimmed)) {
+    issues.push(issue(
+      "error",
+      "assertion.invalid-command-budget",
+      planFile,
+      `MustPassCommand/Command ${COMMAND_BUDGET_ATTRIBUTE}=${JSON.stringify(raw)} must be a non-negative integer number of seconds; 0 disables the timeout for that command.`,
+    ));
+    return null;
+  }
+  return Number(trimmed);
 }
 
 function evaluateExistence(

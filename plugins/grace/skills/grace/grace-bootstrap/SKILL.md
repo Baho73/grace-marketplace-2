@@ -126,7 +126,7 @@ Thoughts that mean STOP — you are about to skip GRACE activation and cause dri
 
 | Rationalization | Reality |
 |---|---|
-| "This is just a simple question, I'll answer from memory" | Questions are tasks. Without Level 1 context you will hallucinate module names. Run `grace status --brief` first. |
+| "This is just a simple question, I'll answer from memory" | Questions are tasks. Without Level 1 context you will hallucinate module names. Run `grace status --format text` first. |
 | "Let me read a file quickly to see what's here" | Files do not tell you the contract, the dependencies, or the verification story. The graph does. Read `AGENTS.md` first. |
 | "The fix is a one-liner, skill overhead isn't worth it" | One-liners without CHANGE_SUMMARY and without verification-plan updates are how GRACE projects rot. Use `grace-fix`. |
 | "I'll update the graph at the end" | You won't. By the time you finish, the graph deltas are no longer visible to you. Update in the same step. |

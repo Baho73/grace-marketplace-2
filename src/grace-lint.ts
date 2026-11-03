@@ -121,6 +121,25 @@ export const lintCommand = defineCommand({
       description: "Execute MustPassCommand assertions for the selected change",
       default: false,
     },
+    commandTimeout: {
+      type: "string",
+      description: "Per-command timeout in seconds for --run-commands (default 600, 0 disables)",
+      default: "600",
+    },
+    keepRuns: {
+      type: "string",
+      description: "How many non-passing --run-commands run directories to keep (default 10, 0 keeps none); the newest passing run of each change is always kept",
+    },
+    verbose: {
+      type: "boolean",
+      description: "Stream full command output in --run-commands (forces live mode)",
+      default: false,
+    },
+    quiet: {
+      type: "boolean",
+      description: "Suppress streamed command output in --run-commands (forces compact mode)",
+      default: false,
+    },
     parallelPreflight: {
       type: "boolean",
       description: "Treat active-plan scope overlap as a parallel-execution blocker",
@@ -129,7 +148,7 @@ export const lintCommand = defineCommand({
   },
   async run(context) {
     const errorFormat = context.args.format === "json" ? "json" : "text";
-    await runGraceCommand(errorFormat, () => {
+    await runGraceCommand(errorFormat, async () => {
       const format = String(context.args.format ?? "text");
       const profile = resolveProfile(context.args.profile);
       const failOn = resolveFailOn(context.args.failOn);
@@ -149,23 +168,105 @@ export const lintCommand = defineCommand({
         return;
       }
 
-      const result = lintGraceProject(String(context.args.path ?? "."), {
-        profile,
-        assertionMode,
-        changeId: context.args.change ? String(context.args.change) : undefined,
-        runCommands: Boolean(context.args.runCommands),
-        parallelPreflight: Boolean(context.args.parallelPreflight),
+      const verbose = Boolean(context.args.verbose);
+      const quiet = Boolean(context.args.quiet);
+      const timeoutMs = parseCommandTimeoutMs(context.args.commandTimeout);
+      const keepRuns = parseKeepRuns(context.args.keepRuns);
+      const verbosity = resolveCommandVerbosity({
+        format,
+        verbose,
+        quiet,
+        interactive: Boolean(process.stdout.isTTY && process.stderr.isTTY),
       });
 
-      if (format === "json") {
-        process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
-      } else {
-        process.stdout.write(`${formatTextReport(result, { remediate: Boolean(context.args.remediate) })}\n`);
+      const controller = new AbortController();
+      const onSignal = () => controller.abort();
+      process.once("SIGINT", onSignal);
+      process.once("SIGTERM", onSignal);
+
+      try {
+        const result = await lintGraceProject(String(context.args.path ?? "."), {
+          profile,
+          assertionMode,
+          changeId: context.args.change ? String(context.args.change) : undefined,
+          runCommands: Boolean(context.args.runCommands),
+          parallelPreflight: Boolean(context.args.parallelPreflight),
+          commandTimeoutMs: timeoutMs,
+          runLogRetention: keepRuns,
+          commandVerbosity: verbosity,
+          commandSignal: controller.signal,
+        });
+
+        if (format === "json") {
+          process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+        } else {
+          process.stdout.write(`${formatTextReport(result, { remediate: Boolean(context.args.remediate) })}\n`);
+        }
+        if (controller.signal.aborted) {
+          process.exitCode = 130;
+        } else {
+          process.exitCode = shouldFail(result, failOn) ? 1 : 0;
+        }
+      } finally {
+        process.removeListener("SIGINT", onSignal);
+        process.removeListener("SIGTERM", onSignal);
       }
-      process.exitCode = shouldFail(result, failOn) ? 1 : 0;
     }, "Unable to complete GRACE lint. Check the project path and run again.");
   },
 });
+
+/** Parses --command-timeout seconds into ms; rejects negative and non-integer values. */
+export function parseCommandTimeoutMs(value: unknown): number {
+  const raw = String(value ?? "600");
+  if (!/^\d+$/.test(raw)) {
+    throw new GraceCommandError("invalid-arguments", `Unsupported --command-timeout \`${raw}\`. Use a non-negative integer number of seconds.`);
+  }
+  return Number(raw) * 1000;
+}
+
+/**
+ * Parses --keepRuns into a run-directory count; undefined when the flag is absent, so
+ * `.grace-lint.json`'s `runLogRetention` still applies. Rejects negative and non-integer
+ * values. `0` keeps no non-passing runs: the newest passing run of each change survives,
+ * everything else — including the current run when it fails — is removed immediately.
+ */
+export function parseKeepRuns(value: unknown): number | undefined {
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+  const raw = String(value);
+  if (!/^\d+$/.test(raw)) {
+    throw new GraceCommandError("invalid-arguments", `Unsupported --keepRuns \`${raw}\`. Use a non-negative integer number of run directories.`);
+  }
+  return Number(raw);
+}
+
+/** Input for resolving the --run-commands output verbosity. */
+export type CommandVerbosityInput = {
+  format: string;
+  verbose: boolean;
+  quiet: boolean;
+  /** True when both stdout and stderr are interactive TTYs. */
+  interactive: boolean;
+};
+
+/**
+ * Resolves run-commands verbosity: json output is always compact; --verbose forces live;
+ * --quiet forces compact; otherwise live only for interactive terminals. Rejects the
+ * mutually exclusive --verbose/--quiet combination.
+ */
+export function resolveCommandVerbosity(input: CommandVerbosityInput): "compact" | "live" {
+  if (input.verbose && input.quiet) {
+    throw new GraceCommandError("invalid-arguments", "`--verbose` and `--quiet` are mutually exclusive.");
+  }
+  if (input.format === "json" || input.quiet) {
+    return "compact";
+  }
+  if (input.verbose || input.interactive) {
+    return "live";
+  }
+  return "compact";
+}
 
 if (import.meta.main) {
   await runMain(lintCommand as CommandDef);

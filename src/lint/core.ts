@@ -1,7 +1,8 @@
 import { type Dirent, existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 
-import { evaluateAssertion, extractAssertionsWithIssues } from "../grace4/assertions";
+import { evaluateAssertion, extractAssertionsWithIssues, filterAssertionIssuesForLifecycle, type AssertionContext, type AssertionExtractionResult, type AssertionLifecycle } from "../grace4/assertions";
+import { formatDuration, runDeclaredCommands, type CommandRunResult, type DeclaredCommand } from "../grace4/command-runner";
 import { validateGrace4Project } from "../grace4/grammar";
 import { detectGraceProjectKind, formatGrace3MigrationGuidance, resolveGrace4Paths } from "../grace4/project";
 import { buildGraphProjection, buildVerificationProjection, type GraphProjection, type VerificationProjection } from "../grace4/projections";
@@ -10,11 +11,14 @@ import { ANCHOR_PATTERNS, type Grace4Issue, type Grace4ProjectPaths } from "../g
 import { readGraceXmlArtifact } from "../grace4/xml";
 import { analyzeGovernedFile, collectCodeFiles, describeUnreadableDirectory, hasGraceMarkers, type UnreadableDirectoryHandler } from "../project-utils";
 import { withLintIssueGuide } from "./catalog";
-import { loadGraceLintConfig } from "./config";
+import { loadGraceLintConfig, resolveRunLogRetention } from "./config";
 import { lintSkillSections } from "./skill-sections";
-import type { LintIssue, LintOptions, LintProfile, LintResult } from "./types";
+import type { CommandEvidence, LintIssue, LintOptions, LintProfile, LintResult } from "./types";
 
 const TEXT_FORMAT_OPTIONS = new Set(["text", "json"]);
+
+/** Default per-command timeout for --run-commands: ten minutes. */
+const DEFAULT_COMMAND_TIMEOUT_MS = 600_000;
 
 function createResult(root: string, profile: LintProfile, options: LintOptions): LintResult {
   return {
@@ -122,7 +126,19 @@ function readPlanStatus(planFile: string): string | null {
   return artifact.root?.tag === "GraceChangePlan" ? artifact.root.attributes.status ?? null : null;
 }
 
-function validateAssertions(
+/** One assertion section selected for extraction and (conditionally) semantic evaluation. */
+type SectionJob = {
+  planFile: string;
+  section: "BaselineAssertions" | "TargetAssertions";
+  extraction: AssertionExtractionResult;
+  evaluateSemantically: boolean;
+  includeExtractionIssues: boolean;
+  skipUnevaluatedCommands: boolean;
+  /** Shared extraction-diagnostic policy: `archive` drops current-phase errors and advisory noise. */
+  lifecycle: AssertionLifecycle;
+};
+
+async function validateAssertions(
   result: LintResult,
   paths: Grace4ProjectPaths,
   planFilesActive: string[],
@@ -132,64 +148,138 @@ function validateAssertions(
   root: string,
   options: LintOptions,
 ) {
-  const context = { root, graph, verification, runCommands: options.runCommands };
+  const runCommands = options.runCommands ?? false;
   const assertionMode = options.assertionMode ?? "current";
   const selectedPlan = assertionMode === "current" ? null : resolveSelectedApprovedPlan(result, paths, options.changeId);
+
+  const jobs: SectionJob[] = [];
+  const pushJob = (
+    planFile: string,
+    section: "BaselineAssertions" | "TargetAssertions",
+    evaluateSemantically: boolean,
+    lifecycle: AssertionLifecycle,
+    includeExtractionIssues = true,
+    skipUnevaluatedCommands = false,
+  ) => {
+    jobs.push({
+      planFile,
+      section,
+      extraction: extractAssertionsWithIssues(planFile, section),
+      evaluateSemantically,
+      includeExtractionIssues,
+      skipUnevaluatedCommands,
+      lifecycle,
+    });
+  };
 
   for (const planFile of planFilesActive) {
     const status = readPlanStatus(planFile);
     const isSelected = selectedPlan !== null && path.resolve(selectedPlan) === path.resolve(planFile);
     const evaluateCurrentBaseline = assertionMode === "current" && status === "approved";
     const evaluateUnrelatedFinalBaseline = assertionMode === "final" && status === "approved" && !isSelected;
-    evaluateSection(result, planFile, "BaselineAssertions", context, evaluateCurrentBaseline || evaluateUnrelatedFinalBaseline, true, true);
-    evaluateSection(result, planFile, "TargetAssertions", context, false);
+    pushJob(planFile, "BaselineAssertions", evaluateCurrentBaseline || evaluateUnrelatedFinalBaseline, "active", true, true);
+    pushJob(planFile, "TargetAssertions", false, "active");
   }
 
   for (const planFile of planFilesArchived) {
     // Archived plans: syntax only, never semantic (baseline may be stale, target may be superseded by later changes)
-    evaluateSection(result, planFile, "BaselineAssertions", context, false, true, false, true);
-    evaluateSection(result, planFile, "TargetAssertions", context, false, true, false, true);
+    pushJob(planFile, "BaselineAssertions", false, "archive");
+    pushJob(planFile, "TargetAssertions", false, "archive");
   }
 
-  if (assertionMode === "current") {
-    return;
+  if (assertionMode !== "current" && selectedPlan) {
+    pushJob(
+      selectedPlan,
+      assertionMode === "baseline" ? "BaselineAssertions" : "TargetAssertions",
+      true,
+      "active",
+      false,
+    );
   }
 
-  if (!selectedPlan) {
-    return;
+  let commandResults: Map<string, CommandRunResult[]> | undefined;
+  if (runCommands) {
+    const declared = collectDeclaredCommands(jobs);
+    if (declared.length > 0) {
+      const summary = await runDeclaredCommands(declared, {
+        root,
+        changeId: options.changeId,
+        assertionMode,
+        timeoutMs: options.commandTimeoutMs ?? DEFAULT_COMMAND_TIMEOUT_MS,
+        verbosity: options.commandVerbosity ?? "compact",
+        progress: options.commandProgress,
+        logRoot: options.commandLogRoot,
+        // Config issues are already reported by validateGovernedFiles; an invalid value
+        // falls back to the default rather than failing the run a second time.
+        runLogRetention: resolveRunLogRetention(options.runLogRetention, loadGraceLintConfig(root).config),
+      }, options.commandSignal);
+      result.commands = summary.commands.map(toCommandEvidence);
+      commandResults = new Map();
+      for (const command of summary.commands) {
+        const bucket = commandResults.get(command.assertionKey) ?? [];
+        bucket.push(command);
+        commandResults.set(command.assertionKey, bucket);
+      }
+    }
   }
-  evaluateSection(
-    result,
-    selectedPlan,
-    assertionMode === "baseline" ? "BaselineAssertions" : "TargetAssertions",
-    context,
-    true,
-    false,
-  );
+
+  const context: AssertionContext = { root, graph, verification, runCommands, commandResults };
+  for (const job of jobs) {
+    evaluateJob(result, job, context);
+  }
 }
 
-function evaluateSection(
+/** One DeclaredCommand per Command value of every semantically evaluated MustPassCommand. */
+function collectDeclaredCommands(jobs: SectionJob[]): DeclaredCommand[] {
+  return jobs
+    .filter((job) => job.evaluateSemantically)
+    .flatMap((job) =>
+      job.extraction.assertions.flatMap((assertion) => {
+        const slotKey = assertion.slotKey;
+        if (assertion.kind !== "MustPassCommand" || !slotKey) {
+          return [];
+        }
+        const slotIndex = Number(slotKey.split("::").pop());
+        return assertion.values.map((command, commandIndex) => {
+          // A declared budgetSeconds becomes this command's timeout; absent, the runner-wide
+          // --command-timeout still applies. 0 is a real value (disable) and must survive.
+          const budgetSeconds = assertion.commandBudgetsSeconds?.[commandIndex];
+          return {
+            assertionKey: slotKey,
+            assertionId: `${path.basename(job.planFile)}#${Number.isNaN(slotIndex) ? "?" : slotIndex + 1}`,
+            command,
+            ...(budgetSeconds == null ? {} : { timeoutMs: budgetSeconds * 1000 }),
+          };
+        });
+      }),
+    );
+}
+
+function toCommandEvidence(command: CommandRunResult): CommandEvidence {
+  return {
+    index: command.index,
+    command: command.command,
+    exitCode: command.exitCode,
+    durationMs: command.durationMs,
+    timedOut: command.timedOut,
+    skipped: command.skipped,
+    logFile: command.logFile,
+  };
+}
+
+function evaluateJob(
   result: LintResult,
-  planFile: string,
-  section: "BaselineAssertions" | "TargetAssertions",
-  context: { root: string; graph: GraphProjection; verification: VerificationProjection; runCommands?: boolean },
-  evaluateSemantically: boolean,
-  includeExtractionIssues = true,
-  skipUnevaluatedCommands = false,
-  skipActivePhaseIssues = false,
+  job: SectionJob,
+  context: AssertionContext,
 ) {
-  const extraction = extractAssertionsWithIssues(planFile, section);
-  if (includeExtractionIssues) {
-    for (const issue of extraction.issues) {
-      if (skipActivePhaseIssues && issue.code === "assertion.phase-incompatible-command") {
-        continue;
-      }
+  if (job.includeExtractionIssues) {
+    for (const issue of filterAssertionIssuesForLifecycle(job.extraction.issues, job.lifecycle)) {
       addGrace4Issue(result, issue);
     }
   }
-  if (evaluateSemantically) {
-    for (const assertion of extraction.assertions) {
-      if (skipUnevaluatedCommands && assertion.kind === "MustPassCommand" && !context.runCommands) {
+  if (job.evaluateSemantically) {
+    for (const assertion of job.extraction.assertions) {
+      if (job.skipUnevaluatedCommands && assertion.kind === "MustPassCommand" && !context.runCommands) {
         continue;
       }
       for (const issue of evaluateAssertion(assertion, context)) {
@@ -251,7 +341,7 @@ function resolveSelectedApprovedPlan(
   return planFile;
 }
 /** Lints the current GRACE 4 .grace document state and file-local semantic markup. */
-export function lintGraceProject(projectRoot: string, options: LintOptions = {}): LintResult {
+export async function lintGraceProject(projectRoot: string, options: LintOptions = {}): Promise<LintResult> {
   const root = path.resolve(projectRoot);
   const profile = options.profile ?? "standard";
   const result = createResult(root, profile, options);
@@ -308,7 +398,7 @@ export function lintGraceProject(projectRoot: string, options: LintOptions = {})
   const unreadableDirectory = reportUnreadableDirectory(result);
   const planFilesActive = [...listPlanFiles(paths.changesActiveDir, unreadableDirectory)];
   const planFilesArchived = [...listPlanFiles(paths.changesArchiveDir, unreadableDirectory)];
-  validateAssertions(result, paths, planFilesActive, planFilesArchived, graph, verification, root, options);
+  await validateAssertions(result, paths, planFilesActive, planFilesArchived, graph, verification, root, options);
 
   return finalizeResult(result);
 }
@@ -326,9 +416,29 @@ export function formatTextReport(result: LintResult, options: { remediate?: bool
     `Files checked: ${result.filesChecked}`,
     `Governed files: ${result.governedFiles}`,
     `XML artifacts checked: ${result.xmlFilesChecked}`,
-    `Errors: ${result.summary.errors}`,
-    `Warnings: ${result.summary.warnings}`,
   ];
+
+  if (result.commands?.length) {
+    lines.push("Commands");
+    const total = result.commands.length;
+    for (const command of result.commands) {
+      const mark = command.skipped ? "-" : command.exitCode === 0 ? "✔" : "✖";
+      const detail = command.skipped
+        ? "skipped"
+        : command.timedOut
+          ? `timed out after ${formatDuration(command.durationMs)}`
+          : command.exitCode === 0
+            ? formatDuration(command.durationMs)
+            : `${formatDuration(command.durationMs)}, exit ${command.exitCode}`;
+      lines.push(`  ${mark} [${command.index}/${total}] ${command.command} (${detail})`);
+    }
+    const firstLog = result.commands.find((command) => command.logFile)?.logFile;
+    if (firstLog) {
+      lines.push(`  Logs: ${path.dirname(firstLog)}`);
+    }
+  }
+
+  lines.push(`Errors: ${result.summary.errors}`, `Warnings: ${result.summary.warnings}`);
 
   if (result.issues.length === 0) {
     lines.push("", "No issues found.");

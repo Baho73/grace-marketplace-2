@@ -5,7 +5,10 @@ import { describe, expect, it } from "bun:test";
 
 import { resolveGrace4Paths } from "./project";
 import { buildGraphProjection, buildVerificationProjection } from "./projections";
-import { evaluateAssertion, extractAssertionsWithIssues, type AssertionContext, type GraceAssertion } from "./assertions";
+import { runDeclaredCommands } from "./command-runner";
+import { evaluateAssertion, extractAssertionsWithIssues, filterAssertionIssuesForLifecycle, type AssertionContext, type GraceAssertion } from "./assertions";
+import type { CommandRunResult } from "./command-runner";
+import { symlinksUnsupported } from "./test-fixtures";
 
 function createProject() {
   const root = path.join(os.tmpdir(), `grace4-assertions-${crypto.randomUUID()}`);
@@ -94,10 +97,80 @@ describe("GRACE 4 assertions", () => {
     expect(evaluateAssertion(assertion("MustPassCommand", ["exit 99"]), { ...ctx, runCommands: true })).toHaveLength(1);
   });
 
-  (process.platform === "win32" ? it : it.skip)("executes command assertions through Windows cmd.exe", () => {
+  (process.platform === "win32" ? it : it.skip)("executes command assertions through Windows cmd.exe", async () => {
     const root = createProject();
     writeProjectionFixture(root);
-    expect(evaluateAssertion(assertion("MustPassCommand", ["exit /b 0"]), { ...context(root), runCommands: true })).toHaveLength(0);
+    const summary = await runDeclaredCommands(
+      [{ assertionKey: "plan.xml::TargetAssertions::0", assertionId: "plan.xml#1", command: "exit /b 0" }],
+      {
+        root,
+        assertionMode: "target",
+        timeoutMs: 10_000,
+        verbosity: "compact",
+        progress: () => {},
+        logRoot: path.join(os.tmpdir(), `grace4-cmdexe-${crypto.randomUUID()}`),
+      },
+    );
+    expect(summary.status).toBe("passed");
+    expect(summary.commands[0]?.exitCode).toBe(0);
+  });
+
+  it("maps pre-computed command results to assertion issues without spawning", () => {
+    const root = createProject();
+    writeProjectionFixture(root);
+    const slotKey = "plan.xml::TargetAssertions::0";
+    const commandAssertion: GraceAssertion = { kind: "MustPassCommand", values: ["bun run gate"], file: "plan.xml", slotKey };
+    const result = (overrides: Partial<CommandRunResult>): CommandRunResult => ({
+      index: 1,
+      assertionKey: slotKey,
+      assertionId: "plan.xml#1",
+      command: "bun run gate",
+      exitCode: 0,
+      durationMs: 1000,
+      timedOut: false,
+      skipped: false,
+      logFile: null,
+      outputTail: null,
+      ...overrides,
+    });
+
+    const passing: AssertionContext = {
+      ...context(root),
+      runCommands: true,
+      commandResults: new Map([[slotKey, [result({})]]]),
+    };
+    expect(evaluateAssertion(commandAssertion, passing)).toHaveLength(0);
+
+    const failing: AssertionContext = {
+      ...context(root),
+      runCommands: true,
+      commandResults: new Map([[slotKey, [result({ exitCode: 3, outputTail: "boom-tail" })]]]),
+    };
+    const failure = evaluateAssertion(commandAssertion, failing);
+    expect(failure).toHaveLength(1);
+    expect(failure[0]?.message).toContain("Command failed (3): bun run gate");
+    expect(failure[0]?.message).toContain("boom-tail");
+
+    const timedOut: AssertionContext = {
+      ...context(root),
+      runCommands: true,
+      commandResults: new Map([[slotKey, [result({ exitCode: null, timedOut: true, durationMs: 600_000 })]]]),
+    };
+    const timeoutIssue = evaluateAssertion(commandAssertion, timedOut);
+    expect(timeoutIssue).toHaveLength(1);
+    expect(timeoutIssue[0]?.message).toContain("Command timed out after 600s: bun run gate");
+
+    const skippedThenFailed: AssertionContext = {
+      ...context(root),
+      runCommands: true,
+      commandResults: new Map([[slotKey, [result({ skipped: true }), result({ exitCode: 1 })]]]),
+    };
+    expect(evaluateAssertion(commandAssertion, skippedThenFailed)).toHaveLength(1);
+
+    const missing: AssertionContext = { ...context(root), runCommands: true };
+    const unavailable = evaluateAssertion(commandAssertion, missing);
+    expect(unavailable).toHaveLength(1);
+    expect(unavailable[0]?.message).toContain("Command results unavailable");
   });
 
   it("rejects missing, extra, duplicate, nested, and empty assertion fields", () => {
@@ -138,7 +211,7 @@ describe("GRACE 4 assertions", () => {
     expect(result.issues.map((item) => item.code)).not.toContain("assertion.empty-section");
   });
 
-  it("rejects absolute, traversal, and escaping-symlink File fields during extraction", () => {
+  it.skipIf(symlinksUnsupported)("rejects absolute, traversal, and escaping-symlink File fields during extraction", () => {
     const root = createProject();
     const outside = createProject();
     writeFileSync(path.join(outside, "secret.txt"), "secret\n");
@@ -231,5 +304,140 @@ describe("GRACE 4 assertions", () => {
     if (failAssertions.length > 0) {
       expect(evaluateAssertion(failAssertions[0]!, failCtx)[0]?.code).toBe("assertion.MustVerify");
     }
+  });
+
+  it("accepts a per-command budgetSeconds attribute and rejects malformed ones", () => {
+    const root = createProject();
+    const planFile = path.join(root, "plan.xml");
+    writeFileSync(
+      planFile,
+      `<GraceChangePlan graceVersion="4.0" status="approved"><C-EXAMPLE><TargetAssertions>`
+      + `<MustPassCommand><Command budgetSeconds="1800">bun run gate:e2e</Command><Command>bun run gate:typecheck</Command><Command budgetSeconds="0">bun run gate:soak</Command></MustPassCommand>`
+      + `</TargetAssertions></C-EXAMPLE></GraceChangePlan>`,
+    );
+
+    const accepted = extractAssertionsWithIssues(planFile, "TargetAssertions");
+    expect(accepted.issues.map((item) => item.code)).not.toContain("assertion.invalid-shape");
+    expect(accepted.assertions).toHaveLength(1);
+    expect(accepted.assertions[0]!.commandBudgetsSeconds).toEqual([1800, null, 0]);
+
+    for (const bad of ["-5", "12.5", "soon", ""]) {
+      const badFile = path.join(root, `bad-${encodeURIComponent(bad) || "empty"}.xml`);
+      writeFileSync(
+        badFile,
+        `<GraceChangePlan graceVersion="4.0" status="approved"><C-EXAMPLE><TargetAssertions><MustPassCommand><Command budgetSeconds="${bad}">bun run gate</Command></MustPassCommand></TargetAssertions></C-EXAMPLE></GraceChangePlan>`,
+      );
+      const rejected = extractAssertionsWithIssues(badFile, "TargetAssertions");
+      expect(rejected.issues.map((item) => item.code)).toContain("assertion.invalid-command-budget");
+      expect(rejected.assertions).toHaveLength(0);
+    }
+
+    const foreignAttribute = path.join(root, "foreign.xml");
+    writeFileSync(
+      foreignAttribute,
+      `<GraceChangePlan graceVersion="4.0" status="approved"><C-EXAMPLE><TargetAssertions><MustPassCommand><Command budgetMinutes="30">bun run gate</Command></MustPassCommand><MustVerify><Module budgetSeconds="30">M-EXAMPLE</Module></MustVerify></TargetAssertions></C-EXAMPLE></GraceChangePlan>`,
+    );
+    const foreign = extractAssertionsWithIssues(foreignAttribute, "TargetAssertions");
+    expect(foreign.issues.filter((item) => item.code === "assertion.invalid-shape")).toHaveLength(2);
+  });
+
+  it("warns when one declared command's path argument is a component prefix of another's", () => {
+    const root = createProject();
+    for (const directory of ["src/grace4", "srcfoo"]) {
+      mkdirSync(path.join(root, directory), { recursive: true });
+    }
+    const planFile = path.join(root, "plan.xml");
+    writeFileSync(
+      planFile,
+      `<GraceChangePlan graceVersion="4.0" status="approved"><C-EXAMPLE><TargetAssertions>`
+      + `<MustPassCommand><Command>bun test src</Command><Command>bun test src/grace4</Command></MustPassCommand>`
+      + `<MustPassCommand><Command>bun test srcfoo</Command><Command>bun run check</Command></MustPassCommand>`
+      + `</TargetAssertions></C-EXAMPLE></GraceChangePlan>`,
+    );
+
+    const result = extractAssertionsWithIssues(planFile, "TargetAssertions");
+    const subsumed = result.issues.filter((item) => item.code === "assertion.command-subsumed");
+    expect(subsumed).toHaveLength(1);
+    expect(subsumed[0]!.severity).toBe("warning");
+    expect(subsumed[0]!.message).toContain(`"bun test src/grace4" is already covered by "bun test src"`);
+    expect(result.issues.map((item) => item.code)).not.toContain("assertion.invalid-shape");
+  });
+
+  it("treats a whole-suite command as subsuming the scoped commands it re-runs", () => {
+    const root = createProject();
+    mkdirSync(path.join(root, "src"), { recursive: true });
+    const planFile = path.join(root, "plan.xml");
+    writeFileSync(
+      planFile,
+      `<GraceChangePlan graceVersion="4.0" status="approved"><C-EXAMPLE><TargetAssertions>`
+      + `<MustPassCommand><Command>bun test</Command><Command>bun test src/example.test.ts</Command></MustPassCommand>`
+      + `</TargetAssertions></C-EXAMPLE></GraceChangePlan>`,
+    );
+
+    const subsumed = extractAssertionsWithIssues(planFile, "TargetAssertions")
+      .issues.filter((item) => item.code === "assertion.command-subsumed");
+    expect(subsumed).toHaveLength(1);
+    expect(subsumed[0]!.message).toContain(`"bun test src/example.test.ts" is already covered by "bun test"`);
+  });
+
+  it("leaves disjoint paths and option-only variants unwarned", () => {
+    const root = createProject();
+    mkdirSync(path.join(root, "src"), { recursive: true });
+    mkdirSync(path.join(root, "docs"), { recursive: true });
+
+    const disjointFile = path.join(root, "disjoint-plan.xml");
+    writeFileSync(
+      disjointFile,
+      `<GraceChangePlan graceVersion="4.0" status="approved"><C-EXAMPLE><TargetAssertions>`
+      + `<MustPassCommand><Command>bun test src</Command><Command>bun test docs</Command></MustPassCommand>`
+      + `<MustPassCommand><Command>bun run check</Command><Command>bun run check:types</Command></MustPassCommand>`
+      + `</TargetAssertions></C-EXAMPLE></GraceChangePlan>`,
+    );
+    expect(extractAssertionsWithIssues(disjointFile, "TargetAssertions").issues.map((item) => item.code))
+      .not.toContain("assertion.command-subsumed");
+
+    const optionsFile = path.join(root, "options-plan.xml");
+    writeFileSync(
+      optionsFile,
+      `<GraceChangePlan graceVersion="4.0" status="approved"><C-EXAMPLE><TargetAssertions>`
+      + `<MustPassCommand><Command>bun test --coverage</Command><Command>bun test --watch</Command></MustPassCommand>`
+      + `</TargetAssertions></C-EXAMPLE></GraceChangePlan>`,
+    );
+    expect(extractAssertionsWithIssues(optionsFile, "TargetAssertions").issues.map((item) => item.code))
+      .not.toContain("assertion.command-subsumed");
+  });
+});
+
+describe("assertion extraction lifecycle policy", () => {
+  const planFile = "archive/plan.xml";
+
+  function extractionIssue(code: string) {
+    return { severity: "error" as const, code, file: planFile, message: `${code} message` };
+  }
+
+  it("keeps every diagnostic for active plans", () => {
+    const issues = [
+      extractionIssue("assertion.phase-incompatible-command"),
+      extractionIssue("assertion.command-subsumed"),
+      extractionIssue("assertion.invalid-shape"),
+    ];
+    expect(filterAssertionIssuesForLifecycle(issues, "active")).toEqual(issues);
+  });
+
+  it("drops only current-phase errors and advisory noise for archived plans", () => {
+    const issues = [
+      extractionIssue("assertion.phase-incompatible-command"),
+      { ...extractionIssue("assertion.command-subsumed"), severity: "warning" as const },
+      extractionIssue("assertion.invalid-shape"),
+      extractionIssue("assertion.unknown-kind"),
+      extractionIssue("assertion.empty-section"),
+      extractionIssue("assertion.invalid-section-shape"),
+    ];
+    expect(filterAssertionIssuesForLifecycle(issues, "archive").map((item) => item.code)).toEqual([
+      "assertion.invalid-shape",
+      "assertion.unknown-kind",
+      "assertion.empty-section",
+      "assertion.invalid-section-shape",
+    ]);
   });
 });

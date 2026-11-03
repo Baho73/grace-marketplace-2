@@ -61,7 +61,7 @@ CLI returns JSON: `{ correlationId, messageId, sessionId }`. Store these — bot
 Wait the backoff interval, then call:
 
 ```
-grace afk check --path . --correlation <id> --messageid <msgId> --offset <lastOffset>
+grace afk check --path . --correlation <id> --messageid <msgId>
 ```
 
 Result shapes:

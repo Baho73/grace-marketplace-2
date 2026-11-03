@@ -4,7 +4,7 @@
 
 This repository ships the GRACE skills plus the optional `grace` CLI. It is a packaging and distribution repository, not an end-user application.
 
-Current packaged version: `4.0.5`. Fork of [`osovv/grace-marketplace`](https://github.com/osovv/grace-marketplace) with additional skills (grace-bootstrap, grace-afk, grace-ask-human, grace-evolve), CLI surfaces (afk, evolve), and a global Telegram config at `~/.grace/afk.json` so one AFK setup serves every project on the machine.
+Current packaged version: `4.2.1`. Fork of [`osovv/grace-marketplace`](https://github.com/osovv/grace-marketplace) with additional skills (grace-bootstrap, grace-afk, grace-ask-human, grace-evolve), CLI surfaces (afk, evolve), and a global Telegram config at `~/.grace/afk.json` so one AFK setup serves every project on the machine.
 
 ## What This Repository Ships
 
@@ -33,6 +33,10 @@ GRACE 4 does not dual-validate legacy GRACE 3 project docs as current state. Exi
 Verification commands run from the project root by default. A `V-M-*` entry may declare one contained project-relative `<Cwd>packages/example</Cwd>` while keeping `<TestFiles><File>...</File></TestFiles>` paths project-root-relative. Absolute paths, `..` escapes, and symlink escapes fail closed.
 
 TypeScript/JavaScript semantic analysis is bundled and compiler-backed. Governed Python and Dart files require their respective runtimes on `PATH`; Python export analysis is exact when a static `__all__` is present (including Unicode identifiers) and otherwise emits heuristic confidence. A missing runtime fails closed with actionable `analysis.runtime-missing`; an installed adapter that fails emits `analysis.adapter-failed`. Neither failure state is presented as exact `MODULE_MAP` parity.
+
+Languages without a registered adapter — including Go, Rust, Java, shell, C/C++, C#, and PowerShell — are governed structurally: markup validity, contract completeness, and `MODULE_MAP` shape are enforced, while export parity is not analyzed. `MODULE_MAP` for these languages is taken on trust. Governance is opt-in per file; sources without GRACE markers are never flagged.
+
+Markers are recognized behind the `//`, `#`, `--`, `;` and block-comment `*` prefixes, so a language whose comments use none of those — XML-comment dialects such as `.xaml` or `.csproj` — cannot carry them.
 
 ## Install
 
@@ -126,6 +130,7 @@ Migration cleanup is separately gated: successful current lint, fresh status pro
 | Command | What It Does |
 | --- | --- |
 | `grace lint --path <root> --assertions current` | Run the pre-implementation full-project check, including baselines of active approved changes; do not use it as post-edit target/final evidence |
+| `grace lint --path <root> --change C-ID --assertions target \| final --run-commands` | Execute declared `MustPassCommand` gates with compact progress on stderr, per-command timings, a default 600s per-command timeout (`--command-timeout`), and full run logs under `~/.cache/grace/run-commands/` (`--keepRuns` bounds how many non-passing runs are kept) |
 | `grace lint --path <root> --change C-ID --assertions baseline [--run-commands]` | Validate the immutable selected baseline before implementation; command assertions run only when explicitly enabled |
 | `grace lint --path <root> --change C-ID --assertions target --run-commands` | Validate selected target assertions and explicitly opt into `MustPassCommand` execution |
 | `grace lint --path <root> --change C-ID --assertions final [--run-commands]` | Run the final full-project gate, evaluate the selected target, and keep unrelated approved baselines active without re-evaluating the selected baseline |
@@ -145,6 +150,8 @@ Migration cleanup is separately gated: successful current lint, fresh status pro
 | `grace evolve init / run <topic>` | Evolutionary search over candidate solutions — scaffolds `docs/experiments/<topic>/spec.json`, runs the loop with worktree isolation |
 
 `MustPassCommand` entries are leaf project evidence such as tests, typecheck, build, format, or package checks. Do not nest `grace lint`, `grace status`, or another GRACE lifecycle command inside plan assertions; selected target/final lint is the external orchestration gate.
+
+Each `<Command>` may declare an optional `budgetSeconds` attribute — `<Command budgetSeconds="1800">bun run gate:e2e</Command>` — which becomes that command's timeout under `--run-commands` in preference to the global `--command-timeout`. The grammar matches `--command-timeout`: a non-negative whole number of seconds, where `0` disables the timeout for that command and omitting the attribute keeps the global default. Lint also reports `assertion.command-subsumed` as a warning when two commands in the same assertion section share a command head and one's path arguments are a component-wise prefix of the other's, so a gate that re-runs `bun test src/grace4` under `bun test src` is visible rather than merely slow.
 
 Output modes:
 
@@ -213,16 +220,18 @@ Lint, status, and projection-backed navigation fail closed: invalid options, inv
 
 ### Lint Configuration
 
-An optional `.grace-lint.json` file at the project root (next to `.grace`) controls how `grace lint` and the query commands collect code files:
+An optional `.grace-lint.json` file at the project root (next to `.grace`) controls how `grace lint` and the query commands collect code files, and how long command-run evidence is kept:
 
 ```json
 {
-  "ignoredDirs": ["generated", "fixtures-output"]
+  "ignoredDirs": ["generated", "fixtures-output"],
+  "runLogRetention": 25
 }
 ```
 
 - `ignoredDirs` lists directory names to prune from file collection, on top of the built-in set below. Names match at any depth; globs and paths are not supported.
-- The file must be a JSON object with supported keys only. Broken JSON, a non-object shape, an unknown key, or a non-array `ignoredDirs` is a `config.*` lint error, and query commands refuse to run until the file is fixed.
+- `runLogRetention` is how many *non-passing* `--run-commands` run directories survive pruning, default 10. The newest passing run of every change is protected and never pruned, so evidence an archived change cites stays on disk. `--keepRuns N` overrides the key for a single run; `0` keeps no non-passing runs at all, which removes the current run as soon as it fails or runs without a `--change` to bind it to.
+- The file must be a JSON object with supported keys only. Broken JSON, a non-object shape, an unknown key, a non-array `ignoredDirs`, or a `runLogRetention` that is not a non-negative integer is a `config.*` lint error, and query commands refuse to run until the file is fixed.
 - A directory that cannot be listed (restrictive permissions, sandbox leftovers) is skipped with a `walk.unreadable-directory` warning instead of aborting the run; add its name to `ignoredDirs` to prune it silently. Explain any of these codes with `grace lint --explain <code>`.
 
 Built-in ignored directories:
@@ -234,9 +243,12 @@ Built-in ignored directories:
 - JVM and Rust build output: `target`, `.gradle`, `.idea`
 - Vendored dependencies (Go modules, Ruby bundler, PHP Composer): `vendor`
 - Swift/Apple toolchain output and dependencies: `.build`, `Pods`, `Carthage`, `DerivedData`
+- .NET intermediate build output: `obj`
 - Dart/Flutter tooling cache: `.dart_tool`
 - Ruby/general scratch space: `tmp`, `.bundle`
 - Editor metadata: `.vscode`
+
+`bin` is deliberately not built in: .NET puts compiled output there, but Node, Rails and others keep real source in it, and `ignoredDirs` can only add to this set. A .NET project that wants it pruned adds `"ignoredDirs": ["bin"]`.
 
 ### Analysis Cache
 

@@ -115,6 +115,33 @@ export const value = true;
     expect(hasRuntimeMarkerEvidence(`// const marker$ = "${marker}";\nconsole.info(marker$ + " ok");`, marker)).toBe(false);
   });
 
+  it("credits Go's standard-library logger, which has no levelled methods", () => {
+    const marker = "[Example][run][BLOCK_RUN]";
+    // The `log` package is Go's DEFAULT logging API and its only methods are the
+    // Print/Fatal/Panic families. A module using it emitted the marker just as
+    // surely as one using slog, and used to earn no credit at all for doing so.
+    expect(hasRuntimeMarkerEvidence(`log.Printf("${marker} ok")`, marker)).toBe(true);
+    expect(hasRuntimeMarkerEvidence(`log.Println("${marker} ok")`, marker)).toBe(true);
+    expect(hasRuntimeMarkerEvidence(`log.Print("${marker} ok")`, marker)).toBe(true);
+    expect(hasRuntimeMarkerEvidence(`log.Fatalf("${marker} died: %v", err)`, marker)).toBe(true);
+    expect(hasRuntimeMarkerEvidence(`log.Panicln("${marker} died")`, marker)).toBe(true);
+    // fmt is not a logger, but a marker printed through it is still emitted.
+    expect(hasRuntimeMarkerEvidence(`fmt.Printf("${marker} ok\\n")`, marker)).toBe(true);
+    expect(hasRuntimeMarkerEvidence(`fmt.Fprintln(os.Stderr, "${marker} ok")`, marker)).toBe(true);
+  });
+
+  it("does not credit an argument-less call, so err.Error() is not an emission", () => {
+    const marker = "[Example][run][BLOCK_RUN]";
+    // NEGATIVE CONTROL. `err.Error()` is Go's error-string method and appears on
+    // countless non-logging lines. Credited, it lets a module that merely
+    // MENTIONS its marker beside a wrapped error pass the required-marker gate
+    // without ever having emitted anything.
+    expect(hasRuntimeMarkerEvidence(`return fmt.Errorf("${marker} %s", err.Error())`, marker)).toBe(false);
+    expect(hasRuntimeMarkerEvidence(`x := "${marker}" + err.Error()`, marker)).toBe(false);
+    // The same line with a real emission still counts, so the guard stays narrow.
+    expect(hasRuntimeMarkerEvidence(`logger.Error("${marker} " + err.Error())`, marker)).toBe(true);
+  });
+
   it("credits capitalised logger methods used by Go, Java, and C#", () => {
     const marker = "[Example][run][BLOCK_RUN]";
     // Go stdlib log
@@ -296,7 +323,12 @@ console.log(JSON.stringify(result.issues));`;
     expect(issues.find((issue) => issue.code === "analysis.runtime-missing")?.message).toContain("Install Python");
   });
 
-  test("present but failing language runtimes surface analysis.adapter-failed without fallback", () => {
+  // The fixture below stands a deliberately failing interpreter on PATH as a `#!/bin/sh` script.
+  // Windows cannot execute one, so the spawn reports ENOENT and the adapter reaches its
+  // runtime-missing branch instead of the adapter-failed branch this asserts.
+  const shellShimsUnsupported = process.platform === "win32";
+
+  test.skipIf(shellShimsUnsupported)("present but failing language runtimes surface analysis.adapter-failed without fallback", () => {
     const runtimeDir = mkdtempSync(path.join(os.tmpdir(), "grace-broken-python-"));
     const python = path.join(runtimeDir, "python3");
     writeFileSync(python, "#!/bin/sh\nexit 17\n");
@@ -316,6 +348,132 @@ console.log(JSON.stringify(result.issues));`;
     const issues = JSON.parse(Buffer.from(run.stdout).toString("utf8")) as Array<{ code: string }>;
     expect(issues.map((issue) => issue.code)).toContain("analysis.adapter-failed");
     expect(issues.map((issue) => issue.code)).not.toContain("analysis.runtime-missing");
+  });
+
+  it("governs adapter-less C sources structurally without export analysis", () => {
+    const root = mkdtempSync(path.join(os.tmpdir(), "grace-c-markup-"));
+    const file = path.join(root, "src", "driver.c");
+    const text = `// START_MODULE_CONTRACT
+// PURPOSE: Bring up the example driver.
+// SCOPE: C fixture without a language adapter.
+// DEPENDS: none
+// LINKS: M-EXAMPLE
+// MAP_MODE: SUMMARY
+// END_MODULE_CONTRACT
+// START_MODULE_MAP
+// driver_init - Initialize the driver.
+// END_MODULE_MAP
+#include <stdint.h>
+void driver_init(void) {}
+`;
+    const analysis = analyzeGovernedFile(root, file, text);
+    expect(analysis.record.linkedModuleIds).toEqual(["M-EXAMPLE"]);
+    expect(analysis.language).toBeNull();
+    expect(analysis.issues.filter((issue) => issue.severity === "error")).toHaveLength(0);
+    expect(analysis.issues.map((issue) => issue.code)).not.toContain("analysis.heuristic-confidence");
+  });
+
+  it("parses C block-comment markers with asterisk continuation lines", () => {
+    const root = mkdtempSync(path.join(os.tmpdir(), "grace-h-markup-"));
+    const file = path.join(root, "src", "driver.h");
+    const text = `/*
+ * START_MODULE_CONTRACT
+ * PURPOSE: Declare the example driver API.
+ * SCOPE: C header fixture.
+ * DEPENDS: none
+ * LINKS: M-EXAMPLE
+ * MAP_MODE: SUMMARY
+ * END_MODULE_CONTRACT
+ * START_MODULE_MAP
+ * driver_init - Initialize the driver.
+ * END_MODULE_MAP
+ */
+void driver_init(void);
+`;
+    const analysis = analyzeGovernedFile(root, file, text);
+    expect(analysis.record.moduleContract?.fields.PURPOSE).toBe("Declare the example driver API.");
+    expect(analysis.language).toBeNull();
+    expect(analysis.issues.filter((issue) => issue.severity === "error")).toHaveLength(0);
+  });
+
+  it("governs adapter-less C# sources structurally without export analysis", () => {
+    const root = mkdtempSync(path.join(os.tmpdir(), "grace-cs-markup-"));
+    const file = path.join(root, "src", "SessionStore.cs");
+    const text = `// START_MODULE_CONTRACT
+// PURPOSE: Persist operator sessions.
+// SCOPE: C# fixture without a language adapter.
+// DEPENDS: none
+// LINKS: M-EXAMPLE
+// MAP_MODE: SUMMARY
+// END_MODULE_CONTRACT
+// START_MODULE_MAP
+// SessionStore - Store and retrieve sessions.
+// END_MODULE_MAP
+namespace Example;
+
+public sealed class SessionStore
+{
+    public void Clear() { }
+}
+`;
+    const analysis = analyzeGovernedFile(root, file, text);
+    expect(analysis.record.linkedModuleIds).toEqual(["M-EXAMPLE"]);
+    expect(analysis.language).toBeNull();
+    expect(analysis.issues.filter((issue) => issue.severity === "error")).toHaveLength(0);
+    expect(analysis.issues.map((issue) => issue.code)).not.toContain("analysis.heuristic-confidence");
+  });
+
+  it("parses PowerShell markers behind the hash comment prefix", () => {
+    const root = mkdtempSync(path.join(os.tmpdir(), "grace-ps1-markup-"));
+    const file = path.join(root, "scripts", "Publish.ps1");
+    const text = `# START_MODULE_CONTRACT
+# PURPOSE: Publish the release artifacts.
+# SCOPE: PowerShell fixture without a language adapter.
+# DEPENDS: none
+# LINKS: M-EXAMPLE
+# ROLE: SCRIPT
+# MAP_MODE: LOCALS
+# END_MODULE_CONTRACT
+# START_MODULE_MAP
+# Publish-Artifacts - Copy artifacts to the release share.
+# END_MODULE_MAP
+function Publish-Artifacts {
+  Write-Output 'published'
+}
+`;
+    const analysis = analyzeGovernedFile(root, file, text);
+    expect(analysis.record.moduleContract?.fields.PURPOSE).toBe("Publish the release artifacts.");
+    expect(analysis.record.linkedModuleIds).toEqual(["M-EXAMPLE"]);
+    expect(analysis.language).toBeNull();
+    expect(analysis.issues.filter((issue) => issue.severity === "error")).toHaveLength(0);
+  });
+});
+
+describe("code file collection", () => {
+  it("collects newly recognized sources while skipping unrecognized extensions", () => {
+    const root = mkdtempSync(path.join(os.tmpdir(), "grace-collect-"));
+    mkdirSync(path.join(root, "src"), { recursive: true });
+    for (const relative of ["src/main.c", "src/main.h", "src/util.cpp", "src/util.hpp", "src/Store.cs", "src/Build.ps1", "src/Helpers.psm1", "src/Module.psd1", "src/notes.txt", "README.md"]) {
+      writeFileSync(path.join(root, relative), "\n");
+    }
+
+    const collected = collectCodeFiles(root, []).map((file) => path.relative(root, file).replaceAll(path.sep, "/")).sort();
+
+    expect(collected).toEqual(["src/Build.ps1", "src/Helpers.psm1", "src/Store.cs", "src/main.c", "src/main.h", "src/util.cpp", "src/util.hpp"]);
+  });
+
+  it("prunes .NET intermediate output while leaving bin to project configuration", () => {
+    const root = mkdtempSync(path.join(os.tmpdir(), "grace-dotnet-collect-"));
+    for (const relative of ["src/Store.cs", "src/obj/Debug/Store.AssemblyInfo.cs", "src/bin/Debug/Tool.cs"]) {
+      mkdirSync(path.join(root, path.dirname(relative)), { recursive: true });
+      writeFileSync(path.join(root, relative), "\n");
+    }
+
+    const withDefaults = collectCodeFiles(root, []).map((file) => path.relative(root, file).replaceAll(path.sep, "/")).sort();
+    expect(withDefaults).toEqual(["src/Store.cs", "src/bin/Debug/Tool.cs"]);
+
+    const withBinIgnored = collectCodeFiles(root, ["bin"]).map((file) => path.relative(root, file).replaceAll(path.sep, "/"));
+    expect(withBinIgnored).toEqual(["src/Store.cs"]);
   });
 });
 

@@ -26,7 +26,7 @@ description: "Читает одобренную GRACE 4 GraceChangeSpec и оп�
 </approved_plan_immutability>
 
 <must_do>
-Produce `plan.xml` from `references/change-plan-template.xml` as draft unless the user explicitly approves the completed plan. Require a matching `C-*` wrapper, meaningful intent, non-empty machine-checkable baseline and target assertions, explicit durable and observed scopes, and unique acyclic `T-NNN` tasks. A scope with no writes must use an explicit `<None />` marker; prose such as "none" is invalid. Every task has one `Title`, one `DependsOn`, non-empty acceptance criteria, and non-empty verification commands. Surface stale-state and coexistence warnings, and reject unsupported scope glob syntax instead of guessing.
+Produce `plan.xml` from `references/change-plan-template.xml` as draft unless the user explicitly approves the completed plan. Require a matching `C-*` wrapper, meaningful intent, non-empty machine-checkable baseline and target assertions, explicit durable and observed scopes, and unique acyclic `T-NNN` tasks. A scope with no writes must use an explicit `<None />` marker; prose such as "none" is invalid. Every task has one `Title`, one `DependsOn` element listing zero or more predecessors as canonical comma-separated `T-NNN` values (for example `<DependsOn>T-001, T-002</DependsOn>`), non-empty acceptance criteria, and non-empty verification commands. Dependencies form a directed acyclic graph: list only true predecessors and never linearize independent tasks into a chain to express ordering. Surface stale-state and coexistence warnings, and reject unsupported scope glob syntax instead of guessing.
 </must_do>
 
 <command_phase_rules>
@@ -34,6 +34,8 @@ Produce `plan.xml` from `references/change-plan-template.xml` as draft unless th
 - `baseline` is the selected pre-edit gate, `target` is selected post-edit evidence, and `final` is the outer apply/archive gate owned by `grace-execute`.
 - `MustPassCommand` contains leaf project evidence such as tests, typecheck, build, format, or package checks. Never place `grace lint`, `grace status`, or another GRACE lifecycle command inside it.
 - Never put `--assertions current` in `TargetAssertions` or in task verification that runs after writes. Use selected target/final lint externally instead.
+- A `MustPassCommand` must complete within its declared `budgetSeconds` (absent, the global `--command-timeout` applies) on the reference host; declare the budget you have measured rather than inheriting a default that will kill the command mid-gate.
+- A whole-suite command whose runtime is dominated by substrate startup — containers, databases, browsers, emulators — belongs in an acceptance tier, not in the gate; never declare both a whole-suite command and the file-level commands it already re-runs.
 </command_phase_rules>
 
 <contradiction_routing>

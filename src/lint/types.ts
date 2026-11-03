@@ -19,6 +19,17 @@ export type LintIssue = {
   remediation?: string[];
 };
 
+/** Machine-readable evidence for one --run-commands execution entry. */
+export type CommandEvidence = {
+  index: number;
+  command: string;
+  exitCode: number | null;
+  durationMs: number;
+  timedOut: boolean;
+  skipped: boolean;
+  logFile: string | null;
+};
+
 export type LintResult = {
   schemaVersion: string;
   tool: "grace-lint";
@@ -28,6 +39,8 @@ export type LintResult = {
   assertionMode: LintAssertionMode;
   changeId?: string;
   commandsEnabled: boolean;
+  /** Present when --run-commands executed at least one declared command. */
+  commands?: CommandEvidence[];
   filesChecked: number;
   governedFiles: number;
   xmlFilesChecked: number;
@@ -45,10 +58,28 @@ export type LintOptions = {
   changeId?: string;
   runCommands?: boolean;
   parallelPreflight?: boolean;
+  /** Per-command timeout in ms for --run-commands; default 600000, 0 disables. */
+  commandTimeoutMs?: number;
+  /** Resolved by the CLI: compact for agents/pipes/json, live for interactive TTY. */
+  commandVerbosity?: "compact" | "live";
+  /** Progress sink for run-commands lines; default writes `[grace] ${line}` to process.stderr. */
+  commandProgress?: (line: string) => void;
+  /** Overrides the XDG cache root for run logs; used by tests and tools. */
+  commandLogRoot?: string;
+  /**
+   * How many non-passing run directories the command-run log keeps, from `--keepRuns`.
+   * Overrides `runLogRetention` in `.grace-lint.json`; both default to 10. The newest
+   * passing run of every change is protected regardless of this count.
+   */
+  runLogRetention?: number;
+  /** Aborts a running command batch; the CLI wires SIGINT/SIGTERM here. */
+  commandSignal?: AbortSignal;
 };
 
 export type GraceLintConfig = {
   ignoredDirs?: string[];
+  /** How many non-passing command-run directories survive pruning; default 10. */
+  runLogRetention?: number;
 };
 
 export type MarkupSection = {

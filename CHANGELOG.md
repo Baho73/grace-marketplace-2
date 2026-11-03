@@ -1,3 +1,55 @@
+## <small>4.2.1 (2026-09-24)</small>
+
+### Summary
+
+Version 4.2.1 fixes a consistency bug where `grace lint` and navigation commands disagreed about how assertion diagnostics in archived plans are evaluated: lint accepted projects whose archived plans carried superseded `--assertions current` target commands, while module and verification navigation rejected the same projects as `invalid-project`. A single shared assertion lifecycle policy is now applied by both paths, treating archived plans as immutable history by dropping current-phase errors and advisory warnings while still failing closed on structural errors in active and archived plans alike, so the two workflows can no longer drift apart. In addition, `grace status` now reports a `module-health-unavailable` derived state and defers its execution recommendation when module health cannot be loaded, guiding you to run `grace lint` for diagnosis rather than incorrectly reporting that changes are ready to execute.
+
+* fix(cli): share assertion lifecycle policy between lint and navigation (#60) ([271c303](https://github.com/osovv/grace-marketplace/commit/271c303)), closes [#60](https://github.com/osovv/grace-marketplace/issues/60)
+
+## <small>4.2.0 (2026-09-22)</small>
+
+### Summary
+
+Version 4.2.0 improves command-gate reliability by adding per-command time budgets, warnings for redundant commands, commit and process metadata for run evidence, and retention controls that preserve the latest passing evidence for each change. Lint marker detection now recognizes Go standard logging and avoids false credit for error construction, while documentation tests verify that published CLI flags remain valid and .gitignore safely excludes node_modules symlinks.
+
+* chore: make .gitignore match node_modules symlinks (#58) ([3e56d5a](https://github.com/osovv/grace-marketplace/commit/3e56d5a)), closes [#58](https://github.com/osovv/grace-marketplace/issues/58)
+* fix(lint): credit Go's stdlib logger, and stop crediting error construction (#46) ([7467292](https://github.com/osovv/grace-marketplace/commit/7467292)), closes [#46](https://github.com/osovv/grace-marketplace/issues/46)
+* feat(plan): bound and de-duplicate gate commands (#49) ([f0c42f1](https://github.com/osovv/grace-marketplace/commit/f0c42f1)), closes [#49](https://github.com/osovv/grace-marketplace/issues/49)
+* feat(run-log): bind gate evidence to the commit it was run against (#47) ([a615e08](https://github.com/osovv/grace-marketplace/commit/a615e08)), closes [#47](https://github.com/osovv/grace-marketplace/issues/47)
+* feat(run-log): stop evicting the evidence an archive cites (#48) ([a46b915](https://github.com/osovv/grace-marketplace/commit/a46b915)), closes [#48](https://github.com/osovv/grace-marketplace/issues/48)
+* test(cli): assert every documented flag parses (#57) ([c2c759a](https://github.com/osovv/grace-marketplace/commit/c2c759a)), closes [#57](https://github.com/osovv/grace-marketplace/issues/57)
+
+## <small>4.1.0 (2026-09-03)</small>
+
+### Summary
+
+Users working with .NET, C/C++, or PowerShell codebases gain meaningful lint coverage in 4.1.0: C, C++, C#, and PowerShell source files can now opt into structural governance—markup validity, contract completeness, and MODULE_MAP shape are enforced the same way they already are for Go, Rust, Java, and shell—while the default ignored-directory set now prunes .NET's `obj` intermediate output, where generated sources no author edits would otherwise be walked and analyzed. Windows users and CI see several reliability fixes: forwarded command output no longer carries a trailing carriage return that corrupted live logs and terminal rendering, command-runner test fixtures were made shell-portable so the suite reports real results on cmd.exe instead of false failures, and the Windows CI job now runs the full test suite rather than a handful of files, with POSIX-only symlink, permission, and shell fixtures skipped cleanly on that platform.
+
+* feat(cli): ignore .NET intermediate build output ([2bd4485](https://github.com/osovv/grace-marketplace/commit/2bd4485))
+* feat(lint): govern C, C++, C#, and PowerShell sources structurally ([8bcac9b](https://github.com/osovv/grace-marketplace/commit/8bcac9b))
+* test(windows): make command-runner fixtures shell-portable ([1e2f1b8](https://github.com/osovv/grace-marketplace/commit/1e2f1b8))
+* test(windows): skip POSIX-only fixtures and widen the Windows CI job ([0815521](https://github.com/osovv/grace-marketplace/commit/0815521))
+* fix(lint): strip the carriage return from forwarded command output ([fc08a21](https://github.com/osovv/grace-marketplace/commit/fc08a21))
+
+## <small>4.0.7 (2026-08-29)</small>
+
+### Summary
+
+Release 4.0.7 upgrades GRACE plan linting so a task's `DependsOn` element can list multiple predecessors using comma-separated text, space-separated text, child anchor tags, or the legacy child-text form. This lets plans express their true dependency DAG instead of forcing independent tasks into artificial linear chains, and validation now catches unknown, duplicate, self, and cyclic dependencies instead of silently dropping them, with error hints pointing to the canonical comma-separated form. The grace-plan skill documentation and change plan template were updated to reflect the multi-dependency contract.
+
+* feat(lint): accept multiple task dependencies in DependsOn ([72012f0](https://github.com/osovv/grace-marketplace/commit/72012f0))
+
+## <small>4.0.6 (2026-08-29)</small>
+
+### Summary
+
+This release makes `grace lint` a fully observable verification runner: the new `--run-commands` flag executes declared `MustPassCommand` gates sequentially, fail-fast, with a default 600-second per-command timeout, streaming compact progress for agents and pipes or live output on interactive terminals while keeping stdout clean for the lint report and JSON evidence. Every run is persisted under the cache with machine-readable metadata, per-command timings, bounded failure tails, and full logs, and interrupted runs are killed as a process group and honestly recorded rather than silently discarded; the CLI also gains `--command-timeout`, `--verbose`, and `--quiet` controls with TTY-aware resolution. Skill documentation now defines the run-commands output contract and gate task conventions, recommending granular named tasks such as test, typecheck, build, and e2e gates so selective re-runs and timeouts map to coherent units, and treats flaky gates as verification defects to diagnose from per-attempt logs and fix rather than mask with blind re-runs. The runtime is additionally pinned to Bun 1.3.14 for reproducible packaging.
+
+* docs(skills): document run-commands contract and gate task conventions ([fe01024](https://github.com/osovv/grace-marketplace/commit/fe01024))
+* feat(lint): add thin command runner and run log store ([810a8c1](https://github.com/osovv/grace-marketplace/commit/810a8c1))
+* feat(lint): observable --run-commands execution with evidence and timeout ([0aa4adc](https://github.com/osovv/grace-marketplace/commit/0aa4adc))
+* chore: pin bun 1.3.14 via .tool-versions ([31c0199](https://github.com/osovv/grace-marketplace/commit/31c0199))
+
 ## <small>4.0.5 (2026-08-23)</small>
 
 ### Summary
